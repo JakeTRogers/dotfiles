@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -e
+
+command="${1}"
+shift
+
+case "${command}" in
+  "install")
+    package="${1}"
+    echo "🚀 Installing package: ${package}"
+    cd "${DOTFILES_LOCATION}/${package}" && ./install.sh
+    echo -e "\n"
+    ;;
+  *)
+    echo "${command} does not exist"
+    exit 1
+    ;;
+esac

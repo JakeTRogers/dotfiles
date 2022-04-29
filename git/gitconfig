@@ -1,0 +1,25 @@
+[alias]
+  co = checkout
+  ci = commit
+  ciaf = commit -a --fixup
+  cif = commit --fixup
+  rias = rebase --interactive --autosquash
+  st = status
+  br = branch
+  type = cat-file -t
+  dump = cat-file -p
+  last = log -1 HEAD
+  hist = log --decorate --pretty=format:'%C(yellow)%h%C(reset) %C(green)%G?%C(reset) %C(blue)%an%C(reset) %C(cyan)%cr%C(reset) %s %C(auto)%d%C(reset)' --graph --date-order
+  du = diff -U0
+  dus = diff -U0 --staged
+[user]
+  name = Jake Rogers
+  email = code@supportoss.org
+  signingkey = D167B29B020DB520
+[core]
+  excludesfile = ~/.gitignore_global
+  pager = less -F -X
+[push]
+  default = simple
+[commit]
+  gpgsign = true

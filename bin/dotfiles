@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+set -e
+
+function cmd_exists() {
+  command -v "${1}" &> /dev/null
+}
+
+function install_package() {
+  if cmd_exists 'apt'; then
+    $elevate /usr/bin/apt-get -qq update > /dev/null
+    $elevate /usr/bin/apt-get -qq install --allow-unauthenticated -y "$package" > /dev/null
+  elif cmd_exists 'microdnf'; then
+    $elevate /usr/bin/microdnf -q install -y "$package" > /dev/null
+  elif cmd_exists 'yum'; then
+    $elevate /usr/bin/yum -q install -y "$package" > /dev/null
+  elif cmd_exists 'zypper'; then
+    $elevate /usr/bin/zypper -q install -y "$package" > /dev/null
+  else
+    echo "🔴 unable to install ${package}"
+  fi
+}
+
+function install () {
+  if cmd_exists "${package}"; then
+    echo "🟢 ${package} is already installed"
+  else
+    echo "⚪ Installing ${package}"
+    # install via custom script if present
+    if [ -f "${DOTFILES_LOCATION}/${package}/install.sh" ]; then
+      cd "${DOTFILES_LOCATION}/${package}" && ./install.sh
+    # else, install via OS package manager
+    else
+      install_package "${package}"
+    fi
+  fi
+}
+
+function configure () {
+  # apply custom configuration if script exists
+  if [ -f "${DOTFILES_LOCATION}/${package}/configure.sh" ]; then
+    echo "🔵 Configuring ${package}"
+    cd "${DOTFILES_LOCATION}/${package}" && ./configure.sh
+  fi
+}
+
+package="${1}"
+shift
+
+install "${package}"
+configure "${package}"

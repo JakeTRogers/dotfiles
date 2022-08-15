@@ -1,0 +1,83 @@
+execute pathogen#infect()
+syntax on
+set t_Co=256
+set background=dark
+colorscheme solarized
+filetype plugin indent on
+set laststatus=2
+set shiftwidth=2
+set tabstop=2
+set expandtab
+set visualbell
+highlight clear
+
+set pastetoggle=<F2>
+nnoremap <F5> :previous<CR>
+nnoremap <F6> :next<CR>
+
+set statusline+=%#warningmsg#
+set statusline+=%{SyntasticStatuslineFlag()}
+set statusline+=%*
+
+let g:syntastic_always_populate_loc_list = 1
+let g:syntastic_auto_loc_list = 1
+let g:syntastic_check_on_open = 1
+let g:syntastic_check_on_wq = 1
+let g:syntastic_enable_signs=1
+let g:syntastic_puppet_checkers=['puppet', 'puppetlint']
+let g:syntastic_puppet_puppetlint_args=" --no-class_inherits_from_params_class-check --no-relative_classname_inclusion --no-140chars-check"
+let mapleader=','
+  "if exists(":Tabularize")
+    nmap <Leader>a= :Tabularize /=<CR>
+    vmap <Leader>a= :Tabularize /=<CR>
+    nmap <Leader>a: :Tabularize /:\zs<CR>
+    vmap <Leader>a: :Tabularize /:\zs<CR>
+    nmap <Leader>a. :Tabularize /=><CR>
+    vmap <Leader>a. :Tabularize /=><CR>
+  "endif
+
+"NEOCOMPLETE
+let g:neocomplete#enable_at_startup = 1
+"NEOCOMPLETE END
+
+"CTRLP
+set runtimepath^=~/.vim/bundle/ctrlp.vim
+"CTRLP END
+
+"NERDTREE
+map <F7> :NERDTreeToggle<CR>
+autocmd StdinReadPre * let s:std_in=1
+autocmd VimEnter * if argc() == 1 && isdirectory(argv()[0]) && !exists("s:std_in") | exe 'NERDTree' argv()[0] | wincmd p | ene | endif
+"NERDTREE END
+
+"NUMBERS
+let g:enable_numbers = 0
+let g:numbers_exclude = ['unite', 'tagbar', 'startify', 'gundo', 'vimshell', 'w3m', 'nerdtree' ,'ctrlp']
+nnoremap <F3> :NumbersToggle<CR>
+"NUMBERS END
+
+"VIMWIKI
+let g:vimwiki_list = [{'path': '/mnt/WORK/vimwiki/', 'syntax': 'markdown', 'ext': '.md'}]
+set nocompatible
+filetype plugin on
+"VIMWIKI END
+
+"SNIPMATE
+let g:snipMate = { 'snippet_version' : 1 }
+"SNIPMATE END
+
+" Append modeline after last line in buffer.
+" Use substitute() instead of printf() to handle '%%s' modeline in LaTeX
+" files.
+function! AppendModeline()
+  let l:modeline = printf(" vim: set ts=%d sw=%d tw=%d %set :",
+        \ &tabstop, &shiftwidth, &textwidth, &expandtab ? '' : 'no')
+  let l:modeline = substitute(&commentstring, "%s", l:modeline, "")
+  call append(line("$"), l:modeline)
+endfunction
+nnoremap <silent> <Leader>ml :call AppendModeline()<CR>
+
+let g:airline_powerline_fonts = 1
+
+set showtabline=2 " Always display the tabline, even if there is only one tab
+set noshowmode    " Hide the default mode text (e.g. -- INSERT -- below the statusline)

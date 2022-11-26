@@ -17,6 +17,7 @@
 [core]
   excludesfile = ~/.gitignore_global
   pager = less -F -X
+  commentChar = ";"
 [push]
   default = simple
 [commit]

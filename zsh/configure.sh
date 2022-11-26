@@ -2,8 +2,7 @@
 
 set -e
 
-[ "$EUID" -eq 0 ] && elevate='' || elevate='sudo'
-$elevate chsh -s /usr/bin/zsh
+$elevate chsh -s /usr/bin/zsh $(whoami)
 
 cat <<'PROFILE' > "${HOME}/.profile"
 # override shell assignment

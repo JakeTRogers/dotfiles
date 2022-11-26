@@ -6,10 +6,10 @@ if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]
 fi
 
 # If you come from bash you might have to change your $PATH.
-# export PATH=$HOME/bin:/usr/local/bin:$PATH
+export PATH=$HOME/.local/bin:$PATH
 
 # Path to your oh-my-zsh installation.
-  export ZSH="${HOME}/.oh-my-zsh"
+export ZSH="${HOME}/.oh-my-zsh"
 
 # Set name of the theme to load. Optionally, if you set this to "random"
 # it'll load a random theme each time that oh-my-zsh is loaded.
@@ -71,10 +71,10 @@ DEFAULT_USER=$(whoami)
 plugins=(
   colored-man-pages
   colorize
+  gh
   git
   gpg-agent
   kubectl
-  suse
   tmux
   zsh-autosuggestions
   zsh-syntax-highlighting
@@ -83,6 +83,7 @@ plugins=(
 source $ZSH/oh-my-zsh.sh
 
 # User configuration
+# prevents issue with paste + autosuggestions appending text unexpectedly
 zle_bracketed_paste=()
 
 # export MANPATH="/usr/local/man:$MANPATH"

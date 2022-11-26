@@ -14,8 +14,6 @@
   dus = diff -U0 --staged
 [user]
   name = Jake Rogers
-  email = code@supportoss.org
-  signingkey = D167B29B020DB520
 [core]
   excludesfile = ~/.gitignore_global
   pager = less -F -X
@@ -23,3 +21,6 @@
   default = simple
 [commit]
   gpgsign = true
+[include]
+  path = .gitconfig_personal
+  path = .gitconfig_work

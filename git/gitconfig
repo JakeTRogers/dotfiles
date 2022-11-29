@@ -22,6 +22,8 @@
   default = simple
 [commit]
   gpgsign = true
+[init]
+  defaultBranch = main
 [include]
   path = .gitconfig_personal
   path = .gitconfig_work

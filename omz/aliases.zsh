@@ -37,7 +37,7 @@ alias gcif='git commit --fixup'
 alias gdu='git diff -U0'
 alias gdus='git diff -U0 --cached'
 alias ghist="git log --decorate --pretty=format:'%C(yellow)%h%C(reset) %C(green)%G?%C(reset) %C(blue)%an%C(reset) %C(cyan)%cr%C(reset) %s %C(auto)%d%C(reset)' --graph --date-order"
-alias gitrebaseall='for branch in $(git br | egrep -v "main|development|production" | tr -d " " | tr -d "*"); do echo $branch; git co $branch && git rebase development && git push origin $branch -f; echo;echo;done; git co development; git br -v'
+alias gitrebaseall='def_branch=$({ git branch | grep development || git branch | grep production || git branch | grep main || git branch | grep master; } | tr -d " *"); for branch in $(git branch | egrep -v "development|production|main|master" | tr -d " *"); do echo $branch; git checkout $branch && git rebase $def_branch && git push origin $branch -f; echo;echo;done; git checkout $def_branch; git branch -v'
 alias grias='git rebase --interactive --autosquash'
 
 # zsh stuff

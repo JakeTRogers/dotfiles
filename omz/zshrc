@@ -84,7 +84,7 @@ source $ZSH/oh-my-zsh.sh
 
 # User configuration
 # prevents issue with paste + autosuggestions appending text unexpectedly
-zle_bracketed_paste=()
+ZSH_AUTOSUGGEST_CLEAR_WIDGETS+=(bracketed-paste)
 
 # export MANPATH="/usr/local/man:$MANPATH"
 

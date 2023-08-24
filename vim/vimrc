@@ -36,10 +36,6 @@ let mapleader=','
     vmap <Leader>a. :Tabularize /=><CR>
   "endif
 
-"NEOCOMPLETE
-let g:neocomplete#enable_at_startup = 1
-"NEOCOMPLETE END
-
 "CTRLP
 set runtimepath^=~/.vim/bundle/ctrlp.vim
 "CTRLP END

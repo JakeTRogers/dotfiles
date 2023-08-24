@@ -75,10 +75,15 @@ plugins=(
   git
   gpg-agent
   kubectl
+  ssh-agent
   tmux
   zsh-autosuggestions
   zsh-syntax-highlighting
 )
+
+# ssh-agent config
+zstyle :omz:plugins:ssh-agent agent-forwarding yes lifetime 12h
+
 
 source $ZSH/oh-my-zsh.sh
 

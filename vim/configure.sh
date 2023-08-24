@@ -24,7 +24,6 @@ if [ "${INSTALL_MODE}" = 'full' ]; then
     'https://github.com/scrooloose/nerdtree.git' \
     'https://github.com/scrooloose/syntastic.git' \
     'https://github.com/sheerun/vim-polyglot.git' \
-    'https://github.com/Shougo/neocomplete.vim.git' \
     'https://github.com/tomtom/tlib_vim.git' \
     'https://github.com/tpope/vim-surround.git' \
     'https://github.com/vim-airline/vim-airline.git' \

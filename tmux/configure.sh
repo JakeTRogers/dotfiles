@@ -6,8 +6,14 @@ if [ "${INSTALL_MODE}" = 'full' ]; then
   ln -sf "${DOTFILES_LOCATION}/tmux/tmux.conf" "${HOME}/.tmux.conf"
 
   # install tmux plugin manager
-  mkdir -p ~/.tmux/plugins
-  git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
+  if [ -d "${HOME}/.tmux/plugins" ]; then
+    echo "Updating tmux plugin manager"
+    git -C "${HOME}/.tmux/plugins/tpm" pull --quiet
+  else
+    echo "Installing tmux plugin manager"
+    mkdir -p "${HOME}/.tmux/plugins"
+    git clone --quiet https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
+  fi
 
   # install tmux plugins
   ~/.tmux/plugins/tpm/bin/install_plugins

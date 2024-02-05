@@ -24,6 +24,7 @@
   gpgsign = true
 [init]
   defaultBranch = main
+  templateDir = /home/spin/.git-template
 [include]
   path = .gitconfig_personal
   path = .gitconfig_work

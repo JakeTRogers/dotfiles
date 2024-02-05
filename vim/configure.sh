@@ -31,5 +31,13 @@ if [ "${INSTALL_MODE}" = 'full' ]; then
   )
 
   # clone vim plugins
-  for repo in "${vim_plugins[@]}"; do git -C ~/.vim/bundle clone $repo; done
+  for repo in "${vim_plugins[@]}"; do
+    if [ -d "${HOME}/.vim/bundle/$(basename $repo .git)" ]; then
+      echo "Updating $(basename $repo .git)"
+      git -C "${HOME}/.vim/bundle/$(basename $repo .git)" pull --quiet
+    else
+      echo "Installing $(basename $repo .git)"
+      git -C "${HOME}/.vim/bundle" clone --quiet $repo
+    fi
+  done
 fi

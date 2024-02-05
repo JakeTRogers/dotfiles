@@ -1,0 +1,19 @@
+default_install_hook_types:
+  - pre-commit
+  - commit-msg
+repos:
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: 4055bbb444ea66dca166828d6bc11bf7ba7fc157  # frozen: v3.14.1
+    hooks:
+      - id: commitizen
+        stages:
+          - commit-msg
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: c4a0b883114b00d8d76b479c820ce7950211c99b  # frozen: v4.5.0
+    hooks:
+      - id: check-added-large-files
+      - id: check-json
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+        args: [ --markdown-linebreak-ext=md ]

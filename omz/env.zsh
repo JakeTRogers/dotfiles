@@ -7,6 +7,9 @@ export TERM='xterm-256color'
 # auto accept and run autosuggest
 bindkey '^ ' autosuggest-execute
 
+# enforce emacs keybindings
+bindkey -e
+
 # start ssh-agent(12hr lifetime) if its not running and then add keys
 ssh-add -l &>/dev/null
 if [[ "$?" == 2 ]]; then

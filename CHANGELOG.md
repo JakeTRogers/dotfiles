@@ -1,3 +1,9 @@
+## v1.2.1 (2024-03-09)
+
+### Fix
+
+- **tmux**: enforce emacs bindings
+
 ## v1.2.0 (2024-03-08)
 
 ### Feature

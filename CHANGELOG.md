@@ -1,3 +1,12 @@
+## v1.3.0 (2024-03-09)
+
+### Feature
+
+- **tmux**: add tmux-logging plugin
+- **tmux**: add tmux-pain-control plugin and remove redundant bindings
+- **tmux**: change horizontal split keybinding from | to +
+- **tmux**: add keybinding to toggle pane input synchronization
+
 ## v1.2.1 (2024-03-09)
 
 ### Fix

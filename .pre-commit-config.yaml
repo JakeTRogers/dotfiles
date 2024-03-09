@@ -3,7 +3,7 @@ default_install_hook_types:
   - commit-msg
 repos:
   - repo: https://github.com/commitizen-tools/commitizen
-    rev: 4055bbb444ea66dca166828d6bc11bf7ba7fc157  # frozen: v3.14.1
+    rev: 99b6fba066fc409b6132d6de9a6afa1cdcdd100f  # frozen: v3.18.0
     hooks:
       - id: commitizen
         stages:

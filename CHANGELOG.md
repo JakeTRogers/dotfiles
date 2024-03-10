@@ -1,3 +1,9 @@
+## v1.3.1 (2024-03-10)
+
+### Fix
+
+- **tmux**: rebind fingers-jump-key to avoid conflict with pain-control
+
 ## v1.3.0 (2024-03-09)
 
 ### Feature

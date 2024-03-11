@@ -45,7 +45,16 @@ This repo manages my dotfiles and works nicely with the vscode dev container ext
 
 ## Installation
 
-The installation process is handled by the `install.sh` script. Run this script to install and configure all the dotfiles. You should for this repo and adjust it to your needs before running the script.
+The installation process is handled by the `install.sh` script. It has 2 install modes:
+
+- `./install.sh` - without any arguments, it performs a minimal installation intended for devcontainers, skipping:
+  - `.gitconfig`
+  - `tmux`
+  - `vim`
+- `./install.sh full` - with the `full` argument, it will perform a full installation intended for a jump server/workstation.
+
+> [!NOTE]
+> You should fork this repo and adjust it to your needs before running the script.
 
 ## credit
 

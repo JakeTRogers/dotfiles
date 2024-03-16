@@ -1,10 +1,9 @@
 version: 2
 updates:
-  - package-ecosystem: "gomod"
+  - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
+      # Check for updates to GitHub Actions every week
       interval: "weekly"
-    labels:
-      - "golang"
     commit-message:
-      prefix: "fix(deps)"
+      prefix: "ci(actions)"

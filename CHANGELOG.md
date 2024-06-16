@@ -1,3 +1,13 @@
+## v1.4.0 (2024-06-16)
+
+### Feature
+
+- **omz**: create git-tag-semver function to handle semantic versioning
+
+### Fix
+
+- **omz**: use zsh friendly argument handling for joincsv & getsudohash
+
 ## v1.3.1 (2024-03-10)
 
 ### Fix

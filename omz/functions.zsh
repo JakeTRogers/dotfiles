@@ -1,7 +1,7 @@
 # functions
 
 joincsv () {
-  if test @$1 = @--help -o @$1 = @-h -o @$1 = @-?; then
+  if [[ $1 == "--help" || $1 == "-h" || $1 == "-?" ]]; then
     echo "Usage: joincsv [ file1 ] [ file2 ]"
     echo -e "Purpose: add data from the second csv as a new column in the first csv"
     echo "Example 1:"
@@ -12,7 +12,7 @@ joincsv () {
 }
 
 getsudohash() {
-  if test @$1 = @--help -o @$1 = @-h -o @$1 = @-?; then
+  if [[ $1 == "--help" || $1 == "-h" || $1 == "-?" ]]; then
     echo "Usage: getsudohash [ hostname ]"
     echo -e "Purpose: ssh to server and report hash"
     echo "Example 1:"

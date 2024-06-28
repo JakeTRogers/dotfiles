@@ -1,3 +1,9 @@
+## v1.5.1 (2024-06-28)
+
+### Fix
+
+- **omz**: adjust repo detection logic and add color & emojis to git-pr-check function
+
 ## v1.5.0 (2024-06-28)
 
 ### Feature

@@ -95,3 +95,24 @@ git-tag-semver() {
     fi
   fi
 }
+
+# function to check child directories for pull requests
+# usage: git-check-prs [ --help ]
+git-pr-check() {
+  if [[ $1 == "--help" || $1 == "-h" || $1 == "-?" ]]; then
+    echo "Usage: git-pr-check [ --help ]"
+    echo -e "Purpose: check child directories for pull requests"
+    echo "Example 1:"
+    echo -e "  server> git-pr-check\n"
+  else
+    for dir in $(find . -mindepth 1 -maxdepth 1 -type d); do
+      echo $dir
+      git -C "$dir" fetch origin
+      cd "$dir"
+      git remote -v | grep -iq "github" && gh pr list
+      cd ..
+      echo
+      echo
+    done
+  fi
+}

@@ -1,3 +1,9 @@
+## v1.5.0 (2024-06-28)
+
+### Feature
+
+- **omz**: add git-pr-check function to list GitHub pull requests in child directories
+
 ## v1.4.0 (2024-06-16)
 
 ### Feature

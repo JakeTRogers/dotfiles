@@ -104,15 +104,28 @@ git-pr-check() {
     echo -e "Purpose: check child directories for pull requests"
     echo "Example 1:"
     echo -e "  server> git-pr-check\n"
-  else
-    for dir in $(find . -mindepth 1 -maxdepth 1 -type d); do
-      echo $dir
-      git -C "$dir" fetch origin
-      cd "$dir"
-      git remote -v | grep -iq "github" && gh pr list
-      cd ..
-      echo
-      echo
-    done
+    return
   fi
+  for dir in $(find . -mindepth 1 -maxdepth 1 -type d -printf '%P\n'); do
+    cd "$dir"
+    # has a .git directory
+    if [ -d .git ]; then
+      # has a GitHub remote
+      if git remote -v | grep -iq github; then
+        echo
+        echo "$(tput setaf 2)🟢 $dir$(tput sgr0)"
+        gh pr list
+        echo
+      # does not have a GitHub remote
+      else
+        echo "$(tput setaf 214)🟠 $dir, not using GitHub$(tput sgr0)"
+        cd ..
+        continue
+      fi
+    # does not have a .git directory
+    else
+      echo "$(tput setaf 7)➖ $dir, not a git repo$(tput sgr0)"
+    fi
+    cd ..
+  done
 }

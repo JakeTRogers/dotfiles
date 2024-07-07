@@ -1,6 +1,13 @@
 # functions
 
-getsudohash() {
+#######################################
+# ssh to the server, concatenate the sudo files, and calculate the resulting SHA1 hash
+# Arguments:
+#   $1 - hostname of the server to ssh into
+# Outputs:
+#   Writes the server hostname and resulting SHA1 hash to stdout
+#######################################
+function getsudohash() {
   if [[ $1 == "--help" || $1 == "-h" || $1 == "-?" ]]; then
     echo "Usage: getsudohash [ hostname ]"
     echo -e "Purpose: ssh to server and report hash"
@@ -11,9 +18,15 @@ getsudohash() {
   fi
 }
 
-# function to check child directories for pull requests
-# usage: git-check-prs [ --help ]
-git-pr-check() {
+
+#######################################
+# check child directories for pull requests using the GitHub CLI
+# Arguments:
+#   None
+# Outputs:
+#   Writes any existing GitHub pull requests to stdout
+#######################################
+function git-pr-check() {
   if [[ $1 == "--help" || $1 == "-h" || $1 == "-?" ]]; then
     echo "Usage: git-pr-check [ --help ]"
     echo -e "Purpose: check child directories for pull requests"
@@ -45,9 +58,17 @@ git-pr-check() {
   done
 }
 
-# function to semantically tag a git repository, optionally with floating tags
-# usage: git-tag-semver <major|minor|patch> [float] [push] [--help]
-git-tag-semver() {
+
+#######################################
+# add signed & annontated semantic version tags(either single or floating tags) to a git repository
+# Arguments:
+#   $1 - major|minor|patch (required)
+#   $2 - 'float' to add floating tags, null otherwise
+#   $3 - 'push' the tags to the remote
+# Outputs:
+#   Writes the latest tag, the new tag, and the floating tags (if requested) to stdout
+#######################################
+function git-tag-semver() {
   if [[ $1 == "--help" || $1 == "-h" || $1 == "-?" ]]; then
     echo "Usage: git-tag-semver [ major | minor | patch ] [float] [push] [--help]"
     echo -e "Purpose: semantically tag a git repository"
@@ -109,7 +130,16 @@ git-tag-semver() {
   fi
 }
 
-joincsv () {
+
+#######################################
+# join two csv files on the first column. The first row of each file is assumed to be the header.
+# Arguments:
+#   $1 - 'file1' the first csv file
+#   $2 - 'file2' the second csv file
+# Outputs:
+#   Writes the joined csv to stdout
+#######################################
+function joincsv () {
   if [[ $1 == "--help" || $1 == "-h" || $1 == "-?" ]]; then
     echo "Usage: joincsv [ file1 ] [ file2 ]"
     echo -e "Purpose: add data from the second csv as a new column in the first csv"
@@ -120,6 +150,16 @@ joincsv () {
   fi
 }
 
+
+#######################################
+# log a shell command, its stdout, and stderr to a file
+# Globals:
+#   CMD_LOG_FILE - the file to log the command and its output to
+# Arguments:
+#   $* - the command to execute
+# Outputs:
+#   Writes the command and its output to the log file and stdout
+#######################################
 function log-cmd () {
     local header="####################################################\n"
 
@@ -138,7 +178,15 @@ function log-cmd () {
     } 2>&1 | tee -a "${CMD_LOG_FILE}"
 }
 
-update_forge_modules () {
+
+#######################################
+# update all mirrored puppet forge modules in the current directory
+# Arguments:
+#   None
+# Outputs:
+#   Writes the git fetch and push status to stdout
+#######################################
+function update_forge_modules () {
   for dir in $(ls -1); do
     echo $dir
     git -C "$dir" fetch -p origin

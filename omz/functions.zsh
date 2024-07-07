@@ -22,6 +22,24 @@ getsudohash() {
   fi
 }
 
+function log-cmd () {
+    local header="####################################################\n"
+
+    # check if log file has been named
+    if [ -z "${CMD_LOG_FILE}" ]; then
+      local CMD_LOG_FILE="/tmp/command.log"
+      echo "No log file specified, using default: ${CMD_LOG_FILE}\n"
+    fi
+
+    {
+      printf ${header}
+      printf "\`%s\` executed at $(date '+%Y-%m-%d %H:%M:%S')\n" "$*"
+      printf ${header}
+      "$@"
+      printf "\n"
+    } 2>&1 | tee -a "${CMD_LOG_FILE}"
+}
+
 update_forge_modules () {
   for dir in $(ls -1); do
     echo $dir

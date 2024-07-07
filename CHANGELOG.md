@@ -1,3 +1,13 @@
+## v1.6.0 (2024-07-07)
+
+### Feature
+
+- **omz**: add log-cmd function to log the stderr and stdout of a command
+
+### Refactor
+
+- **omz**: order functions alphabetically
+
 ## v1.5.1 (2024-06-28)
 
 ### Fix

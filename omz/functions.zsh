@@ -1,16 +1,5 @@
 # functions
 
-joincsv () {
-  if [[ $1 == "--help" || $1 == "-h" || $1 == "-?" ]]; then
-    echo "Usage: joincsv [ file1 ] [ file2 ]"
-    echo -e "Purpose: add data from the second csv as a new column in the first csv"
-    echo "Example 1:"
-    echo -e "  server> joincsv svrChkr-2015-08-27.csv OWNERS.csv\n"
-  else
-    join -t, -a1 --header --nocheck-order <(cat <(head -n1 "$1") <(sed 1d "$1" | sort) | sed 's/\r//') <(cat <(head -n1 "$2") <(sed 1d "$2"| sort) | sed 's/\r//')
-  fi
-}
-
 getsudohash() {
   if [[ $1 == "--help" || $1 == "-h" || $1 == "-?" ]]; then
     echo "Usage: getsudohash [ hostname ]"
@@ -22,31 +11,37 @@ getsudohash() {
   fi
 }
 
-function log-cmd () {
-    local header="####################################################\n"
-
-    # check if log file has been named
-    if [ -z "${CMD_LOG_FILE}" ]; then
-      local CMD_LOG_FILE="/tmp/command.log"
-      echo "No log file specified, using default: ${CMD_LOG_FILE}\n"
+# function to check child directories for pull requests
+# usage: git-check-prs [ --help ]
+git-pr-check() {
+  if [[ $1 == "--help" || $1 == "-h" || $1 == "-?" ]]; then
+    echo "Usage: git-pr-check [ --help ]"
+    echo -e "Purpose: check child directories for pull requests"
+    echo "Example 1:"
+    echo -e "  server> git-pr-check\n"
+    return
+  fi
+  for dir in $(find . -mindepth 1 -maxdepth 1 -type d -printf '%P\n'); do
+    cd "$dir"
+    # has a .git directory
+    if [ -d .git ]; then
+      # has a GitHub remote
+      if git remote -v | grep -iq github; then
+        echo
+        echo "$(tput setaf 2)🟢 $dir$(tput sgr0)"
+        gh pr list
+        echo
+      # does not have a GitHub remote
+      else
+        echo "$(tput setaf 214)🟠 $dir, not using GitHub$(tput sgr0)"
+        cd ..
+        continue
+      fi
+    # does not have a .git directory
+    else
+      echo "$(tput setaf 7)➖ $dir, not a git repo$(tput sgr0)"
     fi
-
-    {
-      printf ${header}
-      printf "\`%s\` executed at $(date '+%Y-%m-%d %H:%M:%S')\n" "$*"
-      printf ${header}
-      "$@"
-      printf "\n"
-    } 2>&1 | tee -a "${CMD_LOG_FILE}"
-}
-
-update_forge_modules () {
-  for dir in $(ls -1); do
-    echo $dir
-    git -C "$dir" fetch -p origin
-    git -C "$dir" push --mirror
-    echo
-    echo
+    cd ..
   done
 }
 
@@ -114,36 +109,41 @@ git-tag-semver() {
   fi
 }
 
-# function to check child directories for pull requests
-# usage: git-check-prs [ --help ]
-git-pr-check() {
+joincsv () {
   if [[ $1 == "--help" || $1 == "-h" || $1 == "-?" ]]; then
-    echo "Usage: git-pr-check [ --help ]"
-    echo -e "Purpose: check child directories for pull requests"
+    echo "Usage: joincsv [ file1 ] [ file2 ]"
+    echo -e "Purpose: add data from the second csv as a new column in the first csv"
     echo "Example 1:"
-    echo -e "  server> git-pr-check\n"
-    return
+    echo -e "  server> joincsv svrChkr-2015-08-27.csv OWNERS.csv\n"
+  else
+    join -t, -a1 --header --nocheck-order <(cat <(head -n1 "$1") <(sed 1d "$1" | sort) | sed 's/\r//') <(cat <(head -n1 "$2") <(sed 1d "$2"| sort) | sed 's/\r//')
   fi
-  for dir in $(find . -mindepth 1 -maxdepth 1 -type d -printf '%P\n'); do
-    cd "$dir"
-    # has a .git directory
-    if [ -d .git ]; then
-      # has a GitHub remote
-      if git remote -v | grep -iq github; then
-        echo
-        echo "$(tput setaf 2)🟢 $dir$(tput sgr0)"
-        gh pr list
-        echo
-      # does not have a GitHub remote
-      else
-        echo "$(tput setaf 214)🟠 $dir, not using GitHub$(tput sgr0)"
-        cd ..
-        continue
-      fi
-    # does not have a .git directory
-    else
-      echo "$(tput setaf 7)➖ $dir, not a git repo$(tput sgr0)"
+}
+
+function log-cmd () {
+    local header="####################################################\n"
+
+    # check if log file has been named
+    if [ -z "${CMD_LOG_FILE}" ]; then
+      local CMD_LOG_FILE="/tmp/command.log"
+      echo "No log file specified, using default: ${CMD_LOG_FILE}\n"
     fi
-    cd ..
+
+    {
+      printf ${header}
+      printf "\`%s\` executed at $(date '+%Y-%m-%d %H:%M:%S')\n" "$*"
+      printf ${header}
+      "$@"
+      printf "\n"
+    } 2>&1 | tee -a "${CMD_LOG_FILE}"
+}
+
+update_forge_modules () {
+  for dir in $(ls -1); do
+    echo $dir
+    git -C "$dir" fetch -p origin
+    git -C "$dir" push --mirror
+    echo
+    echo
   done
 }

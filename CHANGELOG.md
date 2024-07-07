@@ -1,3 +1,9 @@
+## v1.7.0 (2024-07-07)
+
+### Feature
+
+- **powershell**: add basic Oh-My-Posh PowerShell profile for dev container usage
+
 ## v1.6.0 (2024-07-07)
 
 ### Feature

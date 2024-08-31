@@ -1,3 +1,9 @@
+## v1.7.1 (2024-08-31)
+
+### Fix
+
+- **tmux**: bind home & end keys with correct escape sequence
+
 ## v1.7.0 (2024-07-07)
 
 ### Feature

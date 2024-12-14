@@ -180,6 +180,22 @@ function log-cmd () {
 
 
 #######################################
+# Pretty print a string with styles
+# Arguments:
+#   $1 - text to print (required)
+#   $@ - styles to apply (optional)
+# Outputs:
+#   Writes the text to stdout with the styles applied
+#######################################
+function pprint() {
+  local text="$1"
+  shift
+  local styles="$*"
+  printf '%b%s%b\n' "${styles// /}" "$text" "$txReset"
+}
+
+
+#######################################
 # update all mirrored puppet forge modules in the current directory
 # Arguments:
 #   None

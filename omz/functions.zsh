@@ -1,6 +1,21 @@
 # functions
 
 #######################################
+# countdown timer
+# Arguments:
+#   $1 - the number of seconds to countdown
+#######################################
+function countdown () {
+    local seconds=${1}
+    while [ "$seconds" -gt 0 ]; do
+       echo -ne "waiting: ${seconds}\r"
+       sleep 1
+       : $((seconds--))
+    done
+}
+
+
+#######################################
 # ssh to the server, concatenate the sudo files, and calculate the resulting SHA1 hash
 # Arguments:
 #   $1 - hostname of the server to ssh into

@@ -16,25 +16,6 @@ function countdown () {
 
 
 #######################################
-# ssh to the server, concatenate the sudo files, and calculate the resulting SHA1 hash
-# Arguments:
-#   $1 - hostname of the server to ssh into
-# Outputs:
-#   Writes the server hostname and resulting SHA1 hash to stdout
-#######################################
-function getsudohash() {
-  if [[ $1 == "--help" || $1 == "-h" || $1 == "-?" ]]; then
-    echo "Usage: getsudohash [ hostname ]"
-    echo -e "Purpose: ssh to server and report hash"
-    echo "Example 1:"
-    echo -e "  server> getsudohash SOME_SERVER\n"
-  else
-    ssh ${1} 'sha1sum <(sudo cat $(sudo find /etc/sudoers.d -type f -print | sort) /etc/sudoers) | colrm 41 | sed "s/^/$(hostname)\t/"'
-  fi
-}
-
-
-#######################################
 # check child directories for pull requests using the GitHub CLI
 # Arguments:
 #   None

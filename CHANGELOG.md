@@ -1,3 +1,16 @@
+## v2.0.0 (2024-12-15)
+
+### BREAKING CHANGE
+
+- remove unused getsudohash function
+
+### Feature
+
+- **omz**: remove getsudohash because it is only useful if all sudo files are identical
+- **omz**: add function to install/upgrade kubectl
+- **omz**: add countdown timer function
+- **omz**: add pprint function that supports color and text styling
+
 ## v1.7.1 (2024-08-31)
 
 ### Fix

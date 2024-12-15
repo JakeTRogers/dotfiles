@@ -1,21 +1,17 @@
 # functions
 
 #######################################
-# ssh to the server, concatenate the sudo files, and calculate the resulting SHA1 hash
+# countdown timer
 # Arguments:
-#   $1 - hostname of the server to ssh into
-# Outputs:
-#   Writes the server hostname and resulting SHA1 hash to stdout
+#   $1 - the number of seconds to countdown
 #######################################
-function getsudohash() {
-  if [[ $1 == "--help" || $1 == "-h" || $1 == "-?" ]]; then
-    echo "Usage: getsudohash [ hostname ]"
-    echo -e "Purpose: ssh to server and report hash"
-    echo "Example 1:"
-    echo -e "  server> getsudohash SOME_SERVER\n"
-  else
-    ssh ${1} 'sha1sum <(sudo cat $(sudo find /etc/sudoers.d -type f -print | sort) /etc/sudoers) | colrm 41 | sed "s/^/$(hostname)\t/"'
-  fi
+function countdown () {
+    local seconds=${1}
+    while [ "$seconds" -gt 0 ]; do
+       echo -ne "waiting: ${seconds}\r"
+       sleep 1
+       : $((seconds--))
+    done
 }
 
 
@@ -132,6 +128,40 @@ function git-tag-semver() {
 
 
 #######################################
+# download and install kubectl
+# Arguments:
+#   $1 - the version of kubectl to install, defaults to the latest version
+#######################################
+function install-kubectl() {
+  local version=""
+  # handle -h or --help flags
+  if [[ $1 == "--help" || $1 == "-h" || $1 == "-?" ]]; then
+    echo "Usage: install-kubectl [version]"
+    echo "Installs the specified version of kubectl, or the latest version if no version is specified"
+    return
+  elif [ -n "$1" ]; then
+    # test if the version is valid
+    if [[ "$1" =~ '^[0-9]\.[0-9]{2}$' ]]; then
+      version="$(/usr/bin/curl -L -s https://dl.k8s.io/release/stable-${1}.txt)"
+    else
+      pprint "🔴 Invalid version format. Please use the format X.YY" $fgRed
+      return
+    fi
+  elif [ -z "$1" ]; then
+    version="$(/usr/bin/curl -L -s https://dl.k8s.io/release/stable.txt)"
+  fi
+
+  /usr/bin/curl  -o ~/install/kubectl -L "https://dl.k8s.io/release/${version}/bin/linux/amd64/kubectl"
+  if [ $? -ne 0 ]; then
+    pprint "🔴 Failed to download kubectl ${version}" $fgRed
+    return
+  fi
+  sudo /usr/bin/install -o root -g root -m 0755 ~/install/kubectl /usr/local/bin/kubectl
+  [ $? -eq 0 ] && pprint "🟢 Installed kubectl ${version}" $fgGreen
+}
+
+
+#######################################
 # join two csv files on the first column. The first row of each file is assumed to be the header.
 # Arguments:
 #   $1 - 'file1' the first csv file
@@ -176,6 +206,22 @@ function log-cmd () {
       "$@"
       printf "\n"
     } 2>&1 | tee -a "${CMD_LOG_FILE}"
+}
+
+
+#######################################
+# Pretty print a string with styles
+# Arguments:
+#   $1 - text to print (required)
+#   $@ - styles to apply (optional)
+# Outputs:
+#   Writes the text to stdout with the styles applied
+#######################################
+function pprint() {
+  local text="$1"
+  shift
+  local styles="$*"
+  printf '%b%s%b\n' "${styles// /}" "$text" "$txReset"
 }
 
 

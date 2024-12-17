@@ -1,0 +1,17 @@
+#######################################
+# name: log_cmd_d
+# log a shell command, its stdout, and stderr to a file
+# Arguments:
+#   $* - the command to execute
+# Outputs:
+#   Writes the command and its output to a timestamped log file and stdout
+#######################################
+local header="####################################################\n"
+
+{
+  printf ${header}
+  printf "Command executed: %s\n\n" "$*"
+  printf ${header}
+  "$@"
+  printf "\n"
+} 2>&1 | tee "/tmp/cmd-$(date '+%Y_%m_%d_%H-%M-%S').log"

@@ -1,3 +1,20 @@
+## v2.1.0 (2024-12-17)
+
+### Feature
+
+- **omz**: move countdown, log_cmd, & pprint to autoload functions
+- **omz**: add warp directory plugin
+- **omz**: update zshrc to current template
+- **omz**: add colors: purple, pink, orange, and grey
+
+### Fix
+
+- **omz**: rename git-pr-check, git-tag-semver, and install-kubectl with underscores per posix standard
+
+### Refactor
+
+- **omz**: replace git_pr_check echo commands using tput with pprint
+
 ## v2.0.0 (2024-12-15)
 
 ### BREAKING CHANGE

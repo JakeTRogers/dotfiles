@@ -1,0 +1,13 @@
+#######################################
+# name: pprint
+# Pretty print a string with styles
+# Arguments:
+#   $1 - text to print (required)
+#   $* - styles to apply (optional)
+# Outputs:
+#   Writes the text to stdout with the styles applied
+#######################################
+local text="$1"
+shift
+local styles="$*"
+printf '%b%s%b\n' "${styles// /}" "$text" "$txReset"

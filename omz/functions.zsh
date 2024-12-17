@@ -1,28 +1,13 @@
 # functions
 
 #######################################
-# countdown timer
-# Arguments:
-#   $1 - the number of seconds to countdown
-#######################################
-function countdown () {
-    local seconds=${1}
-    while [ "$seconds" -gt 0 ]; do
-       echo -ne "waiting: ${seconds}\r"
-       sleep 1
-       : $((seconds--))
-    done
-}
-
-
-#######################################
 # check child directories for pull requests using the GitHub CLI
 # Arguments:
 #   None
 # Outputs:
 #   Writes any existing GitHub pull requests to stdout
 #######################################
-function git-pr-check() {
+function git_pr_check() {
   if [[ $1 == "--help" || $1 == "-h" || $1 == "-?" ]]; then
     echo "Usage: git-pr-check [ --help ]"
     echo -e "Purpose: check child directories for pull requests"
@@ -33,22 +18,22 @@ function git-pr-check() {
   for dir in $(find . -mindepth 1 -maxdepth 1 -type d -printf '%P\n'); do
     cd "$dir"
     # has a .git directory
-    if [ -d .git ]; then
+    if [ -d .git -o -d refs ]; then
       # has a GitHub remote
       if git remote -v | grep -iq github; then
         echo
-        echo "$(tput setaf 2)🟢 $dir$(tput sgr0)"
+        pprint "🟢 ${dir}" $fgGreen
         gh pr list
         echo
       # does not have a GitHub remote
       else
-        echo "$(tput setaf 214)🟠 $dir, not using GitHub$(tput sgr0)"
+        pprint "🟠 ${dir}, not using GitHub" $fgYellow
         cd ..
         continue
       fi
     # does not have a .git directory
     else
-      echo "$(tput setaf 7)➖ $dir, not a git repo$(tput sgr0)"
+      pprint "➖ $dir, not a git repo"
     fi
     cd ..
   done
@@ -56,7 +41,7 @@ function git-pr-check() {
 
 
 #######################################
-# add signed & annontated semantic version tags(either single or floating tags) to a git repository
+# add signed & annotated semantic version tags(either single or floating tags) to a git repository
 # Arguments:
 #   $1 - major|minor|patch (required)
 #   $2 - 'float' to add floating tags, null otherwise
@@ -64,7 +49,7 @@ function git-pr-check() {
 # Outputs:
 #   Writes the latest tag, the new tag, and the floating tags (if requested) to stdout
 #######################################
-function git-tag-semver() {
+function git_tag_semver() {
   if [[ $1 == "--help" || $1 == "-h" || $1 == "-?" ]]; then
     echo "Usage: git-tag-semver [ major | minor | patch ] [float] [push] [--help]"
     echo -e "Purpose: semantically tag a git repository"
@@ -132,7 +117,7 @@ function git-tag-semver() {
 # Arguments:
 #   $1 - the version of kubectl to install, defaults to the latest version
 #######################################
-function install-kubectl() {
+function install_kubectl() {
   local version=""
   # handle -h or --help flags
   if [[ $1 == "--help" || $1 == "-h" || $1 == "-?" ]]; then
@@ -178,50 +163,6 @@ function joincsv () {
   else
     join -t, -a1 --header --nocheck-order <(cat <(head -n1 "$1") <(sed 1d "$1" | sort) | sed 's/\r//') <(cat <(head -n1 "$2") <(sed 1d "$2"| sort) | sed 's/\r//')
   fi
-}
-
-
-#######################################
-# log a shell command, its stdout, and stderr to a file
-# Globals:
-#   CMD_LOG_FILE - the file to log the command and its output to
-# Arguments:
-#   $* - the command to execute
-# Outputs:
-#   Writes the command and its output to the log file and stdout
-#######################################
-function log-cmd () {
-    local header="####################################################\n"
-
-    # check if log file has been named
-    if [ -z "${CMD_LOG_FILE}" ]; then
-      local CMD_LOG_FILE="/tmp/command.log"
-      echo "No log file specified, using default: ${CMD_LOG_FILE}\n"
-    fi
-
-    {
-      printf ${header}
-      printf "\`%s\` executed at $(date '+%Y-%m-%d %H:%M:%S')\n" "$*"
-      printf ${header}
-      "$@"
-      printf "\n"
-    } 2>&1 | tee -a "${CMD_LOG_FILE}"
-}
-
-
-#######################################
-# Pretty print a string with styles
-# Arguments:
-#   $1 - text to print (required)
-#   $@ - styles to apply (optional)
-# Outputs:
-#   Writes the text to stdout with the styles applied
-#######################################
-function pprint() {
-  local text="$1"
-  shift
-  local styles="$*"
-  printf '%b%s%b\n' "${styles// /}" "$text" "$txReset"
 }
 
 

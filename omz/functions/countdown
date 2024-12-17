@@ -1,0 +1,12 @@
+#######################################
+# name: countdown
+# countdown timer
+# Arguments:
+#   $1 - the number of seconds to countdown
+#######################################
+local seconds=${1}
+while [ "$seconds" -gt 0 ]; do
+  echo -ne "waiting: ${seconds}\r"
+  sleep 1
+  : $((seconds--))
+done

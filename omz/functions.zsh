@@ -1,21 +1,6 @@
 # functions
 
 #######################################
-# countdown timer
-# Arguments:
-#   $1 - the number of seconds to countdown
-#######################################
-function countdown () {
-    local seconds=${1}
-    while [ "$seconds" -gt 0 ]; do
-       echo -ne "waiting: ${seconds}\r"
-       sleep 1
-       : $((seconds--))
-    done
-}
-
-
-#######################################
 # check child directories for pull requests using the GitHub CLI
 # Arguments:
 #   None
@@ -178,50 +163,6 @@ function joincsv () {
   else
     join -t, -a1 --header --nocheck-order <(cat <(head -n1 "$1") <(sed 1d "$1" | sort) | sed 's/\r//') <(cat <(head -n1 "$2") <(sed 1d "$2"| sort) | sed 's/\r//')
   fi
-}
-
-
-#######################################
-# log a shell command, its stdout, and stderr to a file
-# Globals:
-#   CMD_LOG_FILE - the file to log the command and its output to
-# Arguments:
-#   $* - the command to execute
-# Outputs:
-#   Writes the command and its output to the log file and stdout
-#######################################
-function log-cmd () {
-    local header="####################################################\n"
-
-    # check if log file has been named
-    if [ -z "${CMD_LOG_FILE}" ]; then
-      local CMD_LOG_FILE="/tmp/command.log"
-      echo "No log file specified, using default: ${CMD_LOG_FILE}\n"
-    fi
-
-    {
-      printf ${header}
-      printf "\`%s\` executed at $(date '+%Y-%m-%d %H:%M:%S')\n" "$*"
-      printf ${header}
-      "$@"
-      printf "\n"
-    } 2>&1 | tee -a "${CMD_LOG_FILE}"
-}
-
-
-#######################################
-# Pretty print a string with styles
-# Arguments:
-#   $1 - text to print (required)
-#   $@ - styles to apply (optional)
-# Outputs:
-#   Writes the text to stdout with the styles applied
-#######################################
-function pprint() {
-  local text="$1"
-  shift
-  local styles="$*"
-  printf '%b%s%b\n' "${styles// /}" "$text" "$txReset"
 }
 
 

@@ -89,6 +89,7 @@ plugins=(
   kubectl
   ssh-agent
   tmux
+  wd
   zsh-autosuggestions
   zsh-syntax-highlighting
 )

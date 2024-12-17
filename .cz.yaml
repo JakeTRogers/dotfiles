@@ -9,5 +9,5 @@ commitizen:
   template: .cz.changelog.md.j2
   update_changelog_on_bump: true
   use_shortcuts: true
-  version: 2.0.0
+  version: 2.1.0
   version_scheme: semver

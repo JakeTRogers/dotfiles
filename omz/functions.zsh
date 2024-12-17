@@ -18,22 +18,22 @@ function git_pr_check() {
   for dir in $(find . -mindepth 1 -maxdepth 1 -type d -printf '%P\n'); do
     cd "$dir"
     # has a .git directory
-    if [ -d .git ]; then
+    if [ -d .git -o -d refs ]; then
       # has a GitHub remote
       if git remote -v | grep -iq github; then
         echo
-        echo "$(tput setaf 2)🟢 $dir$(tput sgr0)"
+        pprint "🟢 ${dir}" $fgGreen
         gh pr list
         echo
       # does not have a GitHub remote
       else
-        echo "$(tput setaf 214)🟠 $dir, not using GitHub$(tput sgr0)"
+        pprint "🟠 ${dir}, not using GitHub" $fgYellow
         cd ..
         continue
       fi
     # does not have a .git directory
     else
-      echo "$(tput setaf 7)➖ $dir, not a git repo$(tput sgr0)"
+      pprint "➖ $dir, not a git repo"
     fi
     cd ..
   done
@@ -41,7 +41,7 @@ function git_pr_check() {
 
 
 #######################################
-# add signed & annontated semantic version tags(either single or floating tags) to a git repository
+# add signed & annotated semantic version tags(either single or floating tags) to a git repository
 # Arguments:
 #   $1 - major|minor|patch (required)
 #   $2 - 'float' to add floating tags, null otherwise

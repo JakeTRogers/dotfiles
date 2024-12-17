@@ -7,7 +7,7 @@
 # Outputs:
 #   Writes any existing GitHub pull requests to stdout
 #######################################
-function git-pr-check() {
+function git_pr_check() {
   if [[ $1 == "--help" || $1 == "-h" || $1 == "-?" ]]; then
     echo "Usage: git-pr-check [ --help ]"
     echo -e "Purpose: check child directories for pull requests"
@@ -49,7 +49,7 @@ function git-pr-check() {
 # Outputs:
 #   Writes the latest tag, the new tag, and the floating tags (if requested) to stdout
 #######################################
-function git-tag-semver() {
+function git_tag_semver() {
   if [[ $1 == "--help" || $1 == "-h" || $1 == "-?" ]]; then
     echo "Usage: git-tag-semver [ major | minor | patch ] [float] [push] [--help]"
     echo -e "Purpose: semantically tag a git repository"
@@ -117,7 +117,7 @@ function git-tag-semver() {
 # Arguments:
 #   $1 - the version of kubectl to install, defaults to the latest version
 #######################################
-function install-kubectl() {
+function install_kubectl() {
   local version=""
   # handle -h or --help flags
   if [[ $1 == "--help" || $1 == "-h" || $1 == "-?" ]]; then

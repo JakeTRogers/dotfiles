@@ -2,12 +2,29 @@
 # name: pprint
 # Pretty print a string with styles
 # Arguments:
+#   -n - do not output the trailing newline (optional)
 #   $1 - text to print (required)
 #   $* - styles to apply (optional)
 # Outputs:
 #   Writes the text to stdout with the styles applied
 #######################################
+# handle options
+local newline="\n"
+while [[ "$1" == -* ]]; do
+  case "$1" in
+    -n)
+      newline=""
+      ;;
+    *)
+      ;;
+  esac
+  shift
+done
+
+# handle arguments
 local text="$1"
 shift
 local styles="$*"
-printf '%b%b%b\n' "${styles// /}" "$text" "$txReset"
+
+# Print with or without newline
+printf '%b%b%b%b' "${styles// /}" "$text" "$txReset" "$newline"

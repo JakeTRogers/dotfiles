@@ -10,4 +10,4 @@
 local text="$1"
 shift
 local styles="$*"
-printf '%b%s%b\n' "${styles// /}" "$text" "$txReset"
+printf '%b%b%b\n' "${styles// /}" "$text" "$txReset"

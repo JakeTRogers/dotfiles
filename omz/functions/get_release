@@ -1,0 +1,255 @@
+#######################################
+# get_release
+#######################################
+if [ $# -eq 0 ]; then
+  fold -w $(tput cols) -s <<EOF
+Usage: get_release {--owner <owner_name> --repo <repo_name> | --url <repo_url>} [--version <version>] [--download] [--list]
+Download the latest release or a specific version from a GitHub repo. If --list it will list the last 30 releases and exit. If the downloaded file is an archive, it will be extracted to ~/install.
+
+Options:
+  -o, --owner <owner_name>  GitHub owner name
+  -r, --repo <repo_name>    GitHub repo name
+  -u, --url <repo_url>      GitHub repo URL
+  -d, --download            Download the asset and exit
+  -l, --list                List the last 30 releases
+  -v, --version <version>   version to download
+EOF
+  return 0
+fi
+
+local download=""
+local download_path="$HOME/install"
+local list=""
+local owner=""
+local repo=""
+local url=""
+local version=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -o|--owner)
+      if [ "$2" ]; then
+        owner="$2"
+        shift 2
+      else
+        pprint "Error: --owner requires a non-empty argument." "$fgRed" "$txBold"
+        return 1
+      fi
+      ;;
+    --owner=?*)
+      owner=${1#*=} # Delete everything up to "=" and assign the remainder.
+      ;;
+    --owner=)
+      pprint "Error: --owner requires a non-empty argument." "$fgRed" "$txBold"
+      return 1
+      ;;
+    -r|--repo)
+      if [ "$2" ]; then
+        repo="$2"
+        shift 2
+      else
+        pprint "Error: --repo requires a non-empty argument." "$fgRed" "$txBold"
+        return 1
+      fi
+      ;;
+    --repo=?*)
+      repo=${1#*=} # Delete everything up to "=" and assign the remainder.
+      ;;
+    --repo=)
+      pprint "Error: --repo requires a non-empty argument." "$fgRed" "$txBold"
+      return 1
+      ;;
+    -u|--url)
+      if [ "$2" ]; then
+        url="$2"
+        shift 2
+      else
+        pprint "Error: --url requires a non-empty argument." "$fgRed" "$txBold"
+        return 1
+      fi
+      ;;
+    --url=?*)
+      url=${1#*=} # Delete everything up to "=" and assign the remainder.
+      ;;
+    --url=)
+      pprint "Error: --url requires a non-empty argument." "$fgRed" "$txBold"
+      return 1
+      ;;
+    -d|--download)
+      download=true
+      shift
+      ;;
+    -l|--list)
+      list=true
+      shift
+      ;;
+    -v|--version)
+      if [ "$2" ]; then
+        version="$2"
+        shift 2
+      else
+        pprint "Error: --version requires a non-empty argument." "$fgRed" "$txBold"
+        return 1
+      fi
+      ;;
+    --version=?*)
+      release=${1#*=} # Delete everything up to "=" and assign the remainder.
+      ;;
+    --version=)
+      pprint "Error: --version requires a non-empty argument." "$fgRed" "$txBold"
+      return 1
+      ;;
+    --help)
+      pprint "Usage: script.sh [--owner <owner_name> --repo <repo_name> | --url <repo_url>] [-o <owner_name>] [-r <repo_name>]"
+      return 0
+      ;;
+    --)
+      shift
+      break
+      ;;
+    *)
+      pprint "Unknown argument: $1" "$fgRed" "$txBold"
+      return 1
+      ;;
+  esac
+done
+
+if [[ -n "$url" && (-n "$owner" || -n "$repo") ]]; then
+  pprint "Error: --url is mutually exclusive with --owner and --repo." "$fgRed" "$txBold"
+  return 1
+fi
+
+if [[ -z "$url" && ( -z "$owner" || -z "$repo" ) ]]; then
+  pprint "Error: --owner and --repo are required together unless --url is provided." "$fgRed" "$txBold"
+  return 1
+fi
+
+if [ -n "$url" ]; then
+  local extracted=$(echo "$url" | grep -oP 'github\.com/\K[^/]+/[^/]+')
+  if ! [[ "$extracted" =~ .*/.* ]]; then
+    pprint "Error: Invalid GitHub Owner/Repo." "$fgRed" "$txBold"
+    return 1
+  fi
+  owner=$(cut -d'/' -f1 <<< "$extracted")
+  repo=$(cut -d'/' -f2 <<< "$extracted")
+  pprint "Owner: $owner" "$fgBlue"
+  pprint "Repo: $repo" "$fgBlue"
+fi
+
+# test if the repo exists https://github.com/${owner}/${repo}
+if ! curl -s --head --fail "https://github.com/${owner}/${repo}" > /dev/null; then
+  pprint "Error: GitHub repo not found: https://github.com/${owner}/${repo}" "$fgRed" "$txBold"
+  return 1
+fi
+
+if [ -n "$list" ]; then
+  pprint "\nListing last 30 releases..." "$fgOrange"
+  local releases=()
+  while IFS= read -r release; do
+    releases+=("$release")
+  done < <(curl -s https://api.github.com/repos/${owner}/${repo}/releases | jq -r '.[] | "\(.name)"' 2>/dev/null)
+
+  if [ ${#releases[@]} -eq 0 ]; then
+    pprint "Error: No releases found." "$fgRed" "$txBold"
+    return 1
+  fi
+
+  for release in "${releases[@]}"; do
+    pprint " • $release"
+  done
+  return 0
+fi
+
+# if version was not provided, download the latest release, otherwise download the specified version
+if [ -z "$version" ]; then
+  version=$(curl -s https://api.github.com/repos/${owner}/${repo}/releases/latest | jq -r '.tag_name' 2>/dev/null)
+  if [ "$version" = 'null' ]; then
+    pprint "Error: No releases found for: https://github.com/${owner}/${repo}/" "$fgRed" "$txBold"
+    return 1
+  fi
+fi
+
+local assets=()
+while IFS= read -r asset; do
+  # dont add .asc, .json*, .txt, or .sha256 assets to the array
+  case "${asset% *}" in
+    *.asc|*.json*|*.txt|*.sha256)
+      continue
+      ;;
+  esac
+  assets+=("$asset")
+done < <(curl -s https://api.github.com/repos/${owner}/${repo}/releases/tags/${version} | jq -r '.assets[] | "\(.name) \(.browser_download_url)"' 2>/dev/null)
+
+if [ ${#assets[@]} -eq 0 ]; then
+  pprint "Error: No installable assets found for ${owner}/${repo} ${version} at: https://github.com/${owner}/${repo}/releases/tag/${version}" "$fgRed" "$txBold"
+  return 1
+fi
+
+# prompt user with menu to select the asset to download
+local selected=""
+if [ ${#assets[@]} -gt 1 ]; then
+  pprint "\nDownloadable assets for ${version}:" "$fgOrange"
+  local i=1
+  for asset in "${assets[@]}"; do
+    printf ' %3s %s\n' "$i." "${asset% *}"
+    ((i++))
+  done
+  echo -en "\nSelect an asset to download from the list above [1-${#assets[@]}]: "
+  read selected
+  if ! [[ "$selected" =~ ^[0-9]+$ ]] || [ "$selected" -lt 1 ] || [ "$selected" -gt ${#assets[@]} ]; then
+    pprint "\nError: Invalid selection." "$fgRed" "$txBold"
+    return 1
+  fi
+  selected=${assets[$selected]}
+else
+  selected=${assets[0]}
+fi
+
+pprint "\nDownloading ${selected##* } to ${download_path}/${selected% *}" "$fgBlue"
+/usr/bin/curl -s -L -o "${download_path}/${selected% *}" "${selected##* }"
+
+# if curl return code is not 0, then download failed
+if [ $? -ne 0 ]; then
+  pprint "\nError: Download failed." "$fgRed" "$txBold"
+  return 1
+fi
+
+if [ -n "$download" ]; then
+  return 0
+fi
+
+# check if the download file is an archive and extract it
+if [[ "${selected% *}" =~ \.(tar\.gz|tar\.xz|tar|zip)$ ]]; then
+  pprint "Extracting ${selected% *}..." "$fgBlue"
+  case "${selected% *}" in
+    *.tar.gz)
+      tar -xzf "${download_path}/${selected% *}" -C "${download_path}"
+      ;;
+    *.tar.xz)
+      tar -xJf "${download_path}/${selected% *}" -C "${download_path}"
+      ;;
+    *.tar)
+      tar -xf "${download_path}/${selected% *}" -C "${download_path}"
+      ;;
+    *.zip)
+      unzip -q "${download_path}/${selected% *}" -d "${download_path}"
+      ;;
+  esac
+fi
+
+# if tar return code is not 0, then download failed
+if [ $? -ne 0 ]; then
+  pprint "\nError: Extracting ${selected% *} failed." "$fgRed" "$txBold"
+  return 1
+else
+  pprint "Files extracted successfully, removing ${selected% *}..." "$fgBlue"
+  rm -f "${download_path}/${selected% *}"
+fi
+
+# list the extracted files
+pprint "\nExtracted files:" "$fgOrange"
+for file in "${download_path}"/*; do
+  pprint " • $(basename "$file")"
+done
+
+return 0

@@ -1,3 +1,17 @@
+## v2.2.0 (2024-12-22)
+
+### Feature
+
+- **omz**: add get_release function to download GitHub releases with option for listing available versions
+- **omz**: add install_it function for installing executables from ~/install to /usr/local/bin using install command
+- **omz**: add option to suppress trailing newline in output to pprint function
+- **omz**: allow escape squences like new line in pprint message parameter
+
+### Refactor
+
+- **omz**: properly quote header variables
+- **omz**: move function docs from comments to runtime help message for countdown, log_cmd, log_cmd_d, and pprint
+
 ## v2.1.0 (2024-12-17)
 
 ### Feature

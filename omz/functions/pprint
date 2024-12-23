@@ -1,13 +1,40 @@
 #######################################
-# name: pprint
-# Pretty print a string with styles
-# Arguments:
-#   $1 - text to print (required)
-#   $* - styles to apply (optional)
-# Outputs:
-#   Writes the text to stdout with the styles applied
+# pprint
 #######################################
+if [ $# -eq 0 ]; then
+  fold -w $(tput cols) -s <<'EOF'
+Usage: pprint [-n] <text> [styles]
+Pretty print a string with color or text decorations. The text is written to stdout with the styles applied.
+
+The styles are optional escape sequences stored in environment variables that begin with "bg" or "fg" followed by a color, or "tx" follow by a text decoration. For example, "$fgRed" sets the foreground color to red, "$bgBlue" sets the background color to blue, and "$txBold" sets the text to bold.
+
+Options:
+  -n  do not output the trailing newline
+
+Arguments:
+  text   text to print(will parse escape sequences).
+  styles styles to apply
+EOF
+  return 0
+fi
+
+# handle options
+local newline="\n"
+while [[ "$1" == -* ]]; do
+  case "$1" in
+    -n)
+      newline=""
+      ;;
+    *)
+      ;;
+  esac
+  shift
+done
+
+# handle arguments
 local text="$1"
 shift
 local styles="$*"
-printf '%b%s%b\n' "${styles// /}" "$text" "$txReset"
+
+# Print with or without newline
+printf '%b%b%b%b' "${styles// /}" "$text" "$txReset" "$newline"

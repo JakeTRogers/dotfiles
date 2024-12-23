@@ -1,17 +1,23 @@
 #######################################
-# name: log_cmd_d
-# log a shell command, its stdout, and stderr to a file
-# Arguments:
-#   $* - the command to execute
-# Outputs:
-#   Writes the command and its output to a timestamped log file and stdout
+# log_cmd_d
 #######################################
+if [ $# -eq 0 ]; then
+  fold -w $(tput cols) -s <<EOF
+Usage: log_cmd_d <command>
+Log a shell command, its stdout, and stderr to a timestamped log file.
+
+Arguments:
+  command - command to execute and log
+EOF
+  return 0
+fi
+
 local header="####################################################\n"
 
 {
-  printf ${header}
+  printf "${header}"
   printf "Command executed: %s\n\n" "$*"
-  printf ${header}
+  printf "${header}"
   "$@"
   printf "\n"
 } 2>&1 | tee "/tmp/cmd-$(date '+%Y_%m_%d_%H-%M-%S').log"

@@ -24,9 +24,9 @@ if [ -z "${CMD_LOG_FILE}" ]; then
 fi
 
 {
-  printf ${header}
+  printf "${header}"
   printf "\`%s\` executed at $(date '+%Y-%m-%d %H:%M:%S')\n" "$*"
-  printf ${header}
+  printf "${header}"
   "$@"
   printf "\n"
 } 2>&1 | tee -a "${CMD_LOG_FILE}"

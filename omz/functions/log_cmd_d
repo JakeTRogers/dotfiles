@@ -15,9 +15,9 @@ fi
 local header="####################################################\n"
 
 {
-  printf ${header}
+  printf "${header}"
   printf "Command executed: %s\n\n" "$*"
-  printf ${header}
+  printf "${header}"
   "$@"
   printf "\n"
 } 2>&1 | tee "/tmp/cmd-$(date '+%Y_%m_%d_%H-%M-%S').log"

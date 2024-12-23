@@ -1,9 +1,17 @@
 #######################################
-# name: countdown
-# countdown timer
-# Arguments:
-#   $1 - the number of seconds to countdown
+# countdown
 #######################################
+if [ $# -eq 0 ]; then
+  fold -w $(tput cols) -s <<EOF
+Usage: countdown <seconds>
+Countdown timer that prints the remaining seconds.
+
+Arguments:
+  seconds  The number of seconds to countdown
+EOF
+  return 0
+fi
+
 local seconds=${1}
 while [ "$seconds" -gt 0 ]; do
   echo -ne "waiting: ${seconds}\r"

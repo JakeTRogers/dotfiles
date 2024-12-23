@@ -1,0 +1,39 @@
+#######################################
+# install_it
+#######################################
+if [ $# -eq 0 ]; then
+  fold -w $(tput cols) -s <<'EOF'
+Usage: install_it <source_file> [target_file]
+Uses the install command to install an executable from ~/install to /usr/local/bin by default.
+
+Arguments:
+  source_file - executable to install. The script assumes it is in ~/install if a path is not provided.
+  target_file - target filename. If not provided, the source filename is used. If a path is not provided, the executable is installed in /usr/local/bin.
+EOF
+  return 0
+fi
+
+# if the source file contains a path, use it, otherwise assume it is in ~/install
+if [[ "$1" == */* ]]; then
+  local source_file=${1}
+else
+  local source_file="${HOME}/install/${1}"
+fi
+
+# ensure the source file exists
+if [ ! -f "${source_file}" ]; then
+  pprint "Error: ${source_file} not found" "$fgRed" "$txBold"
+  return 1
+fi
+
+# if the target filename is provided and contains a path, use it, otherwise install in /usr/local/bin
+if [[ "$2" == */* ]]; then
+  local target_file="${2}"
+elif [ -n "$2" ]; then
+  local target_file="/usr/local/bin/${2}"
+else
+  local target_file="/usr/local/bin/$(basename ${source_file})"
+fi
+
+sudo install -v -m 755 -o root -g root "${source_file}" "${target_file}"
+[ $? -eq 0 ] && pprint "Successfully installed: ${target_file}" "$fgGreen" || pprint "Error: Failed to install: ${source_file}" "$fgRed" "$txBold"

@@ -1,3 +1,9 @@
+## v2.2.1 (2024-12-24)
+
+### Fix
+
+- **omz**: properly nest archive error handling inside archive conditional and generalize file listing
+
 ## v2.2.0 (2024-12-22)
 
 ### Feature

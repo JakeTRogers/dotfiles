@@ -235,19 +235,19 @@ if [[ "${selected% *}" =~ \.(tar\.gz|tar\.xz|tar|zip)$ ]]; then
       unzip -q "${download_path}/${selected% *}" -d "${download_path}"
       ;;
   esac
+
+  # if tar return code is not 0, then download failed
+  if [ $? -ne 0 ]; then
+    pprint "\nError: Extracting ${selected% *} failed." "$fgRed" "$txBold"
+    return 1
+  else
+    pprint "Files extracted successfully, removing ${selected% *}..." "$fgBlue"
+    rm -f "${download_path}/${selected% *}"
+  fi
 fi
 
-# if tar return code is not 0, then download failed
-if [ $? -ne 0 ]; then
-  pprint "\nError: Extracting ${selected% *} failed." "$fgRed" "$txBold"
-  return 1
-else
-  pprint "Files extracted successfully, removing ${selected% *}..." "$fgBlue"
-  rm -f "${download_path}/${selected% *}"
-fi
-
-# list the extracted files
-pprint "\nExtracted files:" "$fgOrange"
+# list the files
+pprint -n "\nfiles in:" "$fgOrange"; pprint " ${download_path}" "$fgOrange" "$txBold"
 for file in "${download_path}"/*; do
   pprint " • $(basename "$file")"
 done

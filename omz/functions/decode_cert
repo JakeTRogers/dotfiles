@@ -1,0 +1,146 @@
+#######################################
+# decode_cert
+#######################################
+if [ $# -eq 0 ]; then
+  fold -w "$(tput cols)" -s <<EOF
+Usage: decode_cert [--raw | --json | --yaml | --full | --short] [--help] <CERT_FILE | URL | DOMAIN>
+
+Decodes certificates in various levels of detail and formats using certigo, jq, and yq.
+
+By default, the short certificate details are output in yaml format.
+
+Options:
+  -r, --raw    Output certificate information in unformatted json.
+  -j, --json   Output certificate information in json(jq).
+  -y, --yaml   Output certificate information in yaml(yq). *default
+  -f, --full   Output full certificate details.
+  -s, --short  Output short certificate details(issuer, subject, dates). *default
+  -h, --help   Show this message and exit.
+
+Example:
+  decode cert in yaml format with short details:
+    decode_cert cert.pem
+  decode cert in json format:
+    decode_cert --json cert.pem
+  decode cert in yaml format with full details:
+    decode_cert --full cert.pem
+  decode cert from github.com in yaml formation with full details
+    decode_cert --full github.com
+EOF
+  return 0
+fi
+
+# Dependency Checks
+local tools=("certigo" "jq" "yq")
+for tool in "${tools[@]}"; do
+  if ! command -v "$tool" >/dev/null 2>&1; then
+    pprint "$tool is required, but not found." "$fgRed"
+    return 1
+  fi
+done
+
+# Local variables
+local certigo_cmd=""
+local detail_level="short"
+local filter=""
+local output_format="yaml"
+local target=""
+local target_type=""
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -r|--raw)
+      output_format="raw"
+      shift
+      ;;
+    -j|--json)
+      output_format="json"
+      shift
+      ;;
+    -f|--full)
+      detail_level="full"
+      shift
+      ;;
+    -s|--short)
+      detail_level="short"
+      shift
+      ;;
+    -y|--yaml)
+      output_format="yaml"
+      shift
+      ;;
+    --)
+      shift
+      break
+      ;;
+    *)
+      # If it's not recognized, try to determine if it is a url, file, or domain
+      if [[ "$1" =~ ftp://.* ]] || [[ "$1" =~ http://.* ]]; then
+        pprint "Error: HTTP and FTP do not use certs and are not supported." "$fgRed" "$txBold"
+        return 1
+      elif [[ "$1" =~ ftps://.* ]] || [[ "$1" =~ https://.* ]]; then
+        target_type="url"
+      elif [ -f "$1" ] || [[ "$1" =~  .*/.* ]]; then
+        target_type="file"
+      else
+        target_type="domain"
+      fi
+      target="$1"
+      shift
+      ;;
+  esac
+done
+
+# Check if a certificate file was provided
+if [ -z "$target_type" ]; then
+  pprint "Error: a url, domain, or certificate file must be provided." "$fgRed"
+  return 1
+fi
+
+case "$target_type" in
+  # If a url is provided, strip everything but the domain name
+  domain|url)
+    target=$(sed -E 's/(https:\/\/|ftps:\/\/)//;s/\/.*//' <<< "$target")
+    # validate the domain name is resolvable
+    if ! host "${target%%:*}" &>/dev/null; then
+      pprint "Error: $target is not resolvable" "$fgRed"
+      return 1
+    fi
+    ;;
+  file)
+    # Check if the certificate file exists
+    if [ ! -f "$target" ]; then
+      pprint "Error: file not found: $target" "$fgRed"
+      return 1
+    fi
+    ;;
+esac
+
+# Adjust output based on detail level
+if [ "$detail_level" = "full" ]; then
+  filter='del(.certificates[].pem, .verify_result)'
+else
+  filter='[.certificates[] | {subject: .subject.common_name, issuer: .issuer.common_name, dns_names, ip_addresses, not_before, not_after, is_self_signed, basic_constraints, warnings}]'
+fi
+
+if [ "$target_type" = "file" ]; then
+  certigo_cmd='dump'
+else
+  certigo_cmd='connect'
+fi
+
+# Decode the certificate using certigo
+case "$output_format" in
+  raw)
+    certigo "$certigo_cmd" --json "$target"
+    ;;
+  json)
+    certigo "$certigo_cmd" --json "$target" | jq "$filter"
+    ;;
+  yaml)
+    certigo "$certigo_cmd" --json "$target" | jq "$filter" | yq -P
+    ;;
+esac
+
+return 0

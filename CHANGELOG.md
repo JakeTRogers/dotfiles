@@ -1,3 +1,9 @@
+## v2.3.0 (2024-12-26)
+
+### Feature
+
+- add decode_cert funtion to parse certificates with certigo
+
 ## v2.2.1 (2024-12-24)
 
 ### Fix

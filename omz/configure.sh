@@ -36,11 +36,13 @@ ln -sf "${DOTFILES_LOCATION}/omz/variables.zsh" "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/
 ln -sf "${DOTFILES_LOCATION}/omz/zshrc" "${HOME}/.zshrc"
 ln -sf "${DOTFILES_LOCATION}/omz/p10k.zsh" "${HOME}/.p10k.zsh"
 
-# remove any dead symlinks from the completions directory
-find "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/completions" -type l ! -exec test -e {} \; -delete
+# remove any dead symlinks from the custom completions directory or create it if it doesn't exist
+if [ -e "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/completions" ]; then
+  find "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/completions" -type l ! -exec test -e {} \; -delete
+else
+  mkdir "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/completions"
+fi
 
-# ensure the custom completion directory exists
-mkdir "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/completions"
 # loop over all completions and symlink them
 for completion in "${DOTFILES_LOCATION}/omz/completions"/*; do
   ln -sf "${completion}" "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/completions/$(basename ${completion})"

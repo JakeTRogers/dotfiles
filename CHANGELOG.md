@@ -1,3 +1,14 @@
+## v2.4.0 (2024-12-27)
+
+### Feature
+
+- **omz**: manage zsh completions by removing dead symlinks and ensuring existing completions are symlinked
+- **omz**: add zsh autocompletion for decode_cert, get_release, and install_it functions
+
+### Fix
+
+- **omz**: remove non-existent --help option from usage message
+
 ## v2.3.0 (2024-12-26)
 
 ### Feature

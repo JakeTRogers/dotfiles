@@ -1,7 +1,5 @@
 #!/usr/bin/env zsh
 
-set -e
-
 # powerlevel10k theme
 if [ -d "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k" ]; then
   echo "Updating powerlevel10k theme"

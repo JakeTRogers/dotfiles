@@ -1,3 +1,9 @@
+## v2.4.1 (2024-12-27)
+
+### Fix
+
+- **omz**: remove set -e from omz configure.sh now that some commands are expected to return non-zero exit codes
+
 ## v2.4.0 (2024-12-27)
 
 ### Feature

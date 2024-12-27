@@ -1,0 +1,15 @@
+#compdef get_release
+
+# Completion for the "get_release" command.
+function _get_release() {
+  # We use `_arguments` to define completion for various flags.
+  # For each flag, we give a short description in brackets [...],
+  # and specify how the argument is completed (e.g. _files, _urls, etc.).
+  _arguments -s -S \
+    '(-o --owner)'{-o,--owner}'[GitHub owner name]:owner' \
+    '(-r --repo)'{-r,--repo}'[GitHub repo name]:repo' \
+    '(-u --url)'{-u,--url}'[GitHub repo URL]:repo url:_urls' \
+    '(-d --download)'{-d,--download}'[Download the asset and exit]' \
+    '(-l --list)'{-l,--list}'[List the last 30 releases]' \
+    '(-v --version)'{-v,--version}'[Version to download]'
+}

@@ -1,0 +1,15 @@
+#compdef decode_cert
+
+# Completion for the "decode_cert" command.
+function _decode_cert() {
+  # We use `_arguments` to define completion for various flags.
+  # For each flag, we give a short description in brackets [...],
+  # and specify how the argument is completed (e.g. _files, _urls, etc.).
+  _arguments -s -S \
+    '(-r --raw)'{-r,--raw}'[Output certificate information in unformatted json]' \
+    '(-j --json)'{-j,--json}'[Output certificate information in json]' \
+    '(-y --yaml)'{-y,--yaml}'[Output certificate information in yaml]' \
+    '(-f --full)'{-f,--full}'[Output full certificate details]' \
+    '(-s --short)'{-s,--short}'[Output short certificate details]' \
+    '*:file:_files'
+}

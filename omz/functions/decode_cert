@@ -15,7 +15,6 @@ Options:
   -y, --yaml   Output certificate information in yaml(yq). *default
   -f, --full   Output full certificate details.
   -s, --short  Output short certificate details(issuer, subject, dates). *default
-  -h, --help   Show this message and exit.
 
 Example:
   decode cert in yaml format with short details:

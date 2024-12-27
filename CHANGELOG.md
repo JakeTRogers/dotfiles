@@ -1,3 +1,9 @@
+## v2.4.2 (2024-12-27)
+
+### Refactor
+
+- **omz**: improve omz configure.sh logic for managing zsh completions
+
 ## v2.4.1 (2024-12-27)
 
 ### Fix

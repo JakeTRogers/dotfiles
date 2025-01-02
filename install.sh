@@ -33,6 +33,7 @@ if [ "${INSTALL_MODE}" = 'full' ]; then
   ./bin/dotfiles bat
   ./bin/dotfiles fd
   ./bin/dotfiles ripgrep
+  ./bin/dotfiles fzf
 fi
 
 echo "🟢 dotfiles setup complete"

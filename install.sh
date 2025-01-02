@@ -28,4 +28,13 @@ export elevate
 ./bin/dotfiles zsh
 ./bin/dotfiles omz
 
+
+if [ "${INSTALL_MODE}" = 'full' ]; then
+  ./bin/dotfiles bat
+  ./bin/dotfiles fd
+  ./bin/dotfiles ripgrep
+  ./bin/dotfiles fzf
+  ./bin/dotfiles neovim
+fi
+
 echo "🟢 dotfiles setup complete"

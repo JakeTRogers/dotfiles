@@ -42,3 +42,4 @@ alias grias='git rebase --interactive --autosquash'
 
 # zsh stuff
 alias zshconfig="vim ~/.zshrc"
+alias n=nvim

@@ -1,8 +1,5 @@
 umask 022
-export VISUAL=vi
-export EDITOR="$VISUAL"
-export PAGER='less -i'
-export TERM='xterm-256color'
+export PAGER='less -i -F -X'
 
 # auto accept and run autosuggest
 bindkey '^ ' autosuggest-execute

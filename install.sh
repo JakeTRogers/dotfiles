@@ -34,6 +34,7 @@ if [ "${INSTALL_MODE}" = 'full' ]; then
   ./bin/dotfiles fd
   ./bin/dotfiles ripgrep
   ./bin/dotfiles fzf
+  ./bin/dotfiles neovim
 fi
 
 echo "🟢 dotfiles setup complete"

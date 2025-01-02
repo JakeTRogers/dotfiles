@@ -1,3 +1,20 @@
+## v2.5.0 (2025-01-02)
+
+### Feature
+
+- **nvim**: add neovim w/ lazy.nvim plugin manager and a few dozen plugins
+- **fzf**: add fzf for fuzzy file finding and git integration
+- **rg**: add ripgrep for improved multi-threaded GNU grep alternative
+- **fd**: add fd for improved GNU find alternative
+- **bat**: add bat for cli syntax highlighting
+- **omz**: add completion to zsh autosuggest strategy
+
+### Fix
+
+- update dotfiles install script to handle case where package != command name
+- **tmux**: stop setting default-terminal and set terminal-features instead
+- **hooks**: update shebang to /usr/bin/bash and remove skip-on-missing-config option in git templates
+
 ## v2.4.2 (2024-12-27)
 
 ### Refactor

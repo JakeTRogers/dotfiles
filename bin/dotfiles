@@ -21,7 +21,7 @@ function install_package() {
 }
 
 function install () {
-  if cmd_exists "${package}"; then
+  if cmd_exists "${cmd}"; then
     echo "🟢 ${package} is already installed"
   else
     echo "⚪ Installing ${package}"
@@ -43,8 +43,18 @@ function configure () {
   fi
 }
 
-package="${1}"
-shift
+# handle case where package is different from the the cmd
+if [[ "${1}" == "neovim" ]]; then
+  package="neovim"
+  cmd="nvim"
+elif [[ "${1}" == "ripgrep" ]]; then
+  package="ripgrep"
+  cmd="rg"
+else
+  package="${1}"
+  cmd="${1}"
+  shift
+fi
 
 install "${package}"
 configure "${package}"

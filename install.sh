@@ -28,4 +28,9 @@ export elevate
 ./bin/dotfiles zsh
 ./bin/dotfiles omz
 
+
+if [ "${INSTALL_MODE}" = 'full' ]; then
+  ./bin/dotfiles bat
+fi
+
 echo "🟢 dotfiles setup complete"

@@ -31,6 +31,7 @@ export elevate
 
 if [ "${INSTALL_MODE}" = 'full' ]; then
   ./bin/dotfiles bat
+  ./bin/dotfiles fd
 fi
 
 echo "🟢 dotfiles setup complete"

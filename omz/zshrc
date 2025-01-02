@@ -103,6 +103,7 @@ source $ZSH/oh-my-zsh.sh
 # User configuration
 # prevents issue with paste + autosuggestions appending text unexpectedly
 ZSH_AUTOSUGGEST_CLEAR_WIDGETS+=(bracketed-paste)
+ZSH_AUTOSUGGEST_STRATEGY=(history completion)
 
 # export MANPATH="/usr/local/man:$MANPATH"
 

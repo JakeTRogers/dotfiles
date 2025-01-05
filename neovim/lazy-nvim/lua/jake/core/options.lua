@@ -41,5 +41,5 @@ opt.splitbelow = true -- split horizontal window to the bottom
 opt.swapfile = false
 
 -- enable spell checker
-vim.opt.spelllang = "en_us"
-vim.opt.spell = true
+opt.spelllang = "en_us"
+opt.spell = true

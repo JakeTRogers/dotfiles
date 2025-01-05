@@ -50,6 +50,7 @@ return {
     keymap.set("n", "<leader>fq", "<cmd>FzfLua quickfix<cr>", { desc = "Fuzzy find quickfix list" })
     keymap.set("n", "<leader>fr", "<cmd>FzfLua oldfiles<cr>", { desc = "Fuzzy find recent files" })
     keymap.set("n", "<leader>fs", "<cmd>FzfLua live_grep<cr>", { desc = "Find string in cwd" })
+    keymap.set("n", "<leader>ft", "<cmd>TodoFzfLua<cr>", { desc = "Find Todo in cwd" })
 
     -- git keymaps
     keymap.set("n", "<leader>gb", "<cmd>FzfLua git_branches<cr>", { desc = "Fuzzy git branches" })

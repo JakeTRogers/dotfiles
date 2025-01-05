@@ -15,8 +15,21 @@ return {
       -- local keymap = vim.keymap -- for conciseness
 
       -- Navigation
-      -- map("n", "]h", gs.nav_hunk("next"), "Next Hunk")
-      -- map("n", "[h", gs.nav_hunk("prev"), "Prev Hunk")
+      map("n", "]h", function()
+        if vim.wo.diff then
+          vim.cmd.normal({ "]h", bang = true })
+        else
+          gs.nav_hunk("next")
+        end
+      end, "next hunk")
+
+      map("n", "[h", function()
+        if vim.wo.diff then
+          vim.cmd.normal({ "[h", bang = true })
+        else
+          gs.nav_hunk("prev")
+        end
+      end, "previous hunk")
 
       -- Actions
       map("n", "<leader>hs", gs.stage_hunk, "Stage hunk")

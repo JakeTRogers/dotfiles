@@ -18,7 +18,7 @@ return {
       dashboard.button("␣ fr", "  > Recent files", "<cmd>FzfLua oldfiles<CR>"),
       dashboard.button("␣ fs", "  > Find text", "<cmd>FzfLua live_grep<CR>"),
       dashboard.button("␣ ee", "  > file explorer", "<cmd>NvimTreeToggle<CR>"),
-      dashboard.button("␣ wr", "󰁯  > Restore Session", "<cmd>SessionRestore<CR>"),
+      dashboard.button("␣ qr", "󰁯  > Restore Session", "<cmd>SessionRestore<CR>"),
       dashboard.button("l", "󰁯  > Lazy", "<cmd>Lazy<CR>"),
       dashboard.button("q", "  > Quit NVIM", "<cmd>qa<CR>"),
     }

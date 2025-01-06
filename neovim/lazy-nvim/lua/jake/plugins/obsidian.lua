@@ -25,13 +25,14 @@ return {
     workspaces = (function()
       local Path = require("plenary.path")
       local my_workspaces = {}
+      local home_dir = os.getenv("HOME")
 
       if Path:new("/mnt/WORK/obsidian"):exists() then
         table.insert(my_workspaces, { path = "/mnt/WORK/obsidian", name = "personal" })
       end
 
-      if Path:new("~/documents/documentation"):exists() then
-        table.insert(my_workspaces, { path = "~/documents/documentation", name = "work" })
+      if Path:new(home_dir .. "/documents/documentation"):exists() then
+        table.insert(my_workspaces, { path = home_dir .. "/documents/documentation", name = "work" })
       end
 
       return my_workspaces

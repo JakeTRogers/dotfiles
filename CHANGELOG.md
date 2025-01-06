@@ -1,3 +1,16 @@
+## v2.5.1 (2025-01-05)
+
+### Fix
+
+- **nvim**: add obsidian plugin
+- **nvim**: realign keymappings and add icons to which-key
+- **nvim**: add bullets plugin for markdown
+- **nvim**: add render markdown to auto complete
+- **nvim**: add keymap for next/prev git hunks
+- **nvim**: add keymap for TodoFzfLua
+- **nvim**: correct spelling vim options
+- **nvim**: stop using system clipboard for default register
+
 ## v2.5.0 (2025-01-02)
 
 ### Feature

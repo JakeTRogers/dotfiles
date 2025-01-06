@@ -1,3 +1,9 @@
+## v2.5.2 (2025-01-06)
+
+### Fix
+
+- **nvim**: expand ~/ home directory for obsidian project path
+
 ## v2.5.1 (2025-01-05)
 
 ### Fix

@@ -1,3 +1,9 @@
+## v2.6.0 (2025-02-06)
+
+### Feature
+
+- **omz**: add get_k8s_images function to retrieve images from a Kubernetes cluster
+
 ## v2.5.2 (2025-01-06)
 
 ### Fix

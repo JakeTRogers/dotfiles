@@ -1,0 +1,35 @@
+#######################################
+# get_k8s_images
+#######################################
+if [ "$1" = '--help' ]; then
+  fold -w $(tput cols) -s <<EOF
+Usage: get_k8s_images <namespace> <cluster>
+Get all images running in a Kubernetes cluster.
+
+Arguments:
+  namespace  The namespace to search
+  cluster    The name of the cluster
+EOF
+  return 0
+fi
+
+# Dependency Checks
+local tools=("kubectl")
+for tool in "${tools[@]}"; do
+  if ! command -v "$tool" >/dev/null 2>&1; then
+    pprint "$tool is required, but not found." "$fgRed"
+    return 1
+  fi
+done
+
+# Get the context of the cluster
+cluster=${2:-$(kubectl config current-context)}
+
+# if namespace is not provided, default to --all-namespaces
+if [ -z "$1" ]; then
+  kubectl --context "${cluster}" get pods --all-namespaces -o jsonpath="{.items[*].spec.containers[*].image}" | tr -s '[[:space:]]' '\n' | sort | uniq -c | column -t -s:
+else
+  kubectl --context "${cluster}" get pods -n "${1}" -o jsonpath="{.items[*].spec.containers[*].image}" | tr -s '[[:space:]]' '\n' | sort | uniq -c | column -t -s:
+fi
+
+return 0

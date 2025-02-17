@@ -1,3 +1,9 @@
+## v2.6.1 (2025-02-16)
+
+### Fix
+
+- **omz**: DISABLE_MAGIC_FUNCTIONS to address incompatibility with autocomplete plugin
+
 ## v2.6.0 (2025-02-06)
 
 ### Feature

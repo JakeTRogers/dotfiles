@@ -1,9 +1,9 @@
 return {
-  -- https://github.com/williamboman/mason.nvim
-  "williamboman/mason.nvim",
-  version = "1.*",
+  -- https://github.com/mason-org/mason.nvim
+  "mason-org/mason.nvim",
+  version = "2.*",
   dependencies = {
-    "williamboman/mason-lspconfig.nvim",
+    "mason-org/mason-lspconfig.nvim",
     "WhoIsSethDaniel/mason-tool-installer.nvim",
   },
   config = function()

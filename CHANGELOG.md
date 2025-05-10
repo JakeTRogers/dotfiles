@@ -1,3 +1,9 @@
+## v2.6.2 (2025-05-10)
+
+### Fix
+
+- **nvim**: update mason.nvim to version 2.* and adjust dependencies
+
 ## v2.6.1 (2025-02-16)
 
 ### Fix

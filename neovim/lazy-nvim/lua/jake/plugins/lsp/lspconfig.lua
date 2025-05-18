@@ -1,12 +1,13 @@
 return {
   -- https://github.com/neovim/nvim-lspconfig
   "neovim/nvim-lspconfig",
-  version = "1.*",
+  version = "2.*",
   event = { "BufReadPre", "BufNewFile" },
   dependencies = {
     "hrsh7th/cmp-nvim-lsp",
     { "antosha417/nvim-lsp-file-operations", config = true },
     { "folke/neodev.nvim", opts = {} },
+    "williamboman/mason-lspconfig.nvim",
   },
   config = function()
     -- import lspconfig plugin
@@ -80,60 +81,32 @@ return {
       vim.fn.sign_define(hl, { text = icon, texthl = hl, numhl = "" })
     end
 
-    mason_lspconfig.setup_handlers({
-      -- default handler for installed servers
-      function(server_name)
-        lspconfig[server_name].setup({
-          capabilities = capabilities,
-        })
-      end,
-      ["marksman"] = function()
-        lspconfig["marksman"].setup({
-          capabilities = capabilities,
-          cmd = { "marksman", "server" },
-          filetypes = { "markdown", "mdx" },
-        })
-      end,
-      ["graphql"] = function()
-        -- configure graphql language server
-        lspconfig["graphql"].setup({
-          capabilities = capabilities,
-          filetypes = { "graphql", "gql", "svelte", "typescriptreact", "javascriptreact" },
-        })
-      end,
-      ["emmet_ls"] = function()
-        -- configure emmet language server
-        lspconfig["emmet_ls"].setup({
-          capabilities = capabilities,
-          filetypes = {
-            "html",
-            "typescriptreact",
-            "javascriptreact",
-            "css",
-            "sass",
-            "scss",
-            "less",
-            "svelte",
+    -- Initialize mason_lspconfig
+    mason_lspconfig.setup()
+
+    -- Setup installed servers explicitly
+    local servers = mason_lspconfig.get_installed_servers()
+
+    for _, server_name in ipairs(servers) do
+      local opts = { capabilities = capabilities }
+
+      if server_name == "marksman" then
+        opts.cmd = { "marksman", "server" }
+        opts.filetypes = { "markdown", "mdx" }
+      elseif server_name == "graphql" then
+        opts.filetypes = { "graphql", "gql", "typescriptreact", "javascriptreact" }
+      elseif server_name == "emmet_ls" then
+        opts.filetypes = { "html", "typescriptreact", "javascriptreact", "css", "sass", "scss", "less" }
+      elseif server_name == "lua_ls" then
+        opts.settings = {
+          Lua = {
+            diagnostics = { globals = { "vim" } },
+            completion = { callSnippet = "Replace" },
           },
-        })
-      end,
-      ["lua_ls"] = function()
-        -- configure lua server (with special settings)
-        lspconfig["lua_ls"].setup({
-          capabilities = capabilities,
-          settings = {
-            Lua = {
-              -- make the language server recognize "vim" global
-              diagnostics = {
-                globals = { "vim" },
-              },
-              completion = {
-                callSnippet = "Replace",
-              },
-            },
-          },
-        })
-      end,
-    })
+        }
+      end
+
+      lspconfig[server_name].setup(opts)
+    end
   end,
 }

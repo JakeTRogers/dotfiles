@@ -1,3 +1,9 @@
+## v2.6.3 (2025-05-18)
+
+### Fix
+
+- **nvim**: update nvim-lspconfig version to 2.* and adjust config syntax to support mason-lspconfig v2
+
 ## v2.6.2 (2025-05-10)
 
 ### Fix

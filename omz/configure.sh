@@ -47,3 +47,16 @@ fi
 for completion in "${DOTFILES_LOCATION}/omz/completions"/*; do
   ln -sf "${completion}" "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/completions/$(basename ${completion})"
 done
+
+### SETUP CUSTOM SCRIPTS ###
+# remove any dead symlinks from the custom completions directory or create it if it doesn't exist
+if [ -e "${HOME}/bin" ]; then
+  find "${HOME}/bin" -type l ! -exec test -e {} \; -delete
+else
+  mkdir "${HOME}/bin"
+fi
+
+# loop over all custom scripts and symlink them
+for custom_script in "${DOTFILES_LOCATION}/omz/scripts"/*; do
+  ln -sf "${custom_script}" "${HOME}/bin/$(basename ${custom_script})"
+done

@@ -1,3 +1,10 @@
+## v2.7.0 (2025-05-26)
+
+### Feature
+
+- **omz**: add setup for custom scripts and symlink to ~/bin
+- **script**: add script to merge multiple Kubernetes config files
+
 ## v2.6.3 (2025-05-18)
 
 ### Fix

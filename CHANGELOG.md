@@ -1,3 +1,9 @@
+## v2.8.0 (2025-12-08)
+
+### Feature
+
+- **tmux**: add tmux-resurrect plugin for session management
+
 ## v2.7.0 (2025-05-26)
 
 ### Feature

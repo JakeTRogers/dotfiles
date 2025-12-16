@@ -93,7 +93,7 @@ while [[ $# -gt 0 ]]; do
       fi
       ;;
     --version=?*)
-      release=${1#*=} # Delete everything up to "=" and assign the remainder.
+      version=${1#*=} # Delete everything up to "=" and assign the remainder.
       ;;
     --version=)
       pprint "Error: --version requires a non-empty argument." "$fgRed" "$txBold"
@@ -134,6 +134,14 @@ if [ -n "$url" ]; then
   repo=$(cut -d'/' -f2 <<< "$extracted")
   pprint "Owner: $owner" "$fgBlue"
   pprint "Repo: $repo" "$fgBlue"
+fi
+
+# create download path if it doesn't exist
+if [ ! -d "$download_path" ]; then
+  mkdir -m 0755 -p "$download_path"
+# clean download path if it does exist
+else
+  rm -rf "${download_path:?}/"*
 fi
 
 # test if the repo exists https://github.com/${owner}/${repo}
@@ -246,10 +254,121 @@ if [[ "${selected% *}" =~ \.(tar\.gz|tar\.xz|tar|zip)$ ]]; then
   fi
 fi
 
-# list the files
-pprint -n "\nfiles in:" "$fgOrange"; pprint " ${download_path}" "$fgOrange" "$txBold"
-for file in "${download_path}"/*; do
-  pprint " • $(basename "$file")"
+# list files and prompt for installation
+local install_files=()
+
+# use file command to identify binaries and scripts, excluding docs/metadata
+while IFS= read -r file; do
+  # skip common non-binary files by extension
+  case "${file:l}" in
+    *.md|*.txt|*.rst|*.html|*.css|*.json|*.yaml|*.yml|*.toml|*.ini|*.cfg|*.conf)
+      continue
+      ;;
+    *license*|*readme*|*changelog*|*authors*|*contributing*|*notice*)
+      continue
+      ;;
+  esac
+  # use file command to check if it's a binary executable or script
+  local file_type=$(file -b "$file" 2>/dev/null)
+  case "$file_type" in
+    ELF*executable*|ELF*shared*|*script*|*executable*)
+      install_files+=("$file")
+      ;;
+  esac
+done < <(find "${download_path}" -type f 2>/dev/null | sort)
+
+# if no binaries found, fall back to all files (excluding docs)
+if [ ${#install_files[@]} -eq 0 ]; then
+  while IFS= read -r file; do
+    case "${file:l}" in
+      *.md|*.txt|*.rst|*.html|*.css|*.json|*.yaml|*.yml|*.toml|*.ini|*.cfg|*.conf)
+        continue
+        ;;
+      *license*|*readme*|*changelog*|*authors*|*contributing*|*notice*)
+        continue
+        ;;
+    esac
+    install_files+=("$file")
+  done < <(find "${download_path}" -type f 2>/dev/null | sort)
+fi
+
+if [ ${#install_files[@]} -eq 0 ]; then
+  pprint "\nNo files found in ${download_path}" "$fgYellow"
+  return 0
+fi
+
+# display files with tree if available, otherwise list them
+pprint "\nFiles in ${download_path}:" "$fgOrange"
+if command -v tree &>/dev/null; then
+  tree -C --noreport -I '*.md|license*|*LICENSE*' "${download_path}"
+else
+  for file in "${install_files[@]}"; do
+    pprint " • ${file#${download_path}/}"
+  done
+fi
+
+# prompt for file selection and installation
+pprint "\nInstallable files:" "$fgOrange"
+local i=1
+for file in "${install_files[@]}"; do
+  local display_name="${file#${download_path}/}"
+  printf ' %3s %s\n' "$i." "$display_name"
+  ((i++))
 done
+
+echo -en "\nSelect file to install [1-${#install_files[@]}], add (r)ename suffix (e.g. 2r), (q)uit: "
+
+local selection=""
+read selection
+
+# handle quit
+if [[ "$selection" =~ ^[qQ]$ ]]; then
+  pprint "Installation cancelled." "$fgYellow"
+  return 0
+fi
+
+# handle selection with inline rename (e.g., "3r" or "3R")
+local inline_rename=""
+if [[ "$selection" =~ ^([0-9]+)[rR]$ ]]; then
+  # ZSH uses $match array for regex captures
+  selection="${match[1]}"
+  inline_rename=true
+fi
+
+# validate selection
+if ! [[ "$selection" =~ ^[0-9]+$ ]] || [ "$selection" -lt 1 ] || [ "$selection" -gt ${#install_files[@]} ]; then
+  pprint "Invalid selection. Please enter a number between 1 and ${#install_files[@]}." "$fgRed"
+  return 1
+fi
+
+local selected_file="${install_files[$selection]}"
+local target_name=""
+
+# prompt for rename if inline rename requested
+if [ -n "$inline_rename" ]; then
+  local default_name="$(basename "$selected_file")"
+  # strip common arch/os suffixes for suggested name
+  local suggested_name="${default_name}"
+  # single suffixes
+  suggested_name="${suggested_name%_x86_64}"
+  suggested_name="${suggested_name%-x86_64}"
+  suggested_name="${suggested_name%_amd64}"
+  suggested_name="${suggested_name%-amd64}"
+  suggested_name="${suggested_name%-linux}"
+  suggested_name="${suggested_name%_linux}"
+
+  echo -en "Enter target name [${suggested_name}]: "
+  read target_name
+  # use suggested name if empty
+  [ -z "$target_name" ] && target_name="$suggested_name"
+fi
+
+# call install_it
+pprint "\nInstalling $(basename "$selected_file")..." "$fgBlue"
+if [ -n "$target_name" ]; then
+  install_it "$selected_file" "$target_name"
+else
+  install_it "$selected_file"
+fi
 
 return 0

@@ -1,3 +1,9 @@
+## v2.9.0 (2025-12-15)
+
+### Feature
+
+- **omz**: add decode_jwt script to decode JWT w/ human readable timestamps
+
 ## v2.8.0 (2025-12-08)
 
 ### Feature

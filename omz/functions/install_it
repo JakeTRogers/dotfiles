@@ -36,4 +36,9 @@ else
 fi
 
 sudo install -v -m 755 -o root -g root "${source_file}" "${target_file}"
-[ $? -eq 0 ] && pprint "Successfully installed: ${target_file}" "$fgGreen" || pprint "Error: Failed to install: ${source_file}" "$fgRed" "$txBold"
+if [ $? -eq 0 ]; then
+  rm -vf "${source_file}"
+  pprint "Successfully installed: ${target_file}" "$fgGreen"
+else
+  pprint "Error: Failed to install: ${source_file}" "$fgRed" "$txBold"
+fi

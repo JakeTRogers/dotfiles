@@ -1,0 +1,144 @@
+#######################################
+# decode_jwt
+#######################################
+if [ $# -eq 0 ]; then
+  fold -w "$(tput cols)" -s <<EOF
+Usage: decode_jwt [--json | --yaml | --raw] <JWT_FILE | JWT_STRING>
+
+Decodes a JWT (JSON Web Token) and formats EPOCH timestamps to ISO 8601.
+
+By default, the output is in yaml format.
+
+Options:
+  -j, --json   Output in json(jq).
+  -y, --yaml   Output in yaml(yq). *default
+  -r, --raw    Output raw decoded json without date conversion.
+
+Example:
+  decode JWT string in yaml format (default):
+    decode_jwt eyJ...
+  decode JWT from a file in json format:
+    decode_jwt --json token.txt
+EOF
+  return 0
+fi
+
+# Dependency Checks
+local tools=("jq" "base64" "yq")
+for tool in "${tools[@]}"; do
+  if ! command -v "$tool" >/dev/null 2>&1; then
+    pprint "$tool is required, but not found." "$fgRed"
+    return 1
+  fi
+done
+
+# Local variables
+local output_format="yaml"
+local target=""
+local jwt_content=""
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -j|--json)
+      output_format="json"
+      shift
+      ;;
+    -y|--yaml)
+      output_format="yaml"
+      shift
+      ;;
+    -r|--raw)
+      output_format="raw"
+      shift
+      ;;
+    --)
+      shift
+      break
+      ;;
+    *)
+      target="$1"
+      shift
+      ;;
+  esac
+done
+
+# Check for empty or whitespace-only input
+if [[ -z "${target//[[:space:]]/}" ]]; then
+  pprint "Error: a JWT string or file must be provided." "$fgRed"
+  return 1
+fi
+
+if [ -f "$target" ]; then
+  jwt_content=$(cat "$target")
+else
+  jwt_content="$target"
+fi
+
+# Strip quotes if present (handles both single and double quotes)
+if [[ ( "$jwt_content" == \"*\" && "$jwt_content" == *\" ) || ( "$jwt_content" == \'*\' && "$jwt_content" == *\' ) ]]; then
+  jwt_content="${jwt_content:1:-1}"
+fi
+
+# Validate JWT format (header.payload.signature)
+if [[ ! "$jwt_content" =~ ^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$ ]]; then
+  pprint "Error: Invalid JWT format." "$fgRed"
+  return 1
+fi
+
+# Split JWT
+IFS='.' read -r header payload signature <<< "$jwt_content"
+
+_decode_base64_url() {
+  local len=$((${#1} % 4))
+  local result="$1"
+  if [ $len -eq 2 ]; then result="$1=="; fi
+  if [ $len -eq 3 ]; then result="$1="; fi
+  echo "$result" | tr '_-' '/+' | base64 -d 2>/dev/null
+}
+
+# JQ filter for date conversion
+# Heuristics:
+# Seconds: > 946684800 (2000-01-01) and < 4102444800 (2100-01-01)
+# Milliseconds: > 946684800000 and < 4102444800000
+local date_filter='
+def to_iso:
+  . as $orig |
+  (if type == "string" then (try tonumber catch null) else . end) as $num |
+  if $num != null then
+    if $num > 946684800 and $num < 4102444800 then
+      try "\($orig) (\($num | todate))" catch $orig
+    elif $num > 946684800000 and $num < 4102444800000 then
+      try "\($orig) (\($num / 1000 | todate))" catch $orig
+    else
+      $orig
+    end
+  else
+    $orig
+  end;
+walk(if type == "number" or type == "string" then to_iso else . end)
+'
+
+local decoded_header=$(_decode_base64_url "$header")
+local decoded_payload=$(_decode_base64_url "$payload")
+
+if [ -z "$decoded_header" ] || [ -z "$decoded_payload" ]; then
+  pprint "Error: Failed to decode JWT parts." "$fgRed"
+  return 1
+fi
+
+local combined_json=$(jq -n --argjson h "$decoded_header" --argjson p "$decoded_payload" '{header: $h, payload: $p}')
+
+case "$output_format" in
+  raw)
+    echo "$combined_json"
+    ;;
+  json)
+    echo "$combined_json" | jq "$date_filter"
+    ;;
+  yaml)
+    echo "$combined_json" | jq "$date_filter" | yq -P
+    ;;
+esac
+
+return 0

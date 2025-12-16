@@ -1,3 +1,14 @@
+## v2.10.0 (2025-12-16)
+
+### Feature
+
+- **omz**: enhance get_release file listing and integrate install_it
+
+### Fix
+
+- **omz**: correct get_release variable assignment for version option
+- **omz**: install_it should remove source file after successful installation
+
 ## v2.9.0 (2025-12-15)
 
 ### Feature

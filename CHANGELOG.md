@@ -1,3 +1,9 @@
+## v2.10.2 (2025-12-23)
+
+### Fix
+
+- **neovim**: enhance parser installation and configuration for treesitter
+
 ## v2.10.1 (2025-12-22)
 
 ### Fix

@@ -1,0 +1,13 @@
+#compdef decode_jwt
+
+# Completion for the "decode_jwt" command.
+function _decode_jwt() {
+  # We use `_arguments` to define completion for various flags.
+  # For each flag, we give a short description in brackets [...],
+  # and specify how the argument is completed (e.g. _files, _urls, etc.).
+  _arguments -s -S \
+    '(-j --json)'{-j,--json}'[Output in json (jq)]' \
+    '(-y --yaml)'{-y,--yaml}'[Output in yaml (yq) - default]' \
+    '(-r --raw)'{-r,--raw}'[Output raw decoded json without date conversion]' \
+    '*:JWT file:_files'
+}

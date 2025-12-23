@@ -1,7 +1,7 @@
 return {
   -- https://github.com/MeanderingProgrammer/markdown.nvim
   "MeanderingProgrammer/markdown.nvim",
-  version = "7.*",
+  version = "8.*",
   dependencies = {
     "nvim-treesitter/nvim-treesitter",
     "nvim-tree/nvim-web-devicons",

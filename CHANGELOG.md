@@ -1,3 +1,17 @@
+## v2.10.1 (2025-12-22)
+
+### Fix
+
+- **omz**: add completion function for decode_jwt command
+- **fzf**: update key bindings and completion functions for improved usability
+- **git**: update templateDir path to use home directory shortcut
+- **git**: update Python interpreter and add skip-on-missing-config option to pre-commit git templates
+- **nvim**: update markdown.nvim version from 7.* to 8.*
+- **nvim**: update nvim-surround version from 2.* to 3.*
+- **nvim**: update gitsigns version from 0.* to 1.*
+- **nvim**: update conform.nvim version from 8.* to 9.*
+- **nvim**: enable line wrapping in Neovim configuration
+
 ## v2.10.0 (2025-12-16)
 
 ### Feature

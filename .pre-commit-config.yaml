@@ -3,13 +3,13 @@ default_install_hook_types:
   - commit-msg
 repos:
   - repo: https://github.com/commitizen-tools/commitizen
-    rev: a0cc4901b0faaced74c713a9e355555fc4de0880  # frozen: v4.7.1
+    rev: 9f3ec868c0429155a46b4819b625d47a8522a3d5  # frozen: v4.10.0
     hooks:
       - id: commitizen
         stages:
           - commit-msg
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: cef0300fd0fc4d2a87a85fa2093c6b283ea36f4b  # frozen: v5.0.0
+    rev: 3e8a8703264a2f4a69428a0aa4dcb512790b2c8c  # frozen: v6.0.0
     hooks:
       - id: check-added-large-files
       - id: check-json

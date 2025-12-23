@@ -3,7 +3,7 @@
 # ID: 138fd403232d2ddd5efb44317e38bf03
 
 # start templated
-INSTALL_PYTHON=/usr/bin/python3.11
+INSTALL_PYTHON=/usr/bin/python3
 ARGS=(hook-impl --config=.pre-commit-config.yaml --hook-type=prepare-commit-msg --skip-on-missing-config)
 # end templated
 

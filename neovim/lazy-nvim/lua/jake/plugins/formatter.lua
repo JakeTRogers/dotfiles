@@ -1,7 +1,7 @@
 return {
   -- https://github.com/stevearc/conform.nvim
   "stevearc/conform.nvim",
-  version = "8.*",
+  version = "9.*",
   event = { "BufReadPre", "BufNewFile" },
   config = function()
     local conform = require("conform")

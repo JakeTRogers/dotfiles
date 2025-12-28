@@ -1,14 +1,28 @@
 #######################################
 # get_k8s_images
 #######################################
-if [ "$1" = '--help' ]; then
-  fold -w $(tput cols) -s <<EOF
-Usage: get_k8s_images <namespace> <cluster>
-Get all images running in a Kubernetes cluster.
+if [[ $1 == "--help" || $1 == "-h" ]]; then
+  fold -w "$(tput cols)" -s <<'EOF'
+Usage: get_k8s_images [OPTIONS] [NAMESPACE|-] [CONTEXT]
+Get container images used by pods in a Kubernetes cluster.
+
+Options (must come before positional arguments):
+  -r, --running               Only include pods in Running state.
+  -k, --kind <init,app,eph>   Container kinds to include (comma-separated).
 
 Arguments:
-  namespace  The namespace to search
-  cluster    The name of the cluster
+  NAMESPACE   Namespace to query. Omit or use "-" for all namespaces.
+  CONTEXT     Kubernetes context (defaults to current-context).
+
+Examples:
+  Get all images in all namespaces for the current context
+    get_k8s_images
+  Get all images in the kube-system namespace for the current context
+    get_k8s_images kube-system
+  Get all running images in all namespaces for the sandbox context
+    get_k8s_images -r - sandbox
+  Get all app container images in the cert-manager namespace for the sandbox context
+    get_k8s_images --kind app cert-manager sandbox
 EOF
   return 0
 fi

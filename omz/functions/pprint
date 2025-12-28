@@ -1,8 +1,8 @@
 #######################################
 # pprint
 #######################################
-if [ $# -eq 0 ]; then
-  fold -w $(tput cols) -s <<'EOF'
+if [[ $# -eq 0 || $1 == "--help" || $1 == "-h" ]]; then
+  fold -w "$(tput cols)" -s <<'EOF'
 Usage: pprint [-n] <text> [styles]
 Pretty print a string with color or text decorations. The text is written to stdout with the styles applied.
 
@@ -12,8 +12,8 @@ Options:
   -n  do not output the trailing newline
 
 Arguments:
-  text   text to print(will parse escape sequences).
-  styles styles to apply
+  text     Text to print (will parse escape sequences).
+  styles   Styles to apply.
 EOF
   return 0
 fi

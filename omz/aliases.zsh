@@ -17,6 +17,7 @@ alias lu='ls -ltur'
 alias sl='ls'
 alias sssh='ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no'
 alias sscp='scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no'
+alias toCSV="awk 'BEGIN { OFS=\",\" } { \$1=\$1; print }'"
 alias tmux='tmux -2'
 alias update_vim_plugins='for dir in $(ls -1 ~/.vim/bundle); do echo "$dir"; git -C "$HOME/.vim/bundle/$dir" pull; echo; done'
 

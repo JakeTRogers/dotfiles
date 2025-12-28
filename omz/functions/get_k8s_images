@@ -27,23 +27,128 @@ EOF
   return 0
 fi
 
-# Dependency Checks
-local tools=("kubectl")
-for tool in "${tools[@]}"; do
-  if ! command -v "$tool" >/dev/null 2>&1; then
-    pprint "$tool is required, but not found." "$fgRed"
-    return 1
-  fi
+# Dependency check
+if ! command -v kubectl >/dev/null 2>&1; then
+  pprint "kubectl is required, but not found." "$fgRed"
+  return 1
+fi
+
+if ! command -v jq >/dev/null 2>&1; then
+  pprint "jq is required, but not found." "$fgRed"
+  return 1
+fi
+
+# Defaults
+local namespace=""
+local context=""
+local running_only=false
+local kinds="init,app,eph"
+
+# Parse options first (must come before positional args)
+while :; do
+  case $1 in
+    -r|--running)
+      running_only=true
+      shift
+      ;;
+    -k|--kind)
+      if [[ -z $2 ]]; then
+        pprint "ERROR: '--kind' requires a non-empty option argument." "$fgRed"
+        return 1
+      fi
+      kinds="$2"
+      shift 2
+      ;;
+    --kind=?*)
+      kinds=${1#*=}
+      shift
+      ;;
+    --kind=)
+      pprint "ERROR: '--kind' requires a non-empty option argument." "$fgRed"
+      return 1
+      ;;
+    --)  # End of all options
+      shift
+      break
+      ;;
+    -?*)
+      pprint "Unknown option: $1" "$fgRed"
+      return 1
+      ;;
+    *)  # No more options, break out of loop
+      break
+      ;;
+  esac
 done
 
-# Get the context of the cluster
-cluster=${2:-$(kubectl config current-context)}
-
-# if namespace is not provided, default to --all-namespaces
-if [ -z "$1" ]; then
-  kubectl --context "${cluster}" get pods --all-namespaces -o jsonpath="{.items[*].spec.containers[*].image}" | tr -s '[[:space:]]' '\n' | sort | uniq -c | column -t -s:
-else
-  kubectl --context "${cluster}" get pods -n "${1}" -o jsonpath="{.items[*].spec.containers[*].image}" | tr -s '[[:space:]]' '\n' | sort | uniq -c | column -t -s:
+# Now handle positional arguments
+if [[ -n $1 && $1 != "-" ]]; then
+  namespace=$1
 fi
+context=${2:-$(kubectl config current-context)}
+
+# Build kubectl args
+local ns_args=()
+if [[ -n $namespace ]]; then
+  ns_args=(-n "$namespace")
+else
+  ns_args=(--all-namespaces)
+fi
+
+# Build jq filters
+local phase_filter='.'
+if $running_only; then
+  phase_filter='select(.status.phase == "Running")'
+fi
+
+local kind_filter=""
+IFS=',' read -rA kind_list <<< "$kinds"
+for k in "${kind_list[@]}"; do
+  case "$k" in
+    init) kind_filter+='(.spec.initContainers // [])[]?, ' ;;
+    app)  kind_filter+='(.spec.containers // [])[]?, ' ;;
+    eph)  kind_filter+='(.spec.ephemeralContainers // [])[]?, ' ;;
+    *)
+      pprint "Invalid container kind: $k" "$fgRed"
+      return 1
+      ;;
+  esac
+done
+kind_filter="${kind_filter%, }"
+
+# Extract, normalize, count
+kubectl --context "$context" get pods "${ns_args[@]}" -o json \
+| jq -r "
+  .items[]
+  | $phase_filter
+  | .metadata.namespace as \$ns
+  | ($kind_filter)
+  | .image as \$img
+  | (
+      if \$img | test(\"@sha256:\") then
+        [\$ns, (\$img | split(\"@sha256:\")[0]), (\"sha256:\" + (\$img | split(\"@sha256:\")[1]))]
+      elif \$img | test(\":\") then
+        [\$ns, (\$img | sub(\":[^/]+$\"; \"\")), (\$img | sub(\"^.*:\"; \"\"))]
+      else
+        [\$ns, \$img, \"(none)\"]
+      end
+    )
+  | @tsv
+" \
+| {
+    if [[ -n $namespace ]]; then
+      # Drop namespace column, sort by image, add headers
+      {
+        printf "#\tIMAGE\tTAG\n"
+        cut -f2- | sort | uniq -c | awk '{printf "%s\t%s\t%s\n", $1, $2, $3}'
+      } | column -t
+    else
+      # Keep namespace column, sort by namespace then image, add headers
+      {
+        printf "#\tNAMESPACE\tIMAGE\tTAG\n"
+        sort -k1,1 -k2,2 | uniq -c | awk '{printf "%s\t%s\t%s\t%s\n", $1, $2, $3, $4}'
+      } | column -t
+    fi
+  }
 
 return 0

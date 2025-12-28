@@ -1,0 +1,20 @@
+#######################################
+# joincsv
+#######################################
+if [[ $# -eq 0 || $1 == "--help" || $1 == "-h" ]]; then
+  fold -w "$(tput cols)" -s <<'EOF'
+Usage: joincsv <file1> <file2>
+Add data from the second csv as a new column in the first csv.
+
+Arguments:
+  file1  The first CSV file.
+  file2  The second CSV file.
+
+Examples:
+  Join 2 csv files using their first column as the key
+    joincsv svrChkr-2015-08-27.csv OWNERS.csv
+EOF
+  return 0
+fi
+
+join -t, -a1 --header --nocheck-order <(cat <(head -n1 "$1") <(sed 1d "$1" | sort) | sed 's/\r//') <(cat <(head -n1 "$2") <(sed 1d "$2"| sort) | sed 's/\r//')

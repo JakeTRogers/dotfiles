@@ -27,6 +27,72 @@ alias dt='date +%Y-%m-%d-%H:%M'
 alias sd='date +%Y%m%d'
 alias sdt='date +%Y%m%d-%H%M'
 
+# kubernetes stuff
+# Pods not running or succeeded
+alias k8b='kubectl get pods -A --field-selector=status.phase!=Running,status.phase!=Succeeded'
+# Unschedulable pods
+alias k8ef='kubectl get events -A --field-selector=reason=FailedScheduling --sort-by=.metadata.creationTimestamp'
+# Externally exposed services(not through ingress)
+alias k8ext='kubectl get svc -A | awk '\''$4=="LoadBalancer" || $4=="NodePort"'\'
+# Pods with restarts > 0 (flapping)
+alias k8flap="kubectl get pods -A -o json | jq -r '
+(
+  [\"NAMESPACE\",\"POD\",\"CONTAINER\",\"RESTARTS\"],
+  ( .items[]
+    | .metadata.namespace as \$ns
+    | .metadata.name as \$pod
+    | ( (.status.containerStatuses // []) + (.status.initContainerStatuses // []) )[]
+    | select((.restartCount // 0) > 0)
+    | [\$ns, \$pod, .name, ((.restartCount // 0) | tostring)]
+  )
+)
+| @tsv' | column -t"
+# Ingress inventory (custom-columns output) with header
+alias k8ing="kubectl get ingress -A -o custom-columns='NS:.metadata.namespace,NAME:.metadata.name,HOSTS:.spec.rules[*].host' --no-headers=false"
+# IngressRoute inventory(traefik)
+alias k8ingr='kubectl get ingressroute -A -o json | jq -r '\''
+  ["NAMESPACE","NAME","HOSTS"],
+  (
+    .items[]
+    | select(.metadata.annotations["kubernetes.io/ingress.class"] == "traefik")
+    | .metadata.namespace as $ns
+    | .metadata.name as $name
+    | (.spec.routes // [])
+    | map(.match // "")
+    | join(" || ")
+    | [
+        $ns,
+        $name,
+        (
+          .
+          | gsub("`"; "")
+          | (scan("Host\\(([^)]*)\\)") | join(","))
+          | if .=="" then "-" else . end
+        )
+      ]
+  )
+  | @tsv
+'\'''
+# Nodes not Ready
+alias k8nr="kubectl get nodes -o json | jq -r '
+  [\"NODE\"],
+  ((.items // .)[]
+    | select(.status.conditions[] | select(.type==\"Ready\" and .status!=\"True\"))
+    | [.metadata.name]
+  ) | @tsv' | column -t"
+# Resources with stuck finalizers (may block deletion)
+alias k8sf="kubectl get all -A -o json | jq -r '[
+  \"KIND\",\"NAMESPACE\",\"NAME\",\"FINALIZERS\"
+],
+(.items[]
+ | select(.metadata.finalizers != null)
+ | [.kind, (.metadata.namespace // \"-\"), .metadata.name, (.metadata.finalizers | join(\",\"))]
+) | @tsv' | column -t"
+# pods by cpu
+alias k8tc='kubectl top pods -A --sort-by=cpu'
+# pods by memory
+alias k8tm='kubectl top pods -A --sort-by=memory'
+
 # puppet and git stuff
 alias guard='guard --no-bundler-warning'
 alias pdkbe='pdk bundle exec'

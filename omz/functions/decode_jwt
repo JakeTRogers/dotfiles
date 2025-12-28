@@ -1,23 +1,25 @@
 #######################################
 # decode_jwt
 #######################################
-if [ $# -eq 0 ]; then
-  fold -w "$(tput cols)" -s <<EOF
+if [[ $# -eq 0 || $1 == "--help" || $1 == "-h" ]]; then
+  fold -w "$(tput cols)" -s <<'EOF'
 Usage: decode_jwt [--json | --yaml | --raw] <JWT_FILE | JWT_STRING>
-
 Decodes a JWT (JSON Web Token) and formats EPOCH timestamps to ISO 8601.
 
 By default, the output is in yaml format.
 
 Options:
-  -j, --json   Output in json(jq).
-  -y, --yaml   Output in yaml(yq). *default
+  -j, --json   Output in json (jq).
+  -y, --yaml   Output in yaml (yq). *default
   -r, --raw    Output raw decoded json without date conversion.
 
-Example:
-  decode JWT string in yaml format (default):
+Arguments:
+  JWT_FILE | JWT_STRING   The JWT file or string to decode
+
+Examples:
+  Decode JWT string in yaml format (default):
     decode_jwt eyJ...
-  decode JWT from a file in json format:
+  Decode JWT from a file in json format:
     decode_jwt --json token.txt
 EOF
   return 0

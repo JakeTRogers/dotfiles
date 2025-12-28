@@ -1,18 +1,28 @@
 #######################################
 # get_release
 #######################################
-if [ $# -eq 0 ]; then
-  fold -w $(tput cols) -s <<EOF
+if [[ $# -eq 0 || $1 == "--help" || $1 == "-h" ]]; then
+  fold -w "$(tput cols)" -s <<'EOF'
 Usage: get_release {--owner <owner_name> --repo <repo_name> | --url <repo_url>} [--version <version>] [--download] [--list]
-Download the latest release or a specific version from a GitHub repo. If --list it will list the last 30 releases and exit. If the downloaded file is an archive, it will be extracted to ~/install.
+Download releases from GitHub, automatically extract archives to ~/install, and select which file to install via interactive menu.
 
 Options:
-  -o, --owner <owner_name>  GitHub owner name
-  -r, --repo <repo_name>    GitHub repo name
-  -u, --url <repo_url>      GitHub repo URL
-  -d, --download            Download the asset and exit
-  -l, --list                List the last 30 releases
-  -v, --version <version>   version to download
+  -o, --owner <owner_name>   GitHub owner name
+  -r, --repo <repo_name>     GitHub repo name
+  -u, --url <repo_url>       GitHub repo URL
+  -d, --download             Download the asset and exit
+  -l, --list                 List the last 30 releases and exit
+  -v, --version <version>    version to download
+
+Examples:
+  Download the latest release of k9s using owner and repo:
+    get_release --owner derailed --repo k9s
+  Download the latest release of k9s using a URL:
+    get_release --url https://github.com/derailed/k9s
+  List the available releases of k9s using owner and repo:
+    get_release --owner derailed --repo k9s --list
+  Download a specific version of k9s using owner and repo:
+    get_release --owner derailed --repo k9s --version v0.25.0
 EOF
   return 0
 fi

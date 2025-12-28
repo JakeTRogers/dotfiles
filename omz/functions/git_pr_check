@@ -1,0 +1,37 @@
+#######################################
+# git_pr_check
+#######################################
+if [[ $1 == "--help" || $1 == "-h" ]]; then
+  fold -w "$(tput cols)" -s <<'EOF'
+Usage: git_pr_check [directory]
+Check sub-directories for pull requests.
+
+Arguments:
+  directory  The directory to check. Defaults to the current directory.
+EOF
+  return 0
+fi
+
+current_dir=$(pwd)
+for dir in $(find "${1:-.}" -mindepth 1 -maxdepth 1 -type d -print); do
+  cd "$dir"
+  # has a .git directory
+  if [ -d .git -o -d refs ]; then
+    # has a GitHub remote
+    if git remote -v | grep -iq github; then
+      echo
+      pprint "🟢 ${dir}" $fgGreen
+      gh pr list
+      echo
+    # does not have a GitHub remote
+    else
+      pprint "🟠 ${dir}, not using GitHub" $fgYellow
+      cd ..
+      continue
+    fi
+  # does not have a .git directory
+  else
+    pprint "➖ $dir, not a git repo"
+  fi
+  cd "$current_dir"
+done

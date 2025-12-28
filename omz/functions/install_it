@@ -1,14 +1,14 @@
 #######################################
 # install_it
 #######################################
-if [ $# -eq 0 ]; then
-  fold -w $(tput cols) -s <<'EOF'
+if [[ $# -eq 0 || $1 == "--help" || $1 == "-h" ]]; then
+  fold -w "$(tput cols)" -s <<'EOF'
 Usage: install_it <source_file> [target_file]
 Uses the install command to install an executable from ~/install to /usr/local/bin by default.
 
 Arguments:
-  source_file - executable to install. The script assumes it is in ~/install if a path is not provided.
-  target_file - target filename. If not provided, the source filename is used. If a path is not provided, the executable is installed in /usr/local/bin.
+  source_file  Executable to install. The script assumes it is in ~/install if a path is not provided.
+  target_file  Target filename. If not provided, the source filename is used. If a path is not provided, the executable is installed in /usr/local/bin.
 EOF
   return 0
 fi

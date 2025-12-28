@@ -1,29 +1,31 @@
 #######################################
 # decode_cert
 #######################################
-if [ $# -eq 0 ]; then
-  fold -w "$(tput cols)" -s <<EOF
-Usage: decode_cert [--raw | --json | --yaml | --full | --short] [--help] <CERT_FILE | URL | DOMAIN>
-
+if [[ $# -eq 0 || $1 == "--help" || $1 == "-h" ]]; then
+  fold -w "$(tput cols)" -s <<'EOF'
+Usage: decode_cert [--raw | --json | --yaml | --full | --short] <CERT_FILE | URL | DOMAIN>
 Decodes certificates in various levels of detail and formats using certigo, jq, and yq.
 
 By default, the short certificate details are output in yaml format.
 
 Options:
-  -r, --raw    Output certificate information in unformatted json.
-  -j, --json   Output certificate information in json(jq).
-  -y, --yaml   Output certificate information in yaml(yq). *default
-  -f, --full   Output full certificate details.
-  -s, --short  Output short certificate details(issuer, subject, dates). *default
+  -r, --raw     Output certificate information in unformatted json.
+  -j, --json    Output certificate information in json (jq).
+  -y, --yaml    Output certificate information in yaml (yq). *default
+  -f, --full    Output full certificate details.
+  -s, --short   Output short certificate details (issuer, subject, dates). *default
 
-Example:
-  decode cert in yaml format with short details:
+Arguments:
+  CERT_FILE | URL | DOMAIN   The certificate file, URL, or domain to decode
+
+Examples:
+  Decode cert in yaml format with short details:
     decode_cert cert.pem
-  decode cert in json format:
+  Decode cert in json format:
     decode_cert --json cert.pem
-  decode cert in yaml format with full details:
+  Decode cert in yaml format with full details:
     decode_cert --full cert.pem
-  decode cert from github.com in yaml formation with full details
+  Decode cert from github.com in yaml formation with full details
     decode_cert --full github.com
 EOF
   return 0

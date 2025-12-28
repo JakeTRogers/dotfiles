@@ -17,6 +17,7 @@ This repo manages my dotfiles and works nicely with the vscode dev container ext
     - [tmux-fingers](https://github.com/Morantron/tmux-fingers)
     - [tmux-logging](https://github.com/tmux-plugins/tmux-logging)
     - [tmux-pain-control](https://github.com/tmux-plugins/tmux-pain-control)
+    - [tmux-resurrect](https://github.com/tmux-plugins/tmux-resurrect)
     - [tmux-sensible](https://github.com/tmux-plugins/tmux-sensible)
     - [tmux-yank](https://github.com/tmux-plugins/tmux-yank)
 - [Vim](https://www.vim.org/)
@@ -42,20 +43,33 @@ This repo manages my dotfiles and works nicely with the vscode dev container ext
     - [powerlevel10k](https://github.com/romkatv/powerlevel10k)
     - [zsh-autosuggestions](https://github.com/zsh-users/zsh-autosuggestions)
     - [zsh-syntax-highlighting](https://github.com/zsh-users/zsh-syntax-highlighting)
+    - [wd](https://github.com/mfaerevaag/wd)
+
+## Full Installation Only
+
+The following tools are only installed when using `./install.sh full`:
+
+- [bat](https://github.com/sharkdp/bat) - A cat clone with syntax highlighting
+- [fd](https://github.com/sharkdp/fd) - A simple, fast and user-friendly alternative to find
+- [fzf](https://github.com/junegunn/fzf) - A command-line fuzzy finder
+  - [fzf-git.sh](https://github.com/junegunn/fzf-git.sh) - Git integration for fzf
+- [ripgrep](https://github.com/BurntSushi/ripgrep) - A line-oriented search tool
+- [Neovim](https://neovim.io/)
+  - [lazy.nvim](https://github.com/folke/lazy.nvim) - Plugin manager
+  - Plugins including LSP support, fuzzy finding, git integration, markdown rendering, and more
 
 ## Installation
 
 The installation process is handled by the `install.sh` script. It has 2 install modes:
 
-- `./install.sh` - without any arguments, it performs a minimal installation intended for devcontainers, skipping:
-  - `.gitconfig`
-  - `tmux`
-  - `vim`
-- `./install.sh full` - with the `full` argument, it will perform a full installation intended for a jump server/workstation.
+- `./install.sh` - without any arguments, it performs a minimal installation intended for devcontainers, including:
+  - curl, less, tmux, git, gpg, vim, zsh, oh-my-zsh
+- `./install.sh full` - with the `full` argument, it will perform a full installation intended for a jump server/workstation, adding:
+  - bat, fd, ripgrep, fzf, neovim
 
 > [!NOTE]
 > You should fork this repo and adjust it to your needs before running the script.
 
 ## credit
 
-- https://github.com/benmatselby/dotfiles
+- [https://github.com/benmatselby/dotfiles](https://github.com/benmatselby/dotfiles)

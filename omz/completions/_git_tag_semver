@@ -1,0 +1,32 @@
+#compdef git_tag_semver
+
+# Completion for the "git_tag_semver" command.
+function _git_tag_semver() {
+  local -a version_types
+  version_types=(
+    'major:Increment the major version (X.0.0)'
+    'minor:Increment the minor version (x.Y.0)'
+    'patch:Increment the patch version (x.y.Z)'
+  )
+
+  local -a float_options
+  float_options=(
+    'float:Create floating tags for major and minor versions'
+    '-:Skip floating tags'
+  )
+
+  _arguments -s -S \
+    '1:version type:(($version_types))' \
+    '2::float option:(($float_options))' \
+    '3::commit:__git_tag_semver_commits'
+}
+
+# Helper function to show recent commits
+function __git_tag_semver_commits() {
+  local -a commits
+  if git rev-parse --git-dir >/dev/null 2>&1; then
+    commits=(${(f)"$(git log --oneline --decorate -n 25 2>/dev/null | awk '{print $1":"substr($0, index($0,$2))}')"})
+    commits+=('HEAD:Current HEAD')
+  fi
+  _describe 'commit' commits
+}

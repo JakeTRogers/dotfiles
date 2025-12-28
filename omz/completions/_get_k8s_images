@@ -1,0 +1,40 @@
+#compdef get_k8s_images
+
+# Completion for the "get_k8s_images" command.
+function _get_k8s_images() {
+  local -a container_kinds
+  container_kinds=(
+    'init:Init containers'
+    'app:Application containers'
+    'eph:Ephemeral containers'
+    'init,app:Init and application containers'
+    'init,eph:Init and ephemeral containers'
+    'app,eph:Application and ephemeral containers'
+    'init,app,eph:All container kinds'
+  )
+
+  _arguments -s -S \
+    '(-r --running)'{-r,--running}'[Only include pods in Running state]' \
+    '(-k --kind)'{-k,--kind}'[Container kinds to include]:kind:(($container_kinds))' \
+    '1::namespace:__kubectl_namespaces' \
+    '2::context:__kubectl_contexts'
+}
+
+# Helper function to complete kubectl namespaces
+function __kubectl_namespaces() {
+  local -a namespaces
+  if command -v kubectl &>/dev/null; then
+    namespaces=(${(f)"$(kubectl get namespaces -o jsonpath='{.items[*].metadata.name}' 2>/dev/null)"})
+    namespaces+=('-:All namespaces')
+  fi
+  _describe 'namespace' namespaces
+}
+
+# Helper function to complete kubectl contexts
+function __kubectl_contexts() {
+  local -a contexts
+  if command -v kubectl &>/dev/null; then
+    contexts=(${(f)"$(kubectl config get-contexts -o name 2>/dev/null)"})
+  fi
+  _describe 'context' contexts
+}

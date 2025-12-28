@@ -1,13 +1,13 @@
 #######################################
 # log_cmd_d
 #######################################
-if [ $# -eq 0 ]; then
-  fold -w $(tput cols) -s <<EOF
+if [[ $# -eq 0 || $1 == "--help" || $1 == "-h" ]]; then
+  fold -w "$(tput cols)" -s <<'EOF'
 Usage: log_cmd_d <command>
 Log a shell command, its stdout, and stderr to a timestamped log file.
 
 Arguments:
-  command - command to execute and log
+  command  Command to execute and log.
 EOF
   return 0
 fi

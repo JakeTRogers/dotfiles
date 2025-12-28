@@ -1,0 +1,68 @@
+#######################################
+# git_tag_semver
+#######################################
+if [[ $# -eq 0 || $1 == "--help" || $1 == "-h" ]]; then
+  fold -w "$(tput cols)" -s <<'EOF'
+Usage: git_tag_semver <major | minor | patch> [float] [commit]
+Semantically tag a git repository.
+
+Arguments:
+  major|minor|patch  The part of the version to increment.
+  float              Optional. If provided, create floating tags for major and minor versions.
+  commit             The commit to tag. Defaults to HEAD if not provided.
+
+Examples:
+  bump the patch version, no floating tags
+    git_tag_semver patch
+  bump the minor version, with floating tags
+    git_tag_semver minor float
+  bump the major version, without floating tags on commit 123abc
+    git_tag_semver major - 123abc
+EOF
+  return 0
+fi
+
+git fetch --tags                                 # Fetch tags from remote before calculating latest tag
+local latest_tag=$(git tag -l | grep -E '^v?([0-9]+\.){2}[0-9]+$' | sort -V | tail -n 1)
+latest_tag=${latest_tag:-0.0.0}                  # Set default tag if no tags are found
+local prefix=''                                  # Default to no prefix
+[[ $latest_tag == v* ]] && prefix='v'            # enable version prefix
+latest_tag=${latest_tag#v}                       # Remove 'v' prefix for version incrementing
+
+echo "Latest tag: $latest_tag"
+local major=$(echo $latest_tag | cut -d. -f1)
+local minor=$(echo $latest_tag | cut -d. -f2)
+local patch=$(echo $latest_tag | cut -d. -f3)
+case $1 in
+  major)
+    major=$((major + 1))
+    minor=0
+    patch=0
+    ;;
+  minor)
+    minor=$((minor + 1))
+    patch=0
+    ;;
+  patch)
+    patch=$((patch + 1))
+    ;;
+  *)
+    echo "Invalid argument: $1"
+    return 1
+    ;;
+esac
+major=${prefix}${major}                          # add v to major version if prefix is enabled
+local commit=${3:-HEAD}                          # Default to HEAD if no commit is provided
+echo "tagging version: $major.$minor.$patch on $commit"
+git rev-parse $major.$minor.$patch &>/dev/null && git tag -d $major.$minor.$patch
+git tag -sa $major.$minor.$patch -m "$major.$minor.$patch" $commit
+
+# handle floating tags
+if [[ $2 == 'float' ]]; then
+  echo "tagging version: $major.$minor on $commit"
+  git rev-parse $major.$minor &>/dev/null && git tag -d $major.$minor
+  git tag -sa $major.$minor -m "$major.$minor" $commit
+  echo "tagging version: $major on $commit"
+  git rev-parse $major &>/dev/null && git tag -d $major
+  git tag -sa $major -m "$major" $commit
+fi

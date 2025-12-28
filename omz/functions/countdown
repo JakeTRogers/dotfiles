@@ -1,13 +1,13 @@
 #######################################
 # countdown
 #######################################
-if [ $# -eq 0 ]; then
-  fold -w $(tput cols) -s <<EOF
+if [[ $# -eq 0 || $1 == "--help" || $1 == "-h" ]]; then
+  fold -w "$(tput cols)" -s <<'EOF'
 Usage: countdown <seconds>
 Countdown timer that prints the remaining seconds.
 
 Arguments:
-  seconds  The number of seconds to countdown
+  seconds   The number of seconds to countdown.
 EOF
   return 0
 fi

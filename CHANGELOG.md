@@ -1,3 +1,17 @@
+## v2.11.0 (2025-12-27)
+
+### Feature
+
+- **omz**: add completion functions for get_k8s_images and git_tag_semver commands
+- **omz**: add several kubectl aliases for pod management, troubleshooting, and resource monitoring
+- **omz**: add awk-based toCSV alias
+- **omz**: enhance get_k8s_images with filtering, parsing, and richer output
+- **omz**: move git_tag_semver to lazy autoload function and replace push argument with commit
+
+### Refactor
+
+- **omz**: convert git_pr_check, install_kubectl, & joincsv to lazy autoload functions
+
 ## v2.10.2 (2025-12-23)
 
 ### Fix

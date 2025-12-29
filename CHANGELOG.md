@@ -1,3 +1,9 @@
+## v2.11.1 (2025-12-29)
+
+### Fix
+
+- **git**: remove problematic Python installation check from git hooks
+
 ## v2.11.0 (2025-12-27)
 
 ### Feature

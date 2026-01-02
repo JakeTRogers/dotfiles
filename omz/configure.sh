@@ -28,6 +28,17 @@ else
   git clone --quiet https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
 fi
 
+# fzf-tab (only for full installs)
+if [ "${INSTALL_MODE}" = 'full' ]; then
+  if [ -d "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/fzf-tab" ]; then
+    echo "Updating fzf-tab"
+    git -C "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/fzf-tab" pull --quiet
+  else
+    echo "Installing fzf-tab"
+    git clone --quiet https://github.com/Aloxaf/fzf-tab ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/fzf-tab
+  fi
+fi
+
 ln -sf "${DOTFILES_LOCATION}/omz/aliases.zsh" "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/aliases.zsh"
 ln -sf "${DOTFILES_LOCATION}/omz/env.zsh" "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/env.zsh"
 ln -sf --no-dereference "${DOTFILES_LOCATION}/omz/functions" "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/functions"

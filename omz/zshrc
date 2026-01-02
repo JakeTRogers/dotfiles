@@ -100,6 +100,13 @@ zstyle :omz:plugins:ssh-agent agent-forwarding yes lifetime 12h
 
 source $ZSH/oh-my-zsh.sh
 
+# Load fzf-tab if fzf is available
+# Must be loaded after compinit (oh-my-zsh.sh) but before plugins that wrap widgets
+if command -v fzf &> /dev/null && [ -f "${ZSH_CUSTOM:-${HOME}/.oh-my-zsh/custom}/plugins/fzf-tab/fzf-tab.plugin.zsh" ]; then
+  source "${ZSH_CUSTOM:-${HOME}/.oh-my-zsh/custom}/plugins/fzf-tab/fzf-tab.plugin.zsh"
+  zstyle ':fzf-tab:*' fzf-command ftb-tmux-popup
+fi
+
 # User configuration
 # prevents issue with paste + autosuggestions appending text unexpectedly
 ZSH_AUTOSUGGEST_CLEAR_WIDGETS+=(bracketed-paste)

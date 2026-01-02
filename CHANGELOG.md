@@ -1,3 +1,17 @@
+## v2.12.0 (2026-01-02)
+
+### Feature
+
+- **fzf**: update fzf-git script with enhanced condition checks and user prompts
+- **omz**: add git commit fixup helper(gcfuh) function with fzf-powered interactive selection
+- **omz**: add fzf-tab plugin to full installs
+- **omz**: add fzf functions for managing podman containers and images
+- **omz**: convert git commit, log, rebase, and diff aliases to functions to support completions
+
+### Fix
+
+- **fzf**: remove _fzf completion because is generated dynamically by fzf.zsh
+
 ## v2.11.2 (2026-01-01)
 
 ### Fix

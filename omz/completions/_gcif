@@ -1,0 +1,9 @@
+#compdef gcif
+
+# Completion for the "gcif" command (git commit --fixup).
+function _gcif() {
+  _arguments -S -s \
+    '1:commit:__git_fixup_commits_since_merge'
+}
+
+_gcif "$@"

@@ -1,0 +1,31 @@
+#compdef ghist
+
+# Completion for ghist - git history with pretty formatting
+_ghist() {
+  local -a opts
+
+  # Common -N options
+  opts=(
+    '-05:last 5 commits'
+    '-10:last 10 commits'
+    '-15:last 15 commits'
+    '-20:last 20 commits'
+    '-25:last 25 commits'
+  )
+
+  # Add HEAD~N for commits on branch
+  local base_branch
+  base_branch=$(git_find_branch_base -n)
+
+  local i=0
+  while IFS= read -r line; do
+    local hash=${line%% *}
+    local msg=${line#* }
+    [[ $i -eq 0 ]] && opts+=("HEAD:${msg:0:50} ($hash)") || opts+=("HEAD~${i}:${msg:0:50} ($hash)")
+    ((i++))
+  done < <(git log --oneline --no-decorate "${base_branch:-HEAD~25}..HEAD" 2>/dev/null)
+
+  _describe -t commits 'commits' opts
+}
+
+_ghist "$@"

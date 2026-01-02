@@ -1,0 +1,21 @@
+#compdef gdu
+
+# Completion for the "gdu" command (git diff -U0).
+# Only suggests files that actually have unstaged changes.
+function _gdu() {
+  if ! git rev-parse --git-dir >/dev/null 2>&1; then
+    return 1
+  fi
+
+  local -a files
+  files=(${(f)"$(git diff --name-only 2>/dev/null)"})
+
+  if [[ ${#files[@]} -eq 0 ]]; then
+    _message 'no unstaged changes'
+    return 1
+  fi
+
+  _describe -t changed-files 'changed files' files
+}
+
+_gdu "$@"

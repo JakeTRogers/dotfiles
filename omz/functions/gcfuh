@@ -1,0 +1,258 @@
+#######################################
+# gcfuh - git commit fixup helper
+#######################################
+if [[ $1 == "--help" || $1 == "-h" ]]; then
+  fold -w "$(tput cols)" -s <<'EOF'
+Usage: gcfuh [COMMIT]
+Interactive git commit --fixup helper using fzf.
+
+Arguments:
+  COMMIT    Optional commit hash to fixup (skips commit selection)
+
+This function helps you organize uncommitted changes into fixup commits for previous commits on your current branch. It provides a two-stage interactive selection:
+
+  1. Select a target commit to fixup (from commits after the most recent merge)
+  2. Select files to include in the fixup (grouped by their last commit)
+
+Files are grouped into three categories:
+  - On-branch: Files whose last commit is after the most recent merge
+  - Pre-merge: Files whose last commit is before/at the merge point
+  - New files: Untracked files with no commit history
+
+The function automatically unstages all files at start to prevent accidental inclusion. After each fixup, it loops back if there are remaining changes.
+
+Keybindings in fzf:
+  TAB       Toggle selection
+  CTRL-A    Select all
+  CTRL-D    Deselect all
+  CTRL-/    Toggle preview
+  ESC       Cancel and exit
+
+Examples:
+  gcfuh
+EOF
+  return 0
+fi
+
+# Use clean zsh emulation and disable debug output
+setopt TYPESET_SILENT 2>/dev/null
+
+# Ensure we're in a git repository
+_fzf_git_check || return 1
+
+# Separator for section headers (using box-drawing characters)
+local SEP='─────────'
+local DIM=$'\033[2m'
+local ITALIC=$'\033[3m'
+local RESET=$'\033[0m'
+local YELLOW=$'\033[33m'
+local GREEN=$'\033[32m'
+local BLUE=$'\033[34m'
+
+# Unstage all files to start fresh
+git restore --staged . 2>/dev/null
+
+# Main loop - continue while there are unstaged changes
+while true; do
+  # Check if there are any changes to work with
+  local changes
+  changes=$(git status -s 2>/dev/null)
+  if [[ -z "$changes" ]]; then
+    pprint "No uncommitted changes found." "$fgYellow"
+    return 0
+  fi
+
+  # Find where current branch diverged from main branch
+  local merge_boundary
+  merge_boundary=$(git_find_branch_base)
+
+  # Build arrays for file categorization
+  local -a on_branch_files=()
+  local -a pre_merge_files=()
+  local -a new_files=()
+  local -A file_commits=()  # file -> "hash subject"
+
+  # Process each changed file
+  local file file_last_commit commit_info short_hash
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    file="${line:3}"
+
+    # Handle renamed files (show destination)
+    if [[ "$file" == *" -> "* ]]; then
+      file="${file##* -> }"
+    fi
+
+    # Get the last commit for this file
+    file_last_commit=$(git log -1 --format='%H' -- "$file" 2>/dev/null)
+
+    if [[ -z "$file_last_commit" ]]; then
+      # New file - no commit history
+      new_files+=("$file")
+    elif [[ -n "$merge_boundary" ]] && git merge-base --is-ancestor "$merge_boundary" "$file_last_commit" 2>/dev/null; then
+      # File's last commit is after the merge boundary - on current branch
+      commit_info=$(git log -1 --format='%h %s' -- "$file" 2>/dev/null)
+      short_hash="${commit_info%% *}"
+      file_commits[$file]="$commit_info"
+      on_branch_files+=("$file")
+    else
+      # File's last commit is before/at the merge boundary
+      pre_merge_files+=("$file")
+    fi
+  done <<< "$changes"
+
+  # Build list of ALL on-branch commits (not just those with current changes)
+  # This allows fixup to any on-branch commit, even if no current files are from that commit
+  # Exclude fixup commits (no fixup of fixup)
+  local -a unique_commits=()
+  local all_commits commit_line
+  all_commits=$(git log --format='%h %s' "${merge_boundary}..HEAD" 2>/dev/null)
+
+  while IFS= read -r commit_line; do
+    [[ -z "$commit_line" ]] && continue
+    # Skip fixup commits (subject starts with "fixup!")
+    if [[ "$commit_line" =~ ^[a-f0-9]+\ fixup! ]]; then
+      continue
+    fi
+    unique_commits+=("$commit_line")
+  done <<< "$all_commits"
+
+  # If no on-branch commits to fixup, inform user
+  if [[ ${#unique_commits[@]} -eq 0 ]]; then
+    pprint "No on-branch commits found to fixup." "$fgYellow"
+    pprint "All changed files are either new or from before the last merge." "$fgYellow"
+    return 0
+  fi
+
+  # Stage 1: Select fixup target commit (or use provided hash)
+  local target_commit target_hash target_subject
+
+  if [[ -n "$1" ]]; then
+    # Validate provided commit hash
+    if ! git rev-parse --verify "$1^{commit}" >/dev/null 2>&1; then
+      pprint "Invalid commit: $1" "$fgRed"
+      return 1
+    fi
+    target_hash=$(git rev-parse --short "$1" 2>/dev/null)
+    target_subject=$(git log -1 --format='%s' "$1" 2>/dev/null)
+  else
+    target_commit=$(
+      for commit in "${unique_commits[@]}"; do
+        echo "$commit"
+      done | _fzf_git_fzf --no-multi --ansi \
+        --border-label '🔧 Select Fixup Target' \
+        --header $'Select a commit to fixup\nCTRL-/ (toggle preview)\n' \
+        --preview 'hash=$(echo {} | cut -d" " -f1); git show --color=always --stat $hash | head -50'
+    )
+
+    # Exit silently if user cancelled
+    [[ -z "$target_commit" ]] && return 0
+
+    target_hash="${target_commit%% *}"
+    target_subject="${target_commit#* }"
+  fi
+
+  # Stage 2: Build file list with section headers
+  local file_list=""
+
+  # On-branch files (grouped by commit)
+  if [[ ${#on_branch_files[@]} -gt 0 ]]; then
+    # Group by commit for display
+    local -A displayed_commits=()
+    for file in "${on_branch_files[@]}"; do
+      commit_info="${file_commits[$file]}"
+      short_hash="${commit_info%% *}"
+      subject="${commit_info#* }"
+      # Truncate subject to ~40 chars
+      if [[ ${#subject} -gt 40 ]]; then
+        subject="${subject:0:37}..."
+      fi
+      if [[ -z "${displayed_commits[$short_hash]}" ]]; then
+        displayed_commits[$short_hash]=1
+        file_list+="${DIM}${ITALIC}${SEP} ${GREEN}${short_hash}${RESET}${DIM}${ITALIC}: ${subject} ${SEP}${RESET}"$'\n'
+      fi
+      file_list+="  $file"$'\n'
+    done
+  fi
+
+  # Pre-merge files
+  if [[ ${#pre_merge_files[@]} -gt 0 ]]; then
+    file_list+="${DIM}${ITALIC}${SEP} ${BLUE}Pre-merge${RESET}${DIM}${ITALIC} (not on current branch) ${SEP}${RESET}"$'\n'
+    for file in "${pre_merge_files[@]}"; do
+      file_list+="  $file"$'\n'
+    done
+  fi
+
+  # New files
+  if [[ ${#new_files[@]} -gt 0 ]]; then
+    file_list+="${DIM}${ITALIC}${SEP} ${YELLOW}New Files${RESET}${DIM}${ITALIC} (untracked) ${SEP}${RESET}"$'\n'
+    for file in "${new_files[@]}"; do
+      file_list+="  $file"$'\n'
+    done
+  fi
+
+  # Stage 2: Select files
+  local selected_files
+  selected_files=$(
+    echo -n "$file_list" | _fzf_git_fzf --multi --ansi \
+      --border-label "📁 Select Files for ${target_hash} ${target_subject}" \
+      --header $'Select files to include in fixup\nTAB (toggle) ╱ CTRL-A (all) ╱ CTRL-D (none)\n' \
+      --bind 'ctrl-a:select-all,ctrl-d:deselect-all' \
+      --preview "f=\$(echo {} | sed 's/^  //'); [[ -f \"\$f\" ]] && git diff --no-ext-diff --color=always -- \"\$f\" 2>/dev/null | head -100 || echo 'Section header'"
+  )
+
+  # Exit silently if user cancelled
+  [[ -z "$selected_files" ]] && return 0
+
+  # Filter out section headers and clean up file paths
+  local -a files_to_add=()
+  while IFS= read -r line; do
+    # Skip separator lines
+    [[ "$line" == *"$SEP"* ]] && continue
+    # Remove leading spaces
+    line="${line#  }"
+    [[ -n "$line" ]] && files_to_add+=("$line")
+  done <<< "$selected_files"
+
+  # Check if any files were actually selected
+  if [[ ${#files_to_add[@]} -eq 0 ]]; then
+    pprint "No files selected." "$fgYellow"
+    continue
+  fi
+
+  # Confirmation prompt
+  local file_count=${#files_to_add[@]}
+  local confirm_msg
+  confirm_msg="Fixup ${file_count} file"
+  [[ $file_count -gt 1 ]] && confirm_msg+="s"
+  confirm_msg+=" into ${target_hash}: ${target_subject}"
+
+  echo
+  pprint "$confirm_msg" "$fgCyan" "$txBold"
+  echo
+  for f in "${files_to_add[@]}"; do
+    echo "  $f"
+  done
+  echo
+
+  local response
+  printf '%b' "${fgYellow}Proceed? [y/N]:${txReset} "
+  read -r response
+
+  if [[ "$response" =~ ^[Yy]$ ]]; then
+    # Execute the fixup
+    git add "${files_to_add[@]}"
+    if git commit --fixup "$target_hash"; then
+      echo
+      pprint "✓ Fixup commit created" "$fgGreen"
+    else
+      echo
+      pprint "✗ Fixup commit failed" "$fgRed"
+      return 1
+    fi
+  else
+    pprint "Aborted." "$fgYellow"
+  fi
+
+  echo
+done

@@ -1,0 +1,21 @@
+#compdef gdus
+
+# Completion for the "gdus" command (git diff -U0 --cached).
+# Only suggests files that are actually staged.
+function _gdus() {
+  if ! git rev-parse --git-dir >/dev/null 2>&1; then
+    return 1
+  fi
+
+  local -a files
+  files=(${(f)"$(git diff --cached --name-only 2>/dev/null)"})
+
+  if [[ ${#files[@]} -eq 0 ]]; then
+    _message 'no staged changes'
+    return 1
+  fi
+
+  _describe -t staged-files 'staged files' files
+}
+
+_gdus "$@"

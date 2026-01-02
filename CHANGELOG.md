@@ -1,3 +1,9 @@
+## v2.11.2 (2026-01-01)
+
+### Fix
+
+- **neovim**: remove checkbox position option and ensure latex rendering is disabled for render-markdown
+
 ## v2.11.1 (2025-12-29)
 
 ### Fix

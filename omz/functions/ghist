@@ -1,0 +1,55 @@
+#######################################
+# ghist - git history with pretty formatting
+#######################################
+if [[ $1 == "--help" || $1 == "-h" ]]; then
+  fold -w "$(tput cols)" -s <<'EOF'
+Usage: ghist [-N | COMMIT]
+Show git history with pretty formatting.
+
+Arguments:
+  -N        Number of commits to show (e.g., -5, -10)
+  COMMIT    Commit hash or ref to start from (e.g., HEAD~3, abc1234)
+
+When no argument is provided, shows commits ahead of main/master/develop.
+
+Examples:
+  ghist          # Commits ahead of main/master/develop/development/production
+  ghist -5       # Last 5 commits
+  ghist HEAD~3   # Commits from HEAD~3 to HEAD
+EOF
+  return 0
+fi
+
+# Ensure we're in a git repository
+git rev-parse --git-dir >/dev/null 2>&1 || { echo "ghist: not a git repository" >&2; return 1; }
+
+local log_format='%C(yellow)%h%C(reset) %C(green)%G?%C(reset) %C(blue)%an%C(reset) %C(cyan)%cr%C(reset) %s %C(auto)%d%C(reset)'
+
+# Handle -N syntax (e.g., -5)
+if [[ $1 =~ ^-[0-9]+$ ]]; then
+  git log --decorate --pretty=format:"$log_format" --graph --date-order -n "${1#-}"
+  return 0
+fi
+
+# Handle commit/ref argument
+if [[ -n $1 ]]; then
+  git log --decorate --pretty=format:"$log_format" --graph --date-order "$1^..HEAD"
+  return 0
+fi
+
+# No argument - show commits ahead of base branch
+local base_branch
+base_branch=$(git_find_branch_base -n)
+
+[[ -z "$base_branch" ]] && { echo "🔴 ghist: could not find main/master/develop/development/production" >&2; return 1; }
+
+local commit_count=$(git rev-list --count "${base_branch}..HEAD" 2>/dev/null)
+if [[ $commit_count -eq 0 ]]; then
+  echo "🟡 No commits ahead of $base_branch"
+  return 0
+fi
+
+git log --decorate --pretty=format:"$log_format" --date-order "${base_branch}..HEAD"
+echo "$(git log -1 --format='%C(yellow)%h%C(reset) %s' "$base_branch")"
+echo ""
+echo "🟢 $commit_count commits ahead of $base_branch"

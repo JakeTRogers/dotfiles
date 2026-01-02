@@ -99,13 +99,7 @@ alias pdkbe='pdk bundle exec'
 alias pdkt='pdk test unit'
 alias pdkv='pdk validate'
 alias pdkvt='pdk validate && pdk test unit'
-alias gciaf='git commit -a --fixup'
-alias gcif='git commit --fixup'
-alias gdu='git diff -U0'
-alias gdus='git diff -U0 --cached'
-alias ghist="git log --decorate --pretty=format:'%C(yellow)%h%C(reset) %C(green)%G?%C(reset) %C(blue)%an%C(reset) %C(cyan)%cr%C(reset) %s %C(auto)%d%C(reset)' --graph --date-order"
 alias gitrebaseall='def_branch=$({ git branch | grep development || git branch | grep production || git branch | grep main || git branch | grep master; } | tr -d " *"); for branch in $(git branch | egrep -v "development|production|main|master" | tr -d " *"); do echo $branch; git checkout $branch && git rebase $def_branch && git push origin $branch -f; echo;echo;done; git checkout $def_branch; git branch -v'
-alias grias='git rebase --interactive --autosquash'
 
 # zsh stuff
 alias zshconfig="vim ~/.zshrc"

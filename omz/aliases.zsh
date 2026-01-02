@@ -27,6 +27,58 @@ alias dt='date +%Y-%m-%d-%H:%M'
 alias sd='date +%Y%m%d'
 alias sdt='date +%Y%m%d-%H%M'
 
+# fzf aliases
+
+## podman fzf aliases
+
+# exec into a podman container
+function fpe() {
+  local cid
+  cid=$(podman ps | sed 1d | fzf -q "$1" | awk '{print $1}')
+  [ -n "$cid" ] && podman exec -it "$cid" /bin/bash
+}
+
+# start and exec into a podman container
+function fpse() {
+  local cid
+  cid=$(podman ps -a | sed 1d | fzf -1 -q "$1" | awk '{print $1}')
+  [ -n "$cid" ] && podman start "$cid" && podman exec -it "$cid" /bin/bash
+}
+
+# select a podman container to attach to
+function fpa() {
+  local cid
+  cid=$(podman ps | sed 1d | fzf -q "$1" | awk '{print $1}')
+
+  [ -n "$cid" ] && podman attach "$cid"
+}
+
+# Select a podman container to start and attach to
+function fpsa() {
+  local cid
+  cid=$(podman ps -a | sed 1d | fzf -1 -q "$1" | awk '{print $1}')
+
+  [ -n "$cid" ] && podman start "$cid" && podman attach "$cid"
+}
+
+# Select a running podman container to stop
+function fps() {
+  local cid
+  cid=$(podman ps | sed 1d | fzf -q "$1" | awk '{print $1}')
+
+  [ -n "$cid" ] && podman stop "$cid"
+}
+
+# Select a podman container to remove using multi-select
+function fprm() {
+  podman ps -a | sed 1d | fzf -q "$1" --no-sort -m --tac | awk '{ print $1 }' | xargs -r podman rm
+}
+
+# Select a podman image or images to remove
+function fprmi() {
+  podman images | sed 1d | fzf -q "$1" --no-sort -m --tac | awk '{ print $3 }' | xargs -r podman rmi
+}
+
 # kubernetes stuff
 # Pods not running or succeeded
 alias k8b='kubectl get pods -A --field-selector=status.phase!=Running,status.phase!=Succeeded'

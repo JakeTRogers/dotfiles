@@ -3,7 +3,7 @@
 # Completion for the "gciaf" command (git commit -a --fixup).
 function _gciaf() {
   _arguments -S -s \
-    '1:commit:__git_fixup_commits_since_merge'
+    '1:commit:_commits_since_merge'
 }
 
 _gciaf "$@"

@@ -2,7 +2,7 @@
 
 # Shared helper function to show commits since last merge (feature branch commits)
 # Used by git fixup-related completions (gciaf, gcif)
-function __git_fixup_commits_since_merge() {
+function _commits_since_merge() {
   if git rev-parse --git-dir >/dev/null 2>&1; then
     local -a commits
     local merge_base
@@ -21,4 +21,4 @@ function __git_fixup_commits_since_merge() {
   fi
 }
 
-__git_fixup_commits_since_merge "$@"
+_commits_since_merge "$@"

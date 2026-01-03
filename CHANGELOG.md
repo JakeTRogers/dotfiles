@@ -1,3 +1,9 @@
+## v2.12.2 (2026-01-02)
+
+### Fix
+
+- **omz**: correct file grouping by commit hash in gcfuh
+
 ## v2.12.1 (2026-01-02)
 
 ### Fix

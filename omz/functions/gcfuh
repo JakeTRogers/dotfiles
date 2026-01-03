@@ -157,21 +157,34 @@ while true; do
 
   # On-branch files (grouped by commit)
   if [[ ${#on_branch_files[@]} -gt 0 ]]; then
-    # Group by commit for display
-    local -A displayed_commits=()
+    # Group files by their commit hash, tracking encounter order
+    local -A commit_files=()  # hash -> newline-separated list of files
+    local -A commit_subjects=()  # hash -> subject
+    local -a commit_order=()  # ordered list of unique commit hashes
     for file in "${on_branch_files[@]}"; do
       commit_info="${file_commits[$file]}"
       short_hash="${commit_info%% *}"
       subject="${commit_info#* }"
+      commit_subjects[$short_hash]="$subject"
+      if [[ -n "${commit_files[$short_hash]}" ]]; then
+        commit_files[$short_hash]+=$'\n'"$file"
+      else
+        commit_files[$short_hash]="$file"
+        commit_order+=("$short_hash")  # track first encounter
+      fi
+    done
+
+    # Output files grouped under their commit headers (in encounter order)
+    for short_hash in "${commit_order[@]}"; do
+      subject="${commit_subjects[$short_hash]}"
       # Truncate subject to ~40 chars
       if [[ ${#subject} -gt 40 ]]; then
         subject="${subject:0:37}..."
       fi
-      if [[ -z "${displayed_commits[$short_hash]}" ]]; then
-        displayed_commits[$short_hash]=1
-        file_list+="${DIM}${ITALIC}${SEP} ${GREEN}${short_hash}${RESET}${DIM}${ITALIC}: ${subject} ${SEP}${RESET}"$'\n'
-      fi
-      file_list+="  $file"$'\n'
+      file_list+="${DIM}${ITALIC}${SEP} ${GREEN}${short_hash}${RESET}${DIM}${ITALIC}: ${subject} ${SEP}${RESET}"$'\n'
+      while IFS= read -r file; do
+        file_list+="  $file"$'\n'
+      done <<< "${commit_files[$short_hash]}"
     done
   fi
 

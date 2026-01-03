@@ -1,3 +1,9 @@
+## v2.12.1 (2026-01-02)
+
+### Fix
+
+- **omz**: update function references to use _commits_since_merge for completion scripts
+
 ## v2.12.0 (2026-01-02)
 
 ### Feature

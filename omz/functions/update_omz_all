@@ -1,0 +1,163 @@
+#######################################
+# update_omz_all - Update Oh-My-Zsh and all custom plugins/themes
+#
+# Auto-discovers and updates all git repositories in the Oh-My-Zsh
+# custom directory (plugins and themes) plus the core Oh-My-Zsh framework.
+# Processing order: core → themes → plugins.
+#
+# Arguments:
+#   --dry-run  Check update status without performing updates
+#   --help     Display this help message
+#
+# Outputs:
+#   Status messages for each component and summary counts
+#
+# Returns:
+#   0 on success, 1 if any update failed (fail-fast)
+#######################################
+
+# Parse arguments
+local dry_run=0
+
+for arg in "$@"; do
+  case "$arg" in
+    --help|-h)
+      fold -w "$(tput cols)" -s <<'EOF'
+Usage: update_omz_all [--dry-run] [--help]
+
+Update Oh-My-Zsh core framework and all custom plugins and themes.
+
+Auto-discovers all git repositories in $ZSH_CUSTOM/themes/ and $ZSH_CUSTOM/plugins/ directories and updates them along with the core Oh-My-Zsh framework.
+
+Options:
+  --dry-run  Check if updates are available without performing them. Fetches from remote and shows how many commits behind each component is.
+  --help     Display this help message
+
+Processing order: Oh-My-Zsh core → themes → plugins
+
+Examples:
+  Check for available updates:
+    update_omz_all --dry-run
+
+  Update everything:
+    update_omz_all
+EOF
+      return 0
+      ;;
+    --dry-run)
+      dry_run=1
+      ;;
+  esac
+done
+
+local total=0
+local updated=0
+local failed=0
+local skipped=0
+
+#######################################
+# Process a single git repository
+# Arguments:
+#   $1 - directory path
+#   $2 - display name
+#######################################
+function _process_repo() {
+  local dir=$1
+  local name=$2
+
+  ((total++))
+
+  if [[ $dry_run -eq 1 ]]; then
+    # Dry-run mode: fetch and check status
+    if ! git -C "$dir" fetch origin --quiet 2>/dev/null; then
+      pprint "⚠️  $name: fetch failed" "$fgYellow"
+      ((skipped++))
+      return 0
+    fi
+
+    # Get upstream tracking branch
+    local upstream
+    upstream=$(git -C "$dir" rev-parse --abbrev-ref "@{upstream}" 2>/dev/null)
+
+    if [[ -z $upstream ]]; then
+      pprint "⚠️  $name: no upstream tracking branch" "$fgYellow"
+      ((skipped++))
+      return 0
+    fi
+
+    # Count commits behind
+    local commits_behind
+    commits_behind=$(git -C "$dir" rev-list --count HEAD..@{upstream} 2>/dev/null)
+
+    if [[ $commits_behind -eq 0 ]]; then
+      pprint "✅ $name: up to date" "$fgGreen"
+    else
+      pprint "🔴 $name: $commits_behind commit(s) behind" "$fgRed"
+    fi
+    ((updated++))
+  else
+    # Update mode: pull changes
+    echo "Updating $name..."
+
+    # Check for upstream first
+    if ! git -C "$dir" rev-parse --abbrev-ref "@{upstream}" >/dev/null 2>&1; then
+      pprint "⚠️  $name: no upstream tracking branch, skipping" "$fgYellow"
+      ((skipped++))
+      return 0
+    fi
+
+    if ! git -C "$dir" pull -p 2>&1; then
+      pprint "✗ $name failed, try --dry-run to diagnose" "$fgRed"
+      return 1
+    fi
+    ((updated++))
+  fi
+}
+
+# Process Oh-My-Zsh core
+if [[ $dry_run -eq 1 ]]; then
+  _process_repo "$ZSH" "oh-my-zsh"
+else
+  echo "Updating oh-my-zsh..."
+  ((total++))
+  if omz update; then
+    ((updated++))
+  else
+    pprint "✗ oh-my-zsh failed" "$fgRed"
+    return 1
+  fi
+fi
+
+# Process themes
+if [[ -d "$ZSH_CUSTOM/themes" ]]; then
+  for dir in "$ZSH_CUSTOM/themes"/*; do
+    [[ -d "$dir" ]] || continue
+    local name=$(basename "$dir")
+    _process_repo "$dir" "$name" || return 1
+  done
+fi
+
+# Process plugins
+if [[ -d "$ZSH_CUSTOM/plugins" ]]; then
+  for dir in "$ZSH_CUSTOM/plugins"/*; do
+    [[ -d "$dir" ]] || continue
+    local name=$(basename "$dir")
+    _process_repo "$dir" "$name" || return 1
+  done
+fi
+
+# Display summary
+echo
+local action_word="updated"
+[[ $dry_run -eq 1 ]] && action_word="checked"
+
+if [[ $failed -gt 0 ]]; then
+  pprint "Summary: $updated $action_word, $failed failed, $skipped skipped (total: $total)" "$fgRed"
+  return 1
+elif [[ $skipped -gt 0 ]]; then
+  pprint "Summary: $updated $action_word, $failed failed, $skipped skipped (total: $total)" "$fgYellow"
+else
+  pprint "Summary: $updated $action_word, $failed failed, $skipped skipped (total: $total)" "$fgGreen"
+fi
+
+return 0

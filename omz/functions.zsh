@@ -1,20 +1,59 @@
 # functions
 
 #######################################
-# update all mirrored puppet forge modules in the current directory
+# update all git mirrors in subdirectories of the current directory
 # Arguments:
 #   None
 # Outputs:
 #   Writes the git fetch and push status to stdout
+# Returns:
+#   0 on success, 1 if any operations failed
 #######################################
-function update_forge_modules () {
-  for dir in $(ls -1); do
-    echo $dir
-    git -C "$dir" fetch -p origin
-    git -C "$dir" push --mirror
-    echo
+function update_git_mirrors_in_subdirs () {
+  local dir
+  local failed=0
+
+  for dir in */; do
+    # Skip if not a directory
+    [[ -d "$dir" ]] || continue
+
+    # Strip trailing slash
+    dir="${dir%/}"
+
+    echo "Processing: $dir"
+
+    # Check if it's a git repository
+    if ! git -C "$dir" rev-parse --git-dir &>/dev/null; then
+      echo "  ⚠️  Skipping: not a git repository"
+      echo
+      continue
+    fi
+
+    # Fetch with prune
+    if git -C "$dir" fetch -p origin; then
+      echo "  ✓ Fetch completed"
+    else
+      echo "  ✗ Fetch failed"
+      ((failed++))
+    fi
+
+    # Push mirror
+    if git -C "$dir" push --mirror; then
+      echo "  ✓ Mirror push completed"
+    else
+      echo "  ✗ Mirror push failed"
+      ((failed++))
+    fi
+
     echo
   done
+
+  if [[ $failed -gt 0 ]]; then
+    echo "⚠️  Completed with $failed error(s)"
+    return 1
+  else
+    echo "✅ All mirrors updated successfully"
+  fi
 }
 
 #######################################

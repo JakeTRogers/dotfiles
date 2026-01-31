@@ -22,7 +22,7 @@ All plugins are defined as separate Lua modules that return lazy.nvim plugin spe
 
 #### UI & Theme
 
-- **`colorscheme.lua`** - Tokyo Night color scheme
+- **`colorscheme.lua`** - [Tokyo Night](https://github.com/folke/tokyonight.nvim) color scheme with custom color overrides
 - **`alpha.lua`** - Greeter dashboard
 - **`lualine.lua`** - Status line
 - **`bufferline.lua`** - Buffer tabs
@@ -41,10 +41,13 @@ All plugins are defined as separate Lua modules that return lazy.nvim plugin spe
 
 #### Navigation & Search
 
-- **`nvim-tree.lua`** - File explorer
+- **`nvim-tree.lua`** - File explorer with `nvim-web-devicons`
 - **`fzf.lua`** - Fuzzy finder integration
 - **`treesitter.lua`** - Syntax parsing and highlighting
 - **`trouble.lua`** - Diagnostics list
+- **`init.lua`** - Common dependencies:
+  - `plenary.nvim` - Lua utility functions
+  - `vim-tmux-navigator` - Seamless tmux/vim navigation
 
 #### Git Integration
 
@@ -52,12 +55,19 @@ All plugins are defined as separate Lua modules that return lazy.nvim plugin spe
 
 #### Completion & Snippets
 
-- **`nvim-cmp.lua`** - Autocompletion engine
+- **`nvim-cmp.lua`** - Autocompletion engine with sources:
+  - `cmp-buffer` - Buffer text completion
+  - `cmp-path` - File system path completion
+  - `cmp_luasnip` - Snippet completion
+  - `friendly-snippets` - Collection of useful snippets
+  - `lspkind.nvim` - VS Code-like pictograms
 - **`luasnip.lua`** - Snippet engine
 
 #### LSP (`lsp/`)
 
-- **`mason.lua`** - LSP server installer
+- **`mason.lua`** - LSP server installer with:
+  - `mason-lspconfig` - LSP integration bridge
+  - `mason-tool-installer` - Automatic tool installation
 - **`lspconfig.lua`** - LSP server configurations
 
 #### Specialized

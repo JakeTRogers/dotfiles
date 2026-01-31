@@ -1,20 +1,59 @@
 # functions
 
 #######################################
-# update all mirrored puppet forge modules in the current directory
+# update all git mirrors in subdirectories of the current directory
 # Arguments:
 #   None
 # Outputs:
 #   Writes the git fetch and push status to stdout
+# Returns:
+#   0 on success, 1 if any operations failed
 #######################################
-function update_forge_modules () {
-  for dir in $(ls -1); do
-    echo $dir
-    git -C "$dir" fetch -p origin
-    git -C "$dir" push --mirror
-    echo
+function update_git_mirrors_in_subdirs () {
+  local dir
+  local failed=0
+
+  for dir in */; do
+    # Skip if not a directory
+    [[ -d "$dir" ]] || continue
+
+    # Strip trailing slash
+    dir="${dir%/}"
+
+    echo "Processing: $dir"
+
+    # Check if it's a git repository
+    if ! git -C "$dir" rev-parse --git-dir &>/dev/null; then
+      echo "  ⚠️  Skipping: not a git repository"
+      echo
+      continue
+    fi
+
+    # Fetch with prune
+    if git -C "$dir" fetch -p origin; then
+      echo "  ✓ Fetch completed"
+    else
+      echo "  ✗ Fetch failed"
+      ((failed++))
+    fi
+
+    # Push mirror
+    if git -C "$dir" push --mirror; then
+      echo "  ✓ Mirror push completed"
+    else
+      echo "  ✗ Mirror push failed"
+      ((failed++))
+    fi
+
     echo
   done
+
+  if [[ $failed -gt 0 ]]; then
+    echo "⚠️  Completed with $failed error(s)"
+    return 1
+  else
+    echo "✅ All mirrors updated successfully"
+  fi
 }
 
 #######################################
@@ -135,4 +174,357 @@ function git_find_branch_base() {
   else
     echo "$merge_base"
   fi
+}
+
+#######################################
+# _check_podman - Check if podman is available
+#
+# Verifies that podman command is available in PATH.
+# Prints error message if not found.
+#
+# Arguments:
+#   None
+# Returns:
+#   0 if podman is available, 1 if not found
+#######################################
+function _check_podman() {
+  if ! command -v podman &> /dev/null; then
+    echo "podman: command not found" >&2
+    return 1
+  fi
+  return 0
+}
+
+#######################################
+# fpe - Exec into a running podman container
+#
+# Interactive selection of running container with fzf, then exec into it.
+# Supports custom user, shell, working directory, and command execution.
+#
+# Arguments:
+#   -u, --user USER       Run as specified user
+#   -s, --shell SHELL     Use specified shell (default: /bin/bash)
+#   -w, --workdir PATH    Set working directory
+#   -c, --cmd COMMAND     Execute command instead of interactive shell
+#   query                 Optional fzf search query
+#
+# Outputs:
+#   Interactive fzf selection, then executes into container
+#######################################
+function fpe() {
+  _check_podman || return 1
+
+  local -A opts
+  zparseopts -D -E -A opts u: -user:=u s: -shell:=s w: -workdir:=w c: -cmd:=c
+
+  local user="${opts[-u]}"
+  local shell="${opts[-s]:-/bin/bash}"
+  local workdir="${opts[-w]}"
+  local cmd="${opts[-c]}"
+  local query="$1"
+
+  local cid
+  cid=$(podman ps | sed 1d | fzf -1 -q "$query" \
+    --border-label '🐳 Running Containers' \
+    --header 'CTRL-L (logs) ╱ CTRL-I (inspect) ╱ CTRL-S (stats) ╱ CTRL-D (delete)' \
+    --preview-window 'down,60%' \
+    --preview 'podman inspect {1} | jq -C '\''.[0] | {Status: .State.Status, Image: .ImageName, Name: .Name, Created: .Created, Command: .Config.Cmd, Ports: .NetworkSettings.Ports, Mounts: [.Mounts[].Destination]}'\''' \
+    --bind 'ctrl-l:execute(podman logs --tail 50 --color {1} | ${PAGER:-less} -R > /dev/tty)' \
+    --bind 'ctrl-i:execute(podman inspect {1} | jq -C . | ${PAGER:-less} -R > /dev/tty)' \
+    --bind 'ctrl-s:execute(podman stats --no-stream {1} > /dev/tty; read -k 1)' \
+    --bind 'ctrl-d:reload(podman rm {1} 2>&1; podman ps | sed 1d)' \
+    | awk '{print $1}')
+
+  [ -n "$cid" ] && podman exec ${user:+-u $user} ${workdir:+-w $workdir} -it "$cid" ${cmd:-$shell}
+}
+
+#######################################
+# fpse - Start and exec into a podman container
+#
+# Interactive selection of any container (including stopped) with fzf,
+# starts it if needed, then exec into it. Supports custom user, shell,
+# working directory, and command execution.
+#
+# Arguments:
+#   -u, --user USER       Run as specified user
+#   -s, --shell SHELL     Use specified shell (default: /bin/bash)
+#   -w, --workdir PATH    Set working directory
+#   -c, --cmd COMMAND     Execute command instead of interactive shell
+#   query                 Optional fzf search query
+#
+# Outputs:
+#   Interactive fzf selection, starts container, then executes into it
+#######################################
+function fpse() {
+  _check_podman || return 1
+
+  local -A opts
+  zparseopts -D -E -A opts u: -user:=u s: -shell:=s w: -workdir:=w c: -cmd:=c
+
+  local user="${opts[-u]}"
+  local shell="${opts[-s]:-/bin/bash}"
+  local workdir="${opts[-w]}"
+  local cmd="${opts[-c]}"
+  local query="$1"
+
+  local cid
+  cid=$(podman ps -a | sed 1d | fzf -1 -q "$query" \
+    --border-label '🐳 All Containers' \
+    --header 'CTRL-L (logs) ╱ CTRL-I (inspect) ╱ CTRL-S (stats) ╱ CTRL-D (delete)' \
+    --preview-window 'down,60%' \
+    --preview 'podman inspect {1} | jq -C '\''.[0] | {Status: .State.Status, Image: .ImageName, Name: .Name, Created: .Created, Command: .Config.Cmd, Ports: .NetworkSettings.Ports, Mounts: [.Mounts[].Destination]}'\''' \
+    --bind 'ctrl-l:execute(podman logs --tail 50 --color {1} | ${PAGER:-less} -R > /dev/tty)' \
+    --bind 'ctrl-i:execute(podman inspect {1} | jq -C . | ${PAGER:-less} -R > /dev/tty)' \
+    --bind 'ctrl-s:execute(podman stats --no-stream {1} > /dev/tty; read -k 1)' \
+    --bind 'ctrl-d:reload(podman rm {1} 2>&1; podman ps -a | sed 1d)' \
+    | awk '{print $1}')
+
+  [ -n "$cid" ] && podman start "$cid" && podman exec ${user:+-u $user} ${workdir:+-w $workdir} -it "$cid" ${cmd:-$shell}
+}
+
+#######################################
+# fpa - Attach to a running podman container
+#
+# Interactive selection of running container with fzf, then attach to it.
+#
+# Arguments:
+#   query                 Optional fzf search query
+#
+# Outputs:
+#   Interactive fzf selection, then attaches to container
+#######################################
+function fpa() {
+  _check_podman || return 1
+
+  local query="$1"
+
+  local cid
+  cid=$(podman ps | sed 1d | fzf -1 -q "$query" \
+    --border-label '🐳 Running Containers' \
+    --header 'CTRL-L (logs) ╱ CTRL-I (inspect) ╱ CTRL-S (stats) ╱ CTRL-D (delete)' \
+    --preview-window 'down,60%' \
+    --preview 'podman inspect {1} | jq -C '\''.[0] | {Status: .State.Status, Image: .ImageName, Name: .Name, Created: .Created, Command: .Config.Cmd, Ports: .NetworkSettings.Ports, Mounts: [.Mounts[].Destination]}'\''' \
+    --bind 'ctrl-l:execute(podman logs --tail 50 --color {1} | ${PAGER:-less} -R > /dev/tty)' \
+    --bind 'ctrl-i:execute(podman inspect {1} | jq -C . | ${PAGER:-less} -R > /dev/tty)' \
+    --bind 'ctrl-s:execute(podman stats --no-stream {1} > /dev/tty; read -k 1)' \
+    --bind 'ctrl-d:reload(podman rm {1} 2>&1; podman ps | sed 1d)' \
+    | awk '{print $1}')
+
+  [ -n "$cid" ] && podman attach "$cid"
+}
+
+#######################################
+# fpsa - Start and attach to a podman container
+#
+# Interactive selection of any container (including stopped) with fzf,
+# starts it if needed, then attach to it.
+#
+# Arguments:
+#   query                 Optional fzf search query
+#
+# Outputs:
+#   Interactive fzf selection, starts container, then attaches to it
+#######################################
+function fpsa() {
+  _check_podman || return 1
+
+  local query="$1"
+
+  local cid
+  cid=$(podman ps -a | sed 1d | fzf -1 -q "$query" \
+    --border-label '🐳 All Containers' \
+    --header 'CTRL-L (logs) ╱ CTRL-I (inspect) ╱ CTRL-S (stats) ╱ CTRL-D (delete)' \
+    --preview-window 'down,60%' \
+    --preview 'podman inspect {1} | jq -C '\''.[0] | {Status: .State.Status, Image: .ImageName, Name: .Name, Created: .Created, Command: .Config.Cmd, Ports: .NetworkSettings.Ports, Mounts: [.Mounts[].Destination]}'\''' \
+    --bind 'ctrl-l:execute(podman logs --tail 50 --color {1} | ${PAGER:-less} -R > /dev/tty)' \
+    --bind 'ctrl-i:execute(podman inspect {1} | jq -C . | ${PAGER:-less} -R > /dev/tty)' \
+    --bind 'ctrl-s:execute(podman stats --no-stream {1} > /dev/tty; read -k 1)' \
+    --bind 'ctrl-d:reload(podman rm {1} 2>&1; podman ps -a | sed 1d)' \
+    | awk '{print $1}')
+
+  [ -n "$cid" ] && podman start "$cid" && podman attach "$cid"
+}
+
+#######################################
+# fps - Stop running podman containers
+#
+# Interactive selection of running containers with fzf (supports multiselect),
+# then stops the selected containers.
+#
+# Arguments:
+#   query                 Optional fzf search query
+#
+# Outputs:
+#   Interactive fzf selection, then stops selected containers
+#######################################
+function fps() {
+  _check_podman || return 1
+
+  local query="$1"
+
+  podman ps | sed 1d | fzf -1 -m -q "$query" \
+    --border-label '🐳 Running Containers' \
+    --header 'TAB (select multiple) ╱ CTRL-L (logs) ╱ CTRL-I (inspect) ╱ CTRL-S (stats) ╱ CTRL-D (delete)' \
+    --preview-window 'down,60%' \
+    --preview 'podman inspect {1} | jq -C '\''.[0] | {Status: .State.Status, Image: .ImageName, Name: .Name, Created: .Created, Command: .Config.Cmd, Ports: .NetworkSettings.Ports, Mounts: [.Mounts[].Destination]}'\''' \
+    --bind 'ctrl-l:execute(podman logs --tail 50 --color {1} | ${PAGER:-less} -R > /dev/tty)' \
+    --bind 'ctrl-i:execute(podman inspect {1} | jq -C . | ${PAGER:-less} -R > /dev/tty)' \
+    --bind 'ctrl-s:execute(podman stats --no-stream {1} > /dev/tty; read -k 1)' \
+    --bind 'ctrl-d:reload(podman rm {1} 2>&1; podman ps | sed 1d)' \
+    | awk '{print $1}' | xargs -r podman stop
+}
+
+#######################################
+# fprm - Remove podman containers
+#
+# Interactive selection of containers with fzf (supports multiselect),
+# then removes the selected containers.
+#
+# Arguments:
+#   query                 Optional fzf search query
+#
+# Outputs:
+#   Interactive fzf selection, then removes selected containers
+#######################################
+function fprm() {
+  _check_podman || return 1
+
+  local query="$1"
+
+  podman ps -a | sed 1d | fzf -q "$query" --no-sort -m --tac \
+    --border-label '🐳 All Containers' \
+    --header 'TAB (select multiple) ╱ CTRL-L (logs) ╱ CTRL-I (inspect) ╱ CTRL-S (stats)' \
+    --preview-window 'down,60%' \
+    --preview 'podman inspect {1} | jq -C '\''.[0] | {Status: .State.Status, Image: .ImageName, Name: .Name, Created: .Created, Command: .Config.Cmd, Ports: .NetworkSettings.Ports, Mounts: [.Mounts[].Destination]}'\''' \
+    --bind 'ctrl-l:execute(podman logs --tail 50 --color {1} | ${PAGER:-less} -R > /dev/tty)' \
+    --bind 'ctrl-i:execute(podman inspect {1} | jq -C . | ${PAGER:-less} -R > /dev/tty)' \
+    --bind 'ctrl-s:execute(podman stats --no-stream {1} > /dev/tty; read -k 1)' \
+    | awk '{print $1}' | xargs -r podman rm
+}
+
+#######################################
+# fprmi - Remove podman images
+#
+# Interactive selection of images with fzf (supports multiselect),
+# then removes the selected images.
+#
+# Arguments:
+#   query                 Optional fzf search query
+#
+# Outputs:
+#   Interactive fzf selection, then removes selected images
+#######################################
+function fprmi() {
+  _check_podman || return 1
+
+  local query="$1"
+
+  podman images | sed 1d | fzf -q "$query" --no-sort -m --tac \
+    --border-label '🐳 Images' \
+    --header 'TAB (select multiple) ╱ CTRL-I (inspect)' \
+    --preview-window 'down,60%' \
+    --preview 'podman inspect {3} | jq -C '\''.[0] | {Id: .Id, RepoTags: .RepoTags, Created: .Created, Size: .Size, Architecture: .Architecture, Os: .Os}'\''' \
+    --bind 'ctrl-i:execute(podman inspect {3} | jq -C . | ${PAGER:-less} -R > /dev/tty)' \
+    | awk '{print $3}' | xargs -r podman rmi
+}
+
+#######################################
+# fpl - View logs from podman containers
+#
+# Interactive selection of containers with fzf (supports multiselect),
+# then displays logs. Supports following logs and specifying number of lines.
+#
+# Arguments:
+#   -f, --follow          Follow log output
+#   -n, --lines LINES     Number of lines to show (default: all)
+#   query                 Optional fzf search query
+#
+# Outputs:
+#   Interactive fzf selection, then displays container logs
+#######################################
+function fpl() {
+  _check_podman || return 1
+
+  local -A opts
+  zparseopts -D -E -A opts f -follow=f n: -lines:=n
+
+  local follow_flag=""
+  local lines_flag=""
+  [[ -n ${opts[-f]} ]] && follow_flag="-f"
+  [[ -n ${opts[-n]} ]] && lines_flag="--tail ${opts[-n]}"
+
+  local query="$1"
+
+  local containers
+  containers=($(podman ps -a | sed 1d | fzf -m -q "$query" \
+    --border-label '🐳 All Containers' \
+    --header 'TAB (select multiple) ╱ CTRL-I (inspect) ╱ CTRL-S (stats) ╱ CTRL-D (delete)' \
+    --preview-window 'down,60%' \
+    --preview 'podman inspect {1} | jq -C '\''.[0] | {Status: .State.Status, Image: .ImageName, Name: .Name, Created: .Created, Command: .Config.Cmd, Ports: .NetworkSettings.Ports, Mounts: [.Mounts[].Destination]}'\''' \
+    --bind 'ctrl-i:execute(podman inspect {1} | jq -C . | ${PAGER:-less} -R > /dev/tty)' \
+    --bind 'ctrl-s:execute(podman stats --no-stream {1} > /dev/tty; read -k 1)' \
+    --bind 'ctrl-d:reload(podman rm {1} 2>&1; podman ps -a | sed 1d)' \
+    | awk '{print $1}'))
+
+  [ ${#containers[@]} -gt 0 ] && podman logs $follow_flag $lines_flag --color ${containers[@]}
+}
+
+#######################################
+# fpst - View stats for podman containers
+#
+# Interactive selection of running containers with fzf (supports multiselect),
+# then displays live statistics.
+#
+# Arguments:
+#   query                 Optional fzf search query
+#
+# Outputs:
+#   Interactive fzf selection, then displays container statistics
+#######################################
+function fpst() {
+  _check_podman || return 1
+
+  local query="$1"
+
+  local containers
+  containers=($(podman ps | sed 1d | fzf -m -q "$query" \
+    --border-label '🐳 Running Containers' \
+    --header 'TAB (select multiple) ╱ CTRL-L (logs) ╱ CTRL-I (inspect) ╱ CTRL-D (delete)' \
+    --preview-window 'down,60%' \
+    --preview 'podman inspect {1} | jq -C '\''.[0] | {Status: .State.Status, Image: .ImageName, Name: .Name, Created: .Created, Command: .Config.Cmd, Ports: .NetworkSettings.Ports, Mounts: [.Mounts[].Destination]}'\''' \
+    --bind 'ctrl-l:execute(podman logs --tail 50 --color {1} | ${PAGER:-less} -R > /dev/tty)' \
+    --bind 'ctrl-i:execute(podman inspect {1} | jq -C . | ${PAGER:-less} -R > /dev/tty)' \
+    --bind 'ctrl-d:reload(podman rm {1} 2>&1; podman ps | sed 1d)' \
+    | awk '{print $1}'))
+
+  [ ${#containers[@]} -gt 0 ] && podman stats ${containers[@]}
+}
+
+#######################################
+# fprestart - Restart podman containers
+#
+# Interactive selection of containers with fzf (supports multiselect),
+# then restarts the selected containers.
+#
+# Arguments:
+#   query                 Optional fzf search query
+#
+# Outputs:
+#   Interactive fzf selection, then restarts selected containers
+#######################################
+function fprestart() {
+  _check_podman || return 1
+
+  local query="$1"
+
+  podman ps -a | sed 1d | fzf -m -q "$query" \
+    --border-label '🐳 All Containers' \
+    --header 'TAB (select multiple) ╱ CTRL-L (logs) ╱ CTRL-I (inspect) ╱ CTRL-S (stats) ╱ CTRL-D (delete)' \
+    --preview-window 'down,60%' \
+    --preview 'podman inspect {1} | jq -C '\''.[0] | {Status: .State.Status, Image: .ImageName, Name: .Name, Created: .Created, Command: .Config.Cmd, Ports: .NetworkSettings.Ports, Mounts: [.Mounts[].Destination]}'\''' \
+    --bind 'ctrl-l:execute(podman logs --tail 50 --color {1} | ${PAGER:-less} -R > /dev/tty)' \
+    --bind 'ctrl-i:execute(podman inspect {1} | jq -C . | ${PAGER:-less} -R > /dev/tty)' \
+    --bind 'ctrl-s:execute(podman stats --no-stream {1} > /dev/tty; read -k 1)' \
+    --bind 'ctrl-d:reload(podman rm {1} 2>&1; podman ps -a | sed 1d)' \
+    | awk '{print $1}' | xargs -r podman restart
 }

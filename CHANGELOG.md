@@ -1,3 +1,21 @@
+## v2.13.0 (2026-01-31)
+
+### Feature
+
+- **omz**: add update_omz_all function to update Oh-My-Zsh core, plugins, and themes
+- **omz**: improve update_git_mirrors_in_subdirs robustness and feedback
+- **omz**: modernize podman fzf functions with zparseopts, multiselect, keybindings, and color preview
+- **omz**: add multi-binary install loop to get_release and refresh menu after each install
+
+### Fix
+
+- **bat**: remove duplicate symlink for bat themes in configure script
+- **bat**: ensure bat themes are built after configuration
+
+### Refactor
+
+- **omz**: improve gitrebaseall alias with better default branch detection and rebase conflict handling
+
 ## v2.12.2 (2026-01-02)
 
 ### Fix

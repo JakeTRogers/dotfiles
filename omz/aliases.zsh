@@ -27,58 +27,6 @@ alias dt='date +%Y-%m-%d-%H:%M'
 alias sd='date +%Y%m%d'
 alias sdt='date +%Y%m%d-%H%M'
 
-# fzf aliases
-
-## podman fzf aliases
-
-# exec into a podman container
-function fpe() {
-  local cid
-  cid=$(podman ps | sed 1d | fzf -q "$1" | awk '{print $1}')
-  [ -n "$cid" ] && podman exec -it "$cid" /bin/bash
-}
-
-# start and exec into a podman container
-function fpse() {
-  local cid
-  cid=$(podman ps -a | sed 1d | fzf -1 -q "$1" | awk '{print $1}')
-  [ -n "$cid" ] && podman start "$cid" && podman exec -it "$cid" /bin/bash
-}
-
-# select a podman container to attach to
-function fpa() {
-  local cid
-  cid=$(podman ps | sed 1d | fzf -q "$1" | awk '{print $1}')
-
-  [ -n "$cid" ] && podman attach "$cid"
-}
-
-# Select a podman container to start and attach to
-function fpsa() {
-  local cid
-  cid=$(podman ps -a | sed 1d | fzf -1 -q "$1" | awk '{print $1}')
-
-  [ -n "$cid" ] && podman start "$cid" && podman attach "$cid"
-}
-
-# Select a running podman container to stop
-function fps() {
-  local cid
-  cid=$(podman ps | sed 1d | fzf -q "$1" | awk '{print $1}')
-
-  [ -n "$cid" ] && podman stop "$cid"
-}
-
-# Select a podman container to remove using multi-select
-function fprm() {
-  podman ps -a | sed 1d | fzf -q "$1" --no-sort -m --tac | awk '{ print $1 }' | xargs -r podman rm
-}
-
-# Select a podman image or images to remove
-function fprmi() {
-  podman images | sed 1d | fzf -q "$1" --no-sort -m --tac | awk '{ print $3 }' | xargs -r podman rmi
-}
-
 # kubernetes stuff
 # Pods not running or succeeded
 alias k8b='kubectl get pods -A --field-selector=status.phase!=Running,status.phase!=Succeeded'
@@ -145,14 +93,8 @@ alias k8tc='kubectl top pods -A --sort-by=cpu'
 # pods by memory
 alias k8tm='kubectl top pods -A --sort-by=memory'
 
-# puppet and git stuff
-alias guard='guard --no-bundler-warning'
-alias pdkbe='pdk bundle exec'
-alias pdkt='pdk test unit'
-alias pdkv='pdk validate'
-alias pdkvt='pdk validate && pdk test unit'
-alias gitrebaseall='def_branch=$({ git branch | grep development || git branch | grep production || git branch | grep main || git branch | grep master; } | tr -d " *"); for branch in $(git branch | egrep -v "development|production|main|master" | tr -d " *"); do echo $branch; git checkout $branch && git rebase $def_branch && git push origin $branch -f; echo;echo;done; git checkout $def_branch; git branch -v'
+# git stuff
+alias gitrebaseall='def_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed "s@^refs/remotes/origin/@@" || { git branch | grep -m1 -E "development|production|main|master" | tr -d " *"; }); for branch in $(git branch | grep -vE "development|production|main|master" | tr -d " *"); do echo "Rebasing $branch..."; git checkout $branch && git rebase $def_branch && git push origin $branch -f || { echo "❌ Failed on $branch"; git rebase --abort 2>/dev/null; git checkout $def_branch; return 1; }; echo;done; git checkout $def_branch; git branch -v'
 
 # zsh stuff
-alias zshconfig="vim ~/.zshrc"
 alias n=nvim

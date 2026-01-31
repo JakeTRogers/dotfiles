@@ -13,7 +13,7 @@ This repo manages my dotfiles and works nicely with the vscode dev container ext
 - [Tmux](https://github.com/tmux/tmux/wiki)
   - [.tmux.conf](https://github.com/tmux/tmux/blob/master/example_tmux.conf)
   - [Tmux Plugin Manager](https://github.com/tmux-plugins/tpm)
-    - [tmux-dracula](https://draculatheme.com/tmux)
+    - [dracula/tmux](https://draculatheme.com/tmux)
     - [tmux-fingers](https://github.com/Morantron/tmux-fingers)
     - [tmux-logging](https://github.com/tmux-plugins/tmux-logging)
     - [tmux-pain-control](https://github.com/tmux-plugins/tmux-pain-control)
@@ -37,26 +37,30 @@ This repo manages my dotfiles and works nicely with the vscode dev container ext
     - [vim-puppet](https://github.com/rodjek/vim-puppet)
     - [vim-snipmate](https://github.com/garbas/vim-snipmate)
     - [vim-surround](https://github.com/tpope/vim-surround)
+    - [vimwiki](https://github.com/vimwiki/vimwiki)
 - [zsh](https://www.zsh.org/)
   - [zshrc](https://github.com/ohmyzsh/ohmyzsh/blob/master/templates/zshrc.zsh-template)
   - [Oh My Zsh](https://ohmyz.sh/)
     - [powerlevel10k](https://github.com/romkatv/powerlevel10k)
     - [zsh-autosuggestions](https://github.com/zsh-users/zsh-autosuggestions)
     - [zsh-syntax-highlighting](https://github.com/zsh-users/zsh-syntax-highlighting)
-    - [wd](https://github.com/mfaerevaag/wd)
+    - Built-in plugins: colored-man-pages, colorize, gh, git, gpg-agent, kubectl, ssh-agent, tmux, wd
+    - Custom functions and completions (see [omz/](omz/))
 
 ## Full Installation Only
 
 The following tools are only installed when using `./install.sh full`:
 
 - [bat](https://github.com/sharkdp/bat) - A cat clone with syntax highlighting
+  - Custom Tokyo Night theme
 - [fd](https://github.com/sharkdp/fd) - A simple, fast and user-friendly alternative to find
 - [fzf](https://github.com/junegunn/fzf) - A command-line fuzzy finder
   - [fzf-git.sh](https://github.com/junegunn/fzf-git.sh) - Git integration for fzf
+  - [fzf-tab](https://github.com/Aloxaf/fzf-tab) - fzf integration for zsh tab completion
 - [ripgrep](https://github.com/BurntSushi/ripgrep) - A line-oriented search tool
 - [Neovim](https://neovim.io/)
   - [lazy.nvim](https://github.com/folke/lazy.nvim) - Plugin manager
-  - Plugins including LSP support, fuzzy finding, git integration, markdown rendering, and more
+  - Plugins including LSP support, fuzzy finding, git integration, markdown rendering, [and more](neovim/)
 
 ## Installation
 

@@ -1,3 +1,9 @@
+## v2.13.1 (2026-02-01)
+
+### Fix
+
+- **vim**: update pathogen.vim install URL to use GitHub raw link
+
 ## v2.13.0 (2026-01-31)
 
 ### Feature

@@ -10,7 +10,7 @@ if [ "${INSTALL_MODE}" = 'full' ]; then
   ln -sf "${DOTFILES_LOCATION}/vim/vimrc" "${HOME}/.vimrc"
 
   # install vim pathogen
-  curl -LSso ~/.vim/autoload/pathogen.vim https://tpo.pe/pathogen.vim
+  curl -LSso ~/.vim/autoload/pathogen.vim https://raw.githubusercontent.com/tpope/vim-pathogen/master/autoload/pathogen.vim
 
   # array of vim plugins to be cloned
   vim_plugins=( \

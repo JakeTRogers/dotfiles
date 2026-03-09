@@ -3,33 +3,41 @@
 #######################################
 if [[ $1 == "--help" || $1 == "-h" ]]; then
   fold -w "$(tput cols)" -s <<'EOF'
-Usage: gcfuh [COMMIT]
+Usage: gcfuh [FILE...]
 Interactive git commit --fixup helper using fzf.
 
-Arguments:
-  COMMIT    Optional commit hash to fixup (skips commit selection)
+Modes:
+  No arguments    Select a target commit first, then pick files to include.
+  With files      For each file, select which on-branch commit to fixup.
+                  Files sharing the same target are grouped into one fixup.
 
-This function helps you organize uncommitted changes into fixup commits for previous commits on your current branch. It provides a two-stage interactive selection:
+This function helps you organize uncommitted changes into fixup commits for previous commits on your current branch.
 
+Without arguments it provides a two-stage interactive selection:
   1. Select a target commit to fixup (from commits after the most recent merge)
   2. Select files to include in the fixup (grouped by their last commit)
 
-Files are grouped into three categories:
-  - On-branch: Files whose last commit is after the most recent merge
-  - Pre-merge: Files whose last commit is before/at the merge point
-  - New files: Untracked files with no commit history
+With file arguments it provides per-file commit selection:
+  - Each file is matched to the on-branch commits that touched it
+  - If only one commit touched the file, it is auto-selected
+  - Files with no on-branch history can be assigned to any on-branch commit
+  - Files are grouped by selected target and one fixup commit is created per target
 
-The function automatically unstages all files at start to prevent accidental inclusion. After each fixup, it loops back if there are remaining changes.
+The function automatically unstages all files at start to prevent accidental inclusion. In no-args mode, it loops back if there are remaining changes.
 
 Keybindings in fzf:
-  TAB       Toggle selection
-  CTRL-A    Select all
-  CTRL-D    Deselect all
-  CTRL-/    Toggle preview
-  ESC       Cancel and exit
+  No-args mode, file selection:
+    TAB       Toggle selection
+    CTRL-A    Select all
+    CTRL-D    Deselect all
+  Both modes:
+    CTRL-/    Toggle preview
+    ESC       Cancel and exit
 
 Examples:
-  gcfuh
+  gcfuh                     Interactive commit-first mode
+  gcfuh path/to/file.sh     Per-file mode (auto-selects if one commit)
+  gcfuh a.txt b.txt         Per-file mode (grouped fixup if same target)
 EOF
   return 0
 fi
@@ -52,6 +60,158 @@ local BLUE=$'\033[34m'
 # Unstage all files to start fresh
 git restore --staged . 2>/dev/null
 
+# Find where current branch diverged from main branch
+local merge_boundary
+merge_boundary=$(git_find_branch_base)
+
+# Build list of ALL on-branch commits (not just those with current changes)
+# Exclude fixup commits (no fixup of fixup)
+local -a unique_commits=()
+local all_commits commit_line
+all_commits=$(git log --format='%h %s' "${merge_boundary}..HEAD" 2>/dev/null)
+
+while IFS= read -r commit_line; do
+  [[ -z "$commit_line" ]] && continue
+  # Skip fixup commits (subject starts with "fixup!")
+  if [[ "$commit_line" =~ ^[a-f0-9]+\ fixup! ]]; then
+    continue
+  fi
+  unique_commits+=("$commit_line")
+done <<< "$all_commits"
+
+# If no on-branch commits to fixup, inform user
+if [[ ${#unique_commits[@]} -eq 0 ]]; then
+  pprint "No on-branch commits found to fixup." "$fgYellow"
+  return 0
+fi
+
+# ─── Files-passed mode ──────────────────────────────────────────────
+if [[ $# -gt 0 ]]; then
+  local -a passed_files=("$@")
+
+  # Validate passed files: must have uncommitted changes according to git status
+  local -a valid_files=()
+  local status_output
+  status_output=$(git status -s 2>/dev/null)
+  for file in "${passed_files[@]}"; do
+    if git status -s -- "$file" | grep -q .; then
+      valid_files+=("$file")
+    else
+      pprint "Skipping unknown file: $file" "$fgYellow"
+    fi
+  done
+
+  if [[ ${#valid_files[@]} -eq 0 ]]; then
+    pprint "No valid files to process." "$fgYellow"
+    return 0
+  fi
+
+  # Per-file commit selection
+  local -A fixup_file_map=()    # target_hash -> newline-separated file list
+  local -A fixup_subject_map=() # target_hash -> subject
+  local -a fixup_order=()       # ordered unique target hashes
+
+  for file in "${valid_files[@]}"; do
+    # Find on-branch commits that touched this file (excluding fixup commits)
+    local -a file_candidates=()
+    local file_commits_output candidate_line
+    file_commits_output=$(git log --format='%h %s' "${merge_boundary}..HEAD" -- "$file" 2>/dev/null)
+
+    while IFS= read -r candidate_line; do
+      [[ -z "$candidate_line" ]] && continue
+      if [[ "$candidate_line" =~ ^[a-f0-9]+\ fixup! ]]; then
+        continue
+      fi
+      file_candidates+=("$candidate_line")
+    done <<< "$file_commits_output"
+
+    # Fallback: if no on-branch commits touched this file, offer all on-branch commits
+    if [[ ${#file_candidates[@]} -eq 0 ]]; then
+      file_candidates=("${unique_commits[@]}")
+    fi
+
+    local target_hash target_subject
+
+    if [[ ${#file_candidates[@]} -eq 1 ]]; then
+      # Auto-select the single candidate
+      target_hash="${file_candidates[1]%% *}"
+      target_subject="${file_candidates[1]#* }"
+      pprint "Auto-selected ${target_hash}: ${target_subject} for ${file}" "$fgGreen"
+    else
+      # Prompt user to select a commit for this file
+      local escaped_file
+      escaped_file=$(printf '%q' "$file")
+      local selected
+      selected=$(
+        for candidate in "${file_candidates[@]}"; do
+          echo "$candidate"
+        done | _fzf_git_fzf --no-multi --ansi \
+          --border-label "🔧 Select Fixup Target for ${file}" \
+          --header $'Select which commit to fixup for this file\nCTRL-/ (toggle preview)\n' \
+          --preview "hash=\$(echo {} | cut -d' ' -f1); git show --color=always \$hash -- ${escaped_file} 2>/dev/null | head -120"
+      )
+
+      if [[ -z "$selected" ]]; then
+        pprint "Selection cancelled. No fixup commits were created." "$fgYellow"
+        return 0
+      fi
+
+      target_hash="${selected%% *}"
+      target_subject="${selected#* }"
+    fi
+
+    # Accumulate into grouped map
+    if [[ -n "${fixup_file_map[$target_hash]}" ]]; then
+      fixup_file_map[$target_hash]+=$'\n'"$file"
+    else
+      fixup_file_map[$target_hash]="$file"
+      fixup_subject_map[$target_hash]="$target_subject"
+      fixup_order+=("$target_hash")
+    fi
+  done
+
+  # Confirmation prompt
+  echo
+  pprint "Fixup summary" "$fgCyan" "$txBold"
+  echo
+  for target_hash in "${fixup_order[@]}"; do
+    local subject="${fixup_subject_map[$target_hash]}"
+    pprint "  ${target_hash}: ${subject}" "$fgGreen"
+    while IFS= read -r file; do
+      echo "    $file"
+    done <<< "${fixup_file_map[$target_hash]}"
+  done
+  echo
+
+  local response
+  printf '%b' "${fgYellow}Proceed? [y/N]:${txReset} "
+  read -r response
+
+  if [[ "$response" =~ ^[Yy]$ ]]; then
+    for target_hash in "${fixup_order[@]}"; do
+      local -a group_files=()
+      while IFS= read -r file; do
+        group_files+=("$file")
+      done <<< "${fixup_file_map[$target_hash]}"
+
+      git add "${group_files[@]}"
+      if git commit --fixup "$target_hash"; then
+        echo
+        pprint "✓ Fixup commit created for ${target_hash}" "$fgGreen"
+      else
+        echo
+        pprint "✗ Fixup commit failed for ${target_hash}" "$fgRed"
+        return 1
+      fi
+    done
+  else
+    pprint "Aborted." "$fgYellow"
+  fi
+
+  return 0
+fi
+
+# ─── Commit-first mode (no arguments) ──────────────────────────────
 # Main loop - continue while there are unstaged changes
 while true; do
   # Check if there are any changes to work with
@@ -61,10 +221,6 @@ while true; do
     pprint "No uncommitted changes found." "$fgYellow"
     return 0
   fi
-
-  # Find where current branch diverged from main branch
-  local merge_boundary
-  merge_boundary=$(git_find_branch_base)
 
   # Build arrays for file categorization
   local -a on_branch_files=()
@@ -101,56 +257,23 @@ while true; do
     fi
   done <<< "$changes"
 
-  # Build list of ALL on-branch commits (not just those with current changes)
-  # This allows fixup to any on-branch commit, even if no current files are from that commit
-  # Exclude fixup commits (no fixup of fixup)
-  local -a unique_commits=()
-  local all_commits commit_line
-  all_commits=$(git log --format='%h %s' "${merge_boundary}..HEAD" 2>/dev/null)
-
-  while IFS= read -r commit_line; do
-    [[ -z "$commit_line" ]] && continue
-    # Skip fixup commits (subject starts with "fixup!")
-    if [[ "$commit_line" =~ ^[a-f0-9]+\ fixup! ]]; then
-      continue
-    fi
-    unique_commits+=("$commit_line")
-  done <<< "$all_commits"
-
-  # If no on-branch commits to fixup, inform user
-  if [[ ${#unique_commits[@]} -eq 0 ]]; then
-    pprint "No on-branch commits found to fixup." "$fgYellow"
-    pprint "All changed files are either new or from before the last merge." "$fgYellow"
-    return 0
-  fi
-
-  # Stage 1: Select fixup target commit (or use provided hash)
+  # Stage 1: Select fixup target commit
   local target_commit target_hash target_subject
 
-  if [[ -n "$1" ]]; then
-    # Validate provided commit hash
-    if ! git rev-parse --verify "$1^{commit}" >/dev/null 2>&1; then
-      pprint "Invalid commit: $1" "$fgRed"
-      return 1
-    fi
-    target_hash=$(git rev-parse --short "$1" 2>/dev/null)
-    target_subject=$(git log -1 --format='%s' "$1" 2>/dev/null)
-  else
-    target_commit=$(
-      for commit in "${unique_commits[@]}"; do
-        echo "$commit"
-      done | _fzf_git_fzf --no-multi --ansi \
-        --border-label '🔧 Select Fixup Target' \
-        --header $'Select a commit to fixup\nCTRL-/ (toggle preview)\n' \
-        --preview 'hash=$(echo {} | cut -d" " -f1); git show --color=always --stat $hash | head -50'
-    )
+  target_commit=$(
+    for commit in "${unique_commits[@]}"; do
+      echo "$commit"
+    done | _fzf_git_fzf --no-multi --ansi \
+      --border-label '🔧 Select Fixup Target' \
+      --header $'Select a commit to fixup\nCTRL-/ (toggle preview)\n' \
+      --preview 'hash=$(echo {} | cut -d" " -f1); git show --color=always --stat $hash | head -50'
+  )
 
-    # Exit silently if user cancelled
-    [[ -z "$target_commit" ]] && return 0
+  # Exit silently if user cancelled
+  [[ -z "$target_commit" ]] && return 0
 
-    target_hash="${target_commit%% *}"
-    target_subject="${target_commit#* }"
-  fi
+  target_hash="${target_commit%% *}"
+  target_subject="${target_commit#* }"
 
   # Stage 2: Build file list with section headers
   local file_list=""

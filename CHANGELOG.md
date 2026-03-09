@@ -1,3 +1,9 @@
+## v2.14.0 (2026-03-08)
+
+### Feature
+
+- **omz**: add per-file fixup support with commit selection for included files to gcfuh
+
 ## v2.13.1 (2026-02-01)
 
 ### Fix

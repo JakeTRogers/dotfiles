@@ -1,3 +1,9 @@
+## v2.14.1 (2026-03-16)
+
+### Fix
+
+- **nvim**: update lspconfig setup to use vim.lsp.config and vim.lsp.enable
+
 ## v2.14.0 (2026-03-08)
 
 ### Feature

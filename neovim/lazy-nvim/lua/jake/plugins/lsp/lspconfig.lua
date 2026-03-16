@@ -10,9 +10,6 @@ return {
     "williamboman/mason-lspconfig.nvim",
   },
   config = function()
-    -- import lspconfig plugin
-    local lspconfig = require("lspconfig")
-
     -- import mason_lspconfig plugin
     local mason_lspconfig = require("mason-lspconfig")
 
@@ -106,7 +103,8 @@ return {
         }
       end
 
-      lspconfig[server_name].setup(opts)
+      vim.lsp.config(server_name, opts)
+      vim.lsp.enable(server_name)
     end
   end,
 }

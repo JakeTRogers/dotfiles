@@ -1,6 +1,69 @@
 # functions
 
 #######################################
+# cdr - Change directory to a git repository
+# Arguments:
+#   None
+# Outputs:
+#   Interactive fzf selection of git repositories in ~/gitrepos, then cd into it
+# Returns:
+#   0 on success, 1 if no selection made
+#######################################
+cdr() {
+  local repo
+  repo=$(find ~/gitrepos -type d -name .git 2>/dev/null | sed 's#/.git$##' | fzf --prompt="repo> ") || return
+  cd "$repo"
+}
+
+################################
+# ff - Fuzzy find a file and open it in the editor
+# Arguments:
+#   None
+# Outputs:
+#   Interactive fzf selection of files in the current directory, then opens the selected file in the default editor
+# Returns:
+#   0 on success, 1 if no selection made
+################################
+ff() {
+  local file
+  file=$(fzf) || return
+  ${EDITOR:-vim} "$file"
+}
+
+################################
+# gundo - Undo the last git commit (soft reset)
+# Arguments:
+#   None
+# Outputs:
+#   Resets the last commit but keeps changes staged
+# Returns:
+#   0 on success, 128 if not in a git repository
+################################
+gundo() {
+  git reset --soft HEAD~1
+}
+
+################################
+# rgf - Fuzzy find a file containing a pattern and open it in the editor
+# Arguments:
+#   $1 - The pattern to search for
+# Outputs:
+#   Interactive fzf selection of files containing the pattern, then opens the selected file at the matching line in the default editor
+# Returns:
+#   0 on success, 1 if no selection made or pattern is empty
+################################
+rgf() {
+  local query="$1"
+  [[ -z "$query" ]] && { echo "Usage: rgf <pattern>"; return 1; }
+  local file
+  file=$(rg --line-number --no-heading "$query" | fzf --delimiter : --nth 1,2,3..) || return
+  local f l
+  f=$(echo "$file" | cut -d: -f1)
+  l=$(echo "$file" | cut -d: -f2)
+  ${EDITOR:-vim} "+${l}" "$f"
+}
+
+#######################################
 # update all git mirrors in subdirectories of the current directory
 # Arguments:
 #   None

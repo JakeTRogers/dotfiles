@@ -27,13 +27,14 @@ export elevate
 ./bin/dotfiles vim
 ./bin/dotfiles zsh
 ./bin/dotfiles omz
+./bin/dotfiles getRelease
+./bin/dotfiles bat
+./bin/dotfiles fd
+./bin/dotfiles fzf
+./bin/dotfiles ripgrep
 
 
 if [ "${INSTALL_MODE}" = 'full' ]; then
-  ./bin/dotfiles bat
-  ./bin/dotfiles fd
-  ./bin/dotfiles ripgrep
-  ./bin/dotfiles fzf
   ./bin/dotfiles neovim
 fi
 

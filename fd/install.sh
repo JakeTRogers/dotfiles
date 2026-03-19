@@ -5,5 +5,11 @@ set -e
 if command -v fd &> /dev/null; then
   echo "🟢 fd is already installed"
 else
-  echo -e "🟠 fd not found in path, install it: get_release -u https://github.com/sharkdp/fd"
+  /usr/local/bin/getRelease -u https://github.com/sharkdp/fd
+  if ! command -v fd &> /dev/null; then
+    echo "🔴 fd install failed"
+    exit 1
+  else
+    echo "🟢 fd installed successfully"
+  fi
 fi

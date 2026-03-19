@@ -1,3 +1,14 @@
+## v3.0.0 (2026-03-18)
+
+### Feature
+
+- add getRelease and move bat, fd, ripgrep, and fzf installs to default mode
+- **omz**: add zsh completions for bat, fd, and ripgrep
+- **omz**: use new getRelease tool to install bat, fd, fzf, and ripgrep by default
+- **getRelease**: add unattended installer, completions, and doc cleanup
+- **omz**: remove get_release zsh function in favor of getRelease golang cli
+- **omz**: add cdr, ff, gundo, and rgf functions for repo navigation and fuzzy file search
+
 ## v2.14.1 (2026-03-16)
 
 ### Fix

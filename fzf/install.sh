@@ -5,5 +5,11 @@ set -e
 if command -v fzf &> /dev/null; then
   echo "🟢 fzf is already installed"
 else
-  echo -e "🟠 fzf not found in path, install it: get_release -u https://github.com/junegunn/fzf"
+  /usr/local/bin/getRelease -u https://github.com/junegunn/fzf
+  if ! command -v fzf &> /dev/null; then
+    echo "🔴 fzf install failed"
+    exit 1
+  else
+    echo "🟢 fzf installed successfully"
+  fi
 fi

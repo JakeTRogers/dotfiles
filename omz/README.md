@@ -40,7 +40,6 @@ Individual function files that are autoloaded on-demand. Each file contains a si
 - **`decode_cert`** - Decode SSL/TLS certificates
 - **`decode_jwt`** - Decode JWT tokens
 - **`get_k8s_images`** - Extract container images from Kubernetes pods with filtering and parsing options
-- **`get_release`** - Download and install releases from GitHub
 - **`git_pr_check`** - Check subdirectories for GitHub pull requests
 - **`git_tag_semver`** - Semantically tag a git repository with major/minor/patch versions
 - **`install_it`** - Use Linux `install` to install binaries in `/usr/local/bin`
@@ -57,7 +56,7 @@ Zsh completion functions (prefixed with `_`) symlinked to `$ZSH_CUSTOM/completio
 - **`_decode_cert`** - Completion for decode_cert function
 - **`_decode_jwt`** - Completion for decode_jwt function
 - **`_fzf`** - FZF completion
-- **`_get_release`** - Completion for get_release function
+- **`_getRelease`** - Completion for getRelease CLI
 - **`_install_it`** - Completion for install_it function
 
 #### `scripts/`

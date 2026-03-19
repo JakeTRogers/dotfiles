@@ -46,11 +46,6 @@ This repo manages my dotfiles and works nicely with the vscode dev container ext
     - [zsh-syntax-highlighting](https://github.com/zsh-users/zsh-syntax-highlighting)
     - Built-in plugins: colored-man-pages, colorize, gh, git, gpg-agent, kubectl, ssh-agent, tmux, wd
     - Custom functions and completions (see [omz/](omz/))
-
-## Full Installation Only
-
-The following tools are only installed when using `./install.sh full`:
-
 - [bat](https://github.com/sharkdp/bat) - A cat clone with syntax highlighting
   - Custom Tokyo Night theme
 - [fd](https://github.com/sharkdp/fd) - A simple, fast and user-friendly alternative to find
@@ -58,6 +53,11 @@ The following tools are only installed when using `./install.sh full`:
   - [fzf-git.sh](https://github.com/junegunn/fzf-git.sh) - Git integration for fzf
   - [fzf-tab](https://github.com/Aloxaf/fzf-tab) - fzf integration for zsh tab completion
 - [ripgrep](https://github.com/BurntSushi/ripgrep) - A line-oriented search tool
+
+## Full Installation Only
+
+The following tools are only installed when using `./install.sh full`:
+
 - [Neovim](https://neovim.io/)
   - [lazy.nvim](https://github.com/folke/lazy.nvim) - Plugin manager
   - Plugins including LSP support, fuzzy finding, git integration, markdown rendering, [and more](neovim/)

@@ -259,6 +259,42 @@ function _check_podman() {
 }
 
 #######################################
+# _fp_exec_container - Exec into a container with properly separated args
+#
+# Arguments:
+#   $1 - Container ID
+#   $2 - User
+#   $3 - Shell
+#   $4 - Working directory
+#   $5 - Command string
+# Returns:
+#   podman exec exit status
+#######################################
+function _fp_exec_container() {
+  local cid="$1"
+  local user="$2"
+  local shell="$3"
+  local workdir="$4"
+  local cmd="$5"
+  local -a exec_args
+
+  exec_args=(exec -it)
+
+  [[ -n "$user" ]] && exec_args+=(-u "$user")
+  [[ -n "$workdir" ]] && exec_args+=(-w "$workdir")
+
+  exec_args+=("$cid")
+
+  if [[ -n "$cmd" ]]; then
+    exec_args+=("$shell" -lc "$cmd")
+  else
+    exec_args+=("$shell")
+  fi
+
+  podman "${exec_args[@]}"
+}
+
+#######################################
 # _fp_wants_help - Check whether help was requested
 #
 # Arguments:
@@ -486,18 +522,20 @@ function fpe() {
   local query="$1"
 
   local cid
-  cid=$(podman ps | sed 1d | fzf -1 -q "$query" \
+  cid=$(podman ps --format $'{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}' | fzf -1 -q "$query" \
+    --delimiter $'\t' \
     --border-label '🐳 Running Containers' \
-    --header 'CTRL-L (logs) ╱ ALT-I (inspect) ╱ CTRL-S (stats) ╱ CTRL-D (delete)' \
+    --header 'CTRL-R (reload) ╱ CTRL-L (logs) ╱ ALT-I (inspect) ╱ CTRL-S (stats) ╱ CTRL-D (force remove)' \
     --preview-window 'down,60%' \
     --preview 'podman inspect {1} | jq -C '\''.[0] | {Status: .State.Status, Image: .ImageName, Name: .Name, Created: .Created, Command: .Config.Cmd, Ports: .NetworkSettings.Ports, Mounts: [.Mounts[].Destination]}'\''' \
-    --bind 'ctrl-l:execute(podman logs --tail 50 --color {1} | ${PAGER:-less} -R > /dev/tty)' \
+    --bind 'ctrl-r:reload(podman ps --format '\''{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'\'')' \
+    --bind 'ctrl-l:execute(podman logs --tail 50 --color {1} | ${=PAGER:-less} -R > /dev/tty)' \
     --bind 'alt-i:execute(podman inspect {1} | jq -C . | ${=PAGER:-less} -R > /dev/tty)' \
     --bind 'ctrl-s:execute(podman stats --no-stream {1} > /dev/tty; read -k 1)' \
-    --bind 'ctrl-d:reload(podman rm {1} 2>&1; podman ps | sed 1d)' \
-    | awk '{print $1}')
+    --bind 'ctrl-d:reload(podman rm -f {1} >/dev/null 2>&1; podman ps --format '\''{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'\'')' \
+    | cut -f1)
 
-  [ -n "$cid" ] && podman exec ${user:+-u $user} ${workdir:+-w $workdir} -it "$cid" ${cmd:-$shell}
+  [[ -n "$cid" ]] && _fp_exec_container "$cid" "$user" "$shell" "$workdir" "$cmd"
 }
 
 #######################################
@@ -535,18 +573,20 @@ function fpse() {
   local query="$1"
 
   local cid
-  cid=$(podman ps -a | sed 1d | fzf -1 -q "$query" \
+  cid=$(podman ps -a --format $'{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}' | fzf -1 -q "$query" \
+    --delimiter $'\t' \
     --border-label '🐳 All Containers' \
-    --header 'CTRL-L (logs) ╱ ALT-I (inspect) ╱ CTRL-S (stats) ╱ CTRL-D (delete)' \
+    --header 'CTRL-R (reload) ╱ CTRL-L (logs) ╱ ALT-I (inspect) ╱ CTRL-S (stats) ╱ CTRL-D (force remove)' \
     --preview-window 'down,60%' \
     --preview 'podman inspect {1} | jq -C '\''.[0] | {Status: .State.Status, Image: .ImageName, Name: .Name, Created: .Created, Command: .Config.Cmd, Ports: .NetworkSettings.Ports, Mounts: [.Mounts[].Destination]}'\''' \
-    --bind 'ctrl-l:execute(podman logs --tail 50 --color {1} | ${PAGER:-less} -R > /dev/tty)' \
+    --bind 'ctrl-r:reload(podman ps -a --format '\''{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'\'')' \
+    --bind 'ctrl-l:execute(podman logs --tail 50 --color {1} | ${=PAGER:-less} -R > /dev/tty)' \
     --bind 'alt-i:execute(podman inspect {1} | jq -C . | ${=PAGER:-less} -R > /dev/tty)' \
     --bind 'ctrl-s:execute(podman stats --no-stream {1} > /dev/tty; read -k 1)' \
-    --bind 'ctrl-d:reload(podman rm {1} 2>&1; podman ps -a | sed 1d)' \
-    | awk '{print $1}')
+    --bind 'ctrl-d:reload(podman rm -f {1} >/dev/null 2>&1; podman ps -a --format '\''{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'\'')' \
+    | cut -f1)
 
-  [ -n "$cid" ] && podman start "$cid" && podman exec ${user:+-u $user} ${workdir:+-w $workdir} -it "$cid" ${cmd:-$shell}
+  [[ -n "$cid" ]] && podman start "$cid" && _fp_exec_container "$cid" "$user" "$shell" "$workdir" "$cmd"
 }
 
 #######################################
@@ -571,18 +611,20 @@ function fpa() {
   local query="$1"
 
   local cid
-  cid=$(podman ps | sed 1d | fzf -1 -q "$query" \
+  cid=$(podman ps --format $'{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}' | fzf -1 -q "$query" \
+    --delimiter $'\t' \
     --border-label '🐳 Running Containers' \
-    --header 'CTRL-L (logs) ╱ ALT-I (inspect) ╱ CTRL-S (stats) ╱ CTRL-D (delete)' \
+    --header 'CTRL-R (reload) ╱ CTRL-L (logs) ╱ ALT-I (inspect) ╱ CTRL-S (stats) ╱ CTRL-D (force remove)' \
     --preview-window 'down,60%' \
     --preview 'podman inspect {1} | jq -C '\''.[0] | {Status: .State.Status, Image: .ImageName, Name: .Name, Created: .Created, Command: .Config.Cmd, Ports: .NetworkSettings.Ports, Mounts: [.Mounts[].Destination]}'\''' \
-    --bind 'ctrl-l:execute(podman logs --tail 50 --color {1} | ${PAGER:-less} -R > /dev/tty)' \
+    --bind 'ctrl-r:reload(podman ps --format '\''{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'\'')' \
+    --bind 'ctrl-l:execute(podman logs --tail 50 --color {1} | ${=PAGER:-less} -R > /dev/tty)' \
     --bind 'alt-i:execute(podman inspect {1} | jq -C . | ${=PAGER:-less} -R > /dev/tty)' \
     --bind 'ctrl-s:execute(podman stats --no-stream {1} > /dev/tty; read -k 1)' \
-    --bind 'ctrl-d:reload(podman rm {1} 2>&1; podman ps | sed 1d)' \
-    | awk '{print $1}')
+    --bind 'ctrl-d:reload(podman rm -f {1} >/dev/null 2>&1; podman ps --format '\''{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'\'')' \
+    | cut -f1)
 
-  [ -n "$cid" ] && podman attach "$cid"
+  [[ -n "$cid" ]] && podman attach "$cid"
 }
 
 #######################################
@@ -608,18 +650,20 @@ function fpsa() {
   local query="$1"
 
   local cid
-  cid=$(podman ps -a | sed 1d | fzf -1 -q "$query" \
+  cid=$(podman ps -a --format $'{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}' | fzf -1 -q "$query" \
+    --delimiter $'\t' \
     --border-label '🐳 All Containers' \
-    --header 'CTRL-L (logs) ╱ ALT-I (inspect) ╱ CTRL-S (stats) ╱ CTRL-D (delete)' \
+    --header 'CTRL-R (reload) ╱ CTRL-L (logs) ╱ ALT-I (inspect) ╱ CTRL-S (stats) ╱ CTRL-D (force remove)' \
     --preview-window 'down,60%' \
     --preview 'podman inspect {1} | jq -C '\''.[0] | {Status: .State.Status, Image: .ImageName, Name: .Name, Created: .Created, Command: .Config.Cmd, Ports: .NetworkSettings.Ports, Mounts: [.Mounts[].Destination]}'\''' \
-    --bind 'ctrl-l:execute(podman logs --tail 50 --color {1} | ${PAGER:-less} -R > /dev/tty)' \
+    --bind 'ctrl-r:reload(podman ps -a --format '\''{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'\'')' \
+    --bind 'ctrl-l:execute(podman logs --tail 50 --color {1} | ${=PAGER:-less} -R > /dev/tty)' \
     --bind 'alt-i:execute(podman inspect {1} | jq -C . | ${=PAGER:-less} -R > /dev/tty)' \
     --bind 'ctrl-s:execute(podman stats --no-stream {1} > /dev/tty; read -k 1)' \
-    --bind 'ctrl-d:reload(podman rm {1} 2>&1; podman ps -a | sed 1d)' \
-    | awk '{print $1}')
+    --bind 'ctrl-d:reload(podman rm -f {1} >/dev/null 2>&1; podman ps -a --format '\''{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'\'')' \
+    | cut -f1)
 
-  [ -n "$cid" ] && podman start "$cid" && podman attach "$cid"
+  [[ -n "$cid" ]] && podman start "$cid" && podman attach "$cid"
 }
 
 #######################################
@@ -644,16 +688,18 @@ function fps() {
 
   local query="$1"
 
-  podman ps | sed 1d | fzf -1 -m -q "$query" \
+  podman ps --format $'{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}' | fzf -1 -m -q "$query" \
+    --delimiter $'\t' \
     --border-label '🐳 Running Containers' \
-    --header 'TAB (select multiple) ╱ CTRL-L (logs) ╱ ALT-I (inspect) ╱ CTRL-S (stats) ╱ CTRL-D (delete)' \
+    --header 'TAB (select multiple) ╱ CTRL-R (reload) ╱ CTRL-L (logs) ╱ ALT-I (inspect) ╱ CTRL-S (stats) ╱ CTRL-D (force remove)' \
     --preview-window 'down,60%' \
     --preview 'podman inspect {1} | jq -C '\''.[0] | {Status: .State.Status, Image: .ImageName, Name: .Name, Created: .Created, Command: .Config.Cmd, Ports: .NetworkSettings.Ports, Mounts: [.Mounts[].Destination]}'\''' \
+    --bind 'ctrl-r:reload(podman ps --format '\''{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'\'')' \
     --bind 'ctrl-l:execute(podman logs --tail 50 --color {1} | ${=PAGER:-less} -R > /dev/tty)' \
     --bind 'alt-i:execute(podman inspect {1} | jq -C . | ${=PAGER:-less} -R > /dev/tty)' \
     --bind 'ctrl-s:execute(podman stats --no-stream {1} > /dev/tty; read -k 1)' \
-    --bind 'ctrl-d:reload(podman rm {1} 2>&1; podman ps | sed 1d)' \
-    | awk '{print $1}' | xargs -r podman stop
+    --bind 'ctrl-d:reload(podman rm -f {1} >/dev/null 2>&1; podman ps --format '\''{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'\'')' \
+    | cut -f1 | xargs -r podman stop
 }
 
 #######################################
@@ -678,15 +724,17 @@ function fprm() {
 
   local query="$1"
 
-  podman ps -a | sed 1d | fzf -q "$query" --no-sort -m --tac \
+  podman ps -a --format $'{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}' | fzf -q "$query" --no-sort -m --tac \
+    --delimiter $'\t' \
     --border-label '🐳 All Containers' \
-    --header 'TAB (select multiple) ╱ CTRL-L (logs) ╱ ALT-I (inspect) ╱ CTRL-S (stats)' \
+    --header 'TAB (select multiple) ╱ CTRL-R (reload) ╱ CTRL-L (logs) ╱ ALT-I (inspect) ╱ CTRL-S (stats)' \
     --preview-window 'down,60%' \
     --preview 'podman inspect {1} | jq -C '\''.[0] | {Status: .State.Status, Image: .ImageName, Name: .Name, Created: .Created, Command: .Config.Cmd, Ports: .NetworkSettings.Ports, Mounts: [.Mounts[].Destination]}'\''' \
+    --bind 'ctrl-r:reload(podman ps -a --format '\''{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'\'')' \
     --bind 'ctrl-l:execute(podman logs --tail 50 --color {1} | ${=PAGER:-less} -R > /dev/tty)' \
     --bind 'alt-i:execute(podman inspect {1} | jq -C . | ${=PAGER:-less} -R > /dev/tty)' \
     --bind 'ctrl-s:execute(podman stats --no-stream {1} > /dev/tty; read -k 1)' \
-    | awk '{print $1}' | xargs -r podman rm
+    | cut -f1 | xargs -r podman rm
 }
 
 #######################################
@@ -711,13 +759,15 @@ function fprmi() {
 
   local query="$1"
 
-  podman images | sed 1d | fzf -q "$query" --no-sort -m --tac \
+  podman images --format $'{{.ID}}\t{{.Repository}}:{{.Tag}}\t{{.CreatedSince}}\t{{.Size}}' | fzf -q "$query" --no-sort -m --tac \
+    --delimiter $'\t' \
     --border-label '🐳 Images' \
-    --header 'TAB (select multiple) ╱ ALT-I (inspect)' \
+    --header 'TAB (select multiple) ╱ CTRL-R (reload) ╱ ALT-I (inspect)' \
     --preview-window 'down,60%' \
-    --preview 'podman inspect {3} | jq -C '\''.[0] | {Id: .Id, RepoTags: .RepoTags, Created: .Created, Size: .Size, Architecture: .Architecture, Os: .Os}'\''' \
-    --bind 'alt-i:execute(podman inspect {3} | jq -C . | ${=PAGER:-less} -R > /dev/tty)' \
-    | awk '{print $3}' | xargs -r podman rmi
+    --preview 'podman inspect {1} | jq -C '\''.[0] | {Id: .Id, RepoTags: .RepoTags, Created: .Created, Size: .Size, Architecture: .Architecture, Os: .Os}'\''' \
+    --bind 'ctrl-r:reload(podman images --format '\''{{.ID}}\t{{.Repository}}:{{.Tag}}\t{{.CreatedSince}}\t{{.Size}}'\'')' \
+    --bind 'alt-i:execute(podman inspect {1} | jq -C . | ${=PAGER:-less} -R > /dev/tty)' \
+    | cut -f1 | xargs -r podman rmi
 }
 
 #######################################
@@ -745,25 +795,32 @@ function fpl() {
   local -A opts
   zparseopts -D -E -A opts f -follow=f n: -lines:=n
 
-  local follow_flag=""
-  local lines_flag=""
-  [[ -n ${opts[-f]} ]] && follow_flag="-f"
-  [[ -n ${opts[-n]} ]] && lines_flag="--tail ${opts[-n]}"
+  local lines="${opts[-n]}"
+  local -a log_args
+  local -a containers
+
+  log_args=(logs --color)
+  [[ -n ${opts[-f]} ]] && log_args+=(-f)
+  [[ -n "$lines" ]] && log_args+=(--tail "$lines")
 
   local query="$1"
 
-  local containers
-  containers=($(podman ps -a | sed 1d | fzf -m -q "$query" \
+  containers=("${(@f)$(podman ps -a --format $'{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}' | fzf -m -q "$query" \
+    --delimiter $'\t' \
     --border-label '🐳 All Containers' \
-    --header 'TAB (select multiple) ╱ ALT-I (inspect) ╱ CTRL-S (stats) ╱ CTRL-D (delete)' \
+    --header 'TAB (select multiple) ╱ CTRL-R (reload) ╱ ALT-I (inspect) ╱ CTRL-S (stats) ╱ CTRL-D (force remove)' \
     --preview-window 'down,60%' \
     --preview 'podman inspect {1} | jq -C '\''.[0] | {Status: .State.Status, Image: .ImageName, Name: .Name, Created: .Created, Command: .Config.Cmd, Ports: .NetworkSettings.Ports, Mounts: [.Mounts[].Destination]}'\''' \
+    --bind 'ctrl-r:reload(podman ps -a --format '\''{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'\'')' \
     --bind 'alt-i:execute(podman inspect {1} | jq -C . | ${=PAGER:-less} -R > /dev/tty)' \
     --bind 'ctrl-s:execute(podman stats --no-stream {1} > /dev/tty; read -k 1)' \
-    --bind 'ctrl-d:reload(podman rm {1} 2>&1; podman ps -a | sed 1d)' \
-    | awk '{print $1}'))
+    --bind 'ctrl-d:reload(podman rm -f {1} >/dev/null 2>&1; podman ps -a --format '\''{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'\'')' \
+    | cut -f1)}")
 
-  [ ${#containers[@]} -gt 0 ] && podman logs $follow_flag $lines_flag --color ${containers[@]}
+  if (( ${#containers[@]} > 0 )); then
+    log_args+=("${containers[@]}")
+    podman "${log_args[@]}"
+  fi
 }
 
 #######################################
@@ -788,18 +845,20 @@ function fpst() {
 
   local query="$1"
 
-  local containers
-  containers=($(podman ps | sed 1d | fzf -m -q "$query" \
+  local -a containers
+  containers=("${(@f)$(podman ps --format $'{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}' | fzf -m -q "$query" \
+    --delimiter $'\t' \
     --border-label '🐳 Running Containers' \
-    --header 'TAB (select multiple) ╱ CTRL-L (logs) ╱ ALT-I (inspect) ╱ CTRL-D (delete)' \
+    --header 'TAB (select multiple) ╱ CTRL-R (reload) ╱ CTRL-L (logs) ╱ ALT-I (inspect) ╱ CTRL-D (force remove)' \
     --preview-window 'down,60%' \
     --preview 'podman inspect {1} | jq -C '\''.[0] | {Status: .State.Status, Image: .ImageName, Name: .Name, Created: .Created, Command: .Config.Cmd, Ports: .NetworkSettings.Ports, Mounts: [.Mounts[].Destination]}'\''' \
+    --bind 'ctrl-r:reload(podman ps --format '\''{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'\'')' \
     --bind 'ctrl-l:execute(podman logs --tail 50 --color {1} | ${=PAGER:-less} -R > /dev/tty)' \
     --bind 'alt-i:execute(podman inspect {1} | jq -C . | ${=PAGER:-less} -R > /dev/tty)' \
-    --bind 'ctrl-d:reload(podman rm {1} 2>&1; podman ps | sed 1d)' \
-    | awk '{print $1}'))
+    --bind 'ctrl-d:reload(podman rm -f {1} >/dev/null 2>&1; podman ps --format '\''{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'\'')' \
+    | cut -f1)}")
 
-  [ ${#containers[@]} -gt 0 ] && podman stats ${containers[@]}
+  (( ${#containers[@]} > 0 )) && podman stats "${containers[@]}"
 }
 
 #######################################
@@ -824,14 +883,16 @@ function fprestart() {
 
   local query="$1"
 
-  podman ps -a | sed 1d | fzf -m -q "$query" \
+  podman ps -a --format $'{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}' | fzf -m -q "$query" \
+    --delimiter $'\t' \
     --border-label '🐳 All Containers' \
-    --header 'TAB (select multiple) ╱ CTRL-L (logs) ╱ ALT-I (inspect) ╱ CTRL-S (stats) ╱ CTRL-D (delete)' \
+    --header 'TAB (select multiple) ╱ CTRL-R (reload) ╱ CTRL-L (logs) ╱ ALT-I (inspect) ╱ CTRL-S (stats) ╱ CTRL-D (force remove)' \
     --preview-window 'down,60%' \
     --preview 'podman inspect {1} | jq -C '\''.[0] | {Status: .State.Status, Image: .ImageName, Name: .Name, Created: .Created, Command: .Config.Cmd, Ports: .NetworkSettings.Ports, Mounts: [.Mounts[].Destination]}'\''' \
+    --bind 'ctrl-r:reload(podman ps -a --format '\''{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'\'')' \
     --bind 'ctrl-l:execute(podman logs --tail 50 --color {1} | ${=PAGER:-less} -R > /dev/tty)' \
     --bind 'alt-i:execute(podman inspect {1} | jq -C . | ${=PAGER:-less} -R > /dev/tty)' \
     --bind 'ctrl-s:execute(podman stats --no-stream {1} > /dev/tty; read -k 1)' \
-    --bind 'ctrl-d:reload(podman rm {1} 2>&1; podman ps -a | sed 1d)' \
-    | awk '{print $1}' | xargs -r podman restart
+    --bind 'ctrl-d:reload(podman rm -f {1} >/dev/null 2>&1; podman ps -a --format '\''{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'\'')' \
+    | cut -f1 | xargs -r podman restart
 }

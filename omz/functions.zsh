@@ -259,6 +259,200 @@ function _check_podman() {
 }
 
 #######################################
+# _fp_wants_help - Check whether help was requested
+#
+# Arguments:
+#   Command arguments to inspect
+# Returns:
+#   0 if -h or --help is present, 1 otherwise
+#######################################
+function _fp_wants_help() {
+  local arg
+
+  for arg in "$@"; do
+    [[ "$arg" == "-h" || "$arg" == "--help" ]] && return 0
+  done
+
+  return 1
+}
+
+#######################################
+# _fp_command_help - Print help for an fp podman helper
+#
+# Arguments:
+#   $1 - Command name
+# Returns:
+#   0 on success, 1 for unknown command
+#######################################
+function _fp_command_help() {
+  case "$1" in
+    fpe)
+      printf '%s\n' \
+        'Usage: fpe [options] [query]' \
+        '' \
+        'Exec into a running podman container selected with fzf.' \
+        '' \
+        'Options:' \
+        '  -u, --user USER       Run as specified user' \
+        '  -s, --shell SHELL     Use specified shell (default: /bin/bash)' \
+        '  -w, --workdir PATH    Set working directory' \
+        '  -c, --cmd COMMAND     Execute command instead of interactive shell' \
+        '  -h, --help            Show this help message'
+      ;;
+    fpse)
+      printf '%s\n' \
+        'Usage: fpse [options] [query]' \
+        '' \
+        'Start a podman container if needed, then exec into it.' \
+        '' \
+        'Options:' \
+        '  -u, --user USER       Run as specified user' \
+        '  -s, --shell SHELL     Use specified shell (default: /bin/bash)' \
+        '  -w, --workdir PATH    Set working directory' \
+        '  -c, --cmd COMMAND     Execute command instead of interactive shell' \
+        '  -h, --help            Show this help message'
+      ;;
+    fpa)
+      printf '%s\n' \
+        'Usage: fpa [query]' \
+        '' \
+        'Attach to a running podman container selected with fzf.' \
+        '' \
+        'Options:' \
+        '  -h, --help            Show this help message'
+      ;;
+    fpsa)
+      printf '%s\n' \
+        'Usage: fpsa [query]' \
+        '' \
+        'Start a podman container if needed, then attach to it.' \
+        '' \
+        'Options:' \
+        '  -h, --help            Show this help message'
+      ;;
+    fps)
+      printf '%s\n' \
+        'Usage: fps [query]' \
+        '' \
+        'Stop running podman containers selected with fzf.' \
+        '' \
+        'Options:' \
+        '  -h, --help            Show this help message'
+      ;;
+    fprm)
+      printf '%s\n' \
+        'Usage: fprm [query]' \
+        '' \
+        'Remove podman containers selected with fzf.' \
+        '' \
+        'Options:' \
+        '  -h, --help            Show this help message'
+      ;;
+    fprmi)
+      printf '%s\n' \
+        'Usage: fprmi [query]' \
+        '' \
+        'Remove podman images selected with fzf.' \
+        '' \
+        'Options:' \
+        '  -h, --help            Show this help message'
+      ;;
+    fpl)
+      printf '%s\n' \
+        'Usage: fpl [options] [query]' \
+        '' \
+        'View logs from podman containers selected with fzf.' \
+        '' \
+        'Options:' \
+        '  -f, --follow          Follow log output' \
+        '  -n, --lines LINES     Number of lines to show' \
+        '  -h, --help            Show this help message'
+      ;;
+    fpst)
+      printf '%s\n' \
+        'Usage: fpst [query]' \
+        '' \
+        'Show live stats for running podman containers selected with fzf.' \
+        '' \
+        'Options:' \
+        '  -h, --help            Show this help message'
+      ;;
+    fprestart)
+      printf '%s\n' \
+        'Usage: fprestart [query]' \
+        '' \
+        'Restart podman containers selected with fzf.' \
+        '' \
+        'Options:' \
+        '  -h, --help            Show this help message'
+      ;;
+    *)
+      echo "fp: unknown command: $1" >&2
+      return 1
+      ;;
+  esac
+}
+
+#######################################
+# fp - Show help for podman fzf helpers or dispatch to one
+#
+# Arguments:
+#   help [command]       Show fp summary or help for a specific command
+#   <command> [args...]  Run the specified fp helper
+# Outputs:
+#   Help text or command output
+# Returns:
+#   0 on success, 1 for unknown commands
+#######################################
+function fp() {
+  local command="${1:-help}"
+
+  if [[ $# -gt 0 ]]; then
+    shift
+  fi
+
+  case "$command" in
+    help|-h|--help)
+      if [[ -n "$1" ]]; then
+        _fp_command_help "$1"
+        return $?
+      fi
+
+      printf '%s\n' \
+        'Usage: fp [help] [command]' \
+        '' \
+        'Podman fzf helpers:' \
+        '  fpe        Exec into a running container' \
+        '  fpse       Start a container, then exec into it' \
+        '  fpa        Attach to a running container' \
+        '  fpsa       Start a container, then attach to it' \
+        '  fps        Stop running containers' \
+        '  fprm       Remove containers' \
+        '  fprmi      Remove images' \
+        '  fpl        View logs' \
+        '  fpst       View stats' \
+        '  fprestart  Restart containers' \
+        '' \
+        'Examples:' \
+        '  fp' \
+        '  fp help fpl' \
+        '  fpl --help' \
+        '' \
+        'Run any command above with --help for details.'
+      ;;
+    fpe|fpse|fpa|fpsa|fps|fprm|fprmi|fpl|fpst|fprestart)
+      "$command" "$@"
+      ;;
+    *)
+      echo "fp: unknown command: $command" >&2
+      _fp_command_help "$command" >/dev/null 2>&1
+      fp help >&2
+      return 1
+      ;;
+  esac
+}
+
+#######################################
 # fpe - Exec into a running podman container
 #
 # Interactive selection of running container with fzf, then exec into it.
@@ -275,6 +469,11 @@ function _check_podman() {
 #   Interactive fzf selection, then executes into container
 #######################################
 function fpe() {
+  if _fp_wants_help "$@"; then
+    _fp_command_help fpe
+    return 0
+  fi
+
   _check_podman || return 1
 
   local -A opts
@@ -319,6 +518,11 @@ function fpe() {
 #   Interactive fzf selection, starts container, then executes into it
 #######################################
 function fpse() {
+  if _fp_wants_help "$@"; then
+    _fp_command_help fpse
+    return 0
+  fi
+
   _check_podman || return 1
 
   local -A opts
@@ -357,6 +561,11 @@ function fpse() {
 #   Interactive fzf selection, then attaches to container
 #######################################
 function fpa() {
+  if _fp_wants_help "$@"; then
+    _fp_command_help fpa
+    return 0
+  fi
+
   _check_podman || return 1
 
   local query="$1"
@@ -389,6 +598,11 @@ function fpa() {
 #   Interactive fzf selection, starts container, then attaches to it
 #######################################
 function fpsa() {
+  if _fp_wants_help "$@"; then
+    _fp_command_help fpsa
+    return 0
+  fi
+
   _check_podman || return 1
 
   local query="$1"
@@ -421,6 +635,11 @@ function fpsa() {
 #   Interactive fzf selection, then stops selected containers
 #######################################
 function fps() {
+  if _fp_wants_help "$@"; then
+    _fp_command_help fps
+    return 0
+  fi
+
   _check_podman || return 1
 
   local query="$1"
@@ -450,6 +669,11 @@ function fps() {
 #   Interactive fzf selection, then removes selected containers
 #######################################
 function fprm() {
+  if _fp_wants_help "$@"; then
+    _fp_command_help fprm
+    return 0
+  fi
+
   _check_podman || return 1
 
   local query="$1"
@@ -478,6 +702,11 @@ function fprm() {
 #   Interactive fzf selection, then removes selected images
 #######################################
 function fprmi() {
+  if _fp_wants_help "$@"; then
+    _fp_command_help fprmi
+    return 0
+  fi
+
   _check_podman || return 1
 
   local query="$1"
@@ -506,6 +735,11 @@ function fprmi() {
 #   Interactive fzf selection, then displays container logs
 #######################################
 function fpl() {
+  if _fp_wants_help "$@"; then
+    _fp_command_help fpl
+    return 0
+  fi
+
   _check_podman || return 1
 
   local -A opts
@@ -545,6 +779,11 @@ function fpl() {
 #   Interactive fzf selection, then displays container statistics
 #######################################
 function fpst() {
+  if _fp_wants_help "$@"; then
+    _fp_command_help fpst
+    return 0
+  fi
+
   _check_podman || return 1
 
   local query="$1"
@@ -576,6 +815,11 @@ function fpst() {
 #   Interactive fzf selection, then restarts selected containers
 #######################################
 function fprestart() {
+  if _fp_wants_help "$@"; then
+    _fp_command_help fprestart
+    return 0
+  fi
+
   _check_podman || return 1
 
   local query="$1"

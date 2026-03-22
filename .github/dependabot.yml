@@ -5,5 +5,15 @@ updates:
     schedule:
       # Check for updates to GitHub Actions every week
       interval: "weekly"
+    cooldown:
+      default-days: 10
     commit-message:
       prefix: "ci(actions)"
+  - package-ecosystem: "pre-commit"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    cooldown:
+      default-days: 10
+    commit-message:
+      prefix: "ci(hooks)"

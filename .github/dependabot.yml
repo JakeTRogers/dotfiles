@@ -7,3 +7,11 @@ updates:
       interval: "weekly"
     commit-message:
       prefix: "ci(actions)"
+  - package-ecosystem: "pre-commit"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    cooldown:
+      default-days: 10
+    commit-message:
+      prefix: "ci(hooks)"

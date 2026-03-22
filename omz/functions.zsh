@@ -281,6 +281,13 @@ function _fp_exec_container() {
   local cmd="$5"
   local -a exec_args
 
+  # When no user is specified, inherit the container's configured user.
+  # podman exec defaults to root (UID 0), which fails in rootless containers
+  # that lack a root entry in /etc/passwd.
+  if [[ -z "$user" ]]; then
+    user=$(podman inspect --format '{{.Config.User}}' "$cid" 2>/dev/null)
+  fi
+
   exec_args=(exec -it)
 
   [[ -n "$user" ]] && exec_args+=(-u "$user")
@@ -515,13 +522,13 @@ function fpe() {
 
   _check_podman || return 1
 
-  local -A opts
-  zparseopts -D -E -A opts u: -user:=u s: -shell:=s w: -workdir:=w c: -cmd:=c
+  local -a opt_u opt_s opt_w opt_c
+  zparseopts -D -E u:=opt_u -user:=opt_u s:=opt_s -shell:=opt_s w:=opt_w -workdir:=opt_w c:=opt_c -cmd:=opt_c
 
-  local user="${opts[-u]}"
-  local shell="${opts[-s]:-/bin/bash}"
-  local workdir="${opts[-w]}"
-  local cmd="${opts[-c]}"
+  local user="${opt_u[2]}"
+  local shell="${opt_s[2]:-/bin/bash}"
+  local workdir="${opt_w[2]}"
+  local cmd="${opt_c[2]}"
   local query="$1"
 
   local cid
@@ -566,13 +573,13 @@ function fpse() {
 
   _check_podman || return 1
 
-  local -A opts
-  zparseopts -D -E -A opts u: -user:=u s: -shell:=s w: -workdir:=w c: -cmd:=c
+  local -a opt_u opt_s opt_w opt_c
+  zparseopts -D -E u:=opt_u -user:=opt_u s:=opt_s -shell:=opt_s w:=opt_w -workdir:=opt_w c:=opt_c -cmd:=opt_c
 
-  local user="${opts[-u]}"
-  local shell="${opts[-s]:-/bin/bash}"
-  local workdir="${opts[-w]}"
-  local cmd="${opts[-c]}"
+  local user="${opt_u[2]}"
+  local shell="${opt_s[2]:-/bin/bash}"
+  local workdir="${opt_w[2]}"
+  local cmd="${opt_c[2]}"
   local query="$1"
 
   local cid
@@ -795,15 +802,15 @@ function fpl() {
 
   _check_podman || return 1
 
-  local -A opts
-  zparseopts -D -E -A opts f -follow=f n: -lines:=n
+  local -a opt_f opt_n
+  zparseopts -D -E f=opt_f -follow=opt_f n:=opt_n -lines:=opt_n
 
-  local lines="${opts[-n]}"
+  local lines="${opt_n[2]}"
   local -a log_args
   local -a containers
 
   log_args=(logs --color)
-  [[ -n ${opts[-f]} ]] && log_args+=(-f)
+  (( ${#opt_f} )) && log_args+=(-f)
   [[ -n "$lines" ]] && log_args+=(--tail "$lines")
 
   local query="$1"

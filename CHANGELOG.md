@@ -1,3 +1,16 @@
+## v3.1.0 (2026-03-22)
+
+### Feature
+
+- **omz**: add podman fzf helper dispatch and help functions
+
+### Fix
+
+- **omz**: fix podman helpers: inherit container user and robust zparseopts parsing
+- **omz**: use _FP_CONTAINER_FORMAT for all podman fzf helpers and reload bindings
+- **omz**: refactor podman fzf helpers for robust arg handling and output parsing
+- **omz**: update podman fzf helpers to use ALT-I for inspect and fix PAGER handling
+
 ## v3.0.0 (2026-03-18)
 
 ### Feature

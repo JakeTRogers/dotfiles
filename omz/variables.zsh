@@ -1,3 +1,7 @@
+# If not running interactively, don't do anything
+[[ $- != *i* ]] && return
+[[ -z "$TERM" ]] && return
+
 # background color using ANSI escape
 [ -z $bgBlack ]     && declare -r bgBlack=$(tput setab 0)    && export bgBlack       # black
 [ -z $bgRed ]       && declare -r bgRed=$(tput setab 1)      && export bgRed         # red

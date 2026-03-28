@@ -1,3 +1,19 @@
+## v3.1.1 (2026-03-28)
+
+### Fix
+
+- **omz**: now that we install fzf in standard as well as full installs, this full-mode guard is not needed
+- **omz**: quote oh-my-zsh.sh source path for spaces compatibility
+- **omz**: remove dead symlinks from $ZSH_CUSTOM
+- **omz**: use $USER instead of launching a subshell
+- **omz**: fix path export to use zsh array and typeset -U for deduplication
+- **omz**: autoload custom functions by name, not path, for zsh fpath compatibility
+- **omz**: add fzf-tab to plugin list and require tmux for fzf-tab popup
+- **omz**: move env.zsh content to zshrc and delete env.zsh
+- **omz**: prevent tput errors: skip variables.zsh if not running interactively
+- **omz**: use fd for faster repo search with "cdr"
+- **bat**: create ~/.config directory if it does not exist to avoid bat install failure
+
 ## v3.1.0 (2026-03-22)
 
 ### Feature

@@ -153,8 +153,8 @@ bindkey -e
 # alias ohmyzsh="mate ~/.oh-my-zsh"
 
 # autoload from zsh custom functions directory
-for file in $ZSH_CUSTOM/functions/*; do
-  autoload -Uz $file
+for file in "$ZSH_CUSTOM"/functions/*(.N); do
+  autoload -Uz "${file:t}"
 done
 
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.

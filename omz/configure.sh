@@ -46,6 +46,11 @@ ln -sf "${DOTFILES_LOCATION}/omz/variables.zsh" "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/
 ln -sf "${DOTFILES_LOCATION}/omz/zshrc" "${HOME}/.zshrc"
 ln -sf "${DOTFILES_LOCATION}/omz/p10k.zsh" "${HOME}/.p10k.zsh"
 
+# remove any dead symlinks from the zsh custom directory
+if [ -e "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}" ]; then
+  find "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}" -maxdepth 1 -type l ! -exec test -e {} \; -delete
+fi
+
 # remove any dead symlinks from the custom completions directory or create it if it doesn't exist
 if [ -e "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/completions" ]; then
   find "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/completions" -type l ! -exec test -e {} \; -delete
@@ -59,7 +64,7 @@ for completion in "${DOTFILES_LOCATION}/omz/completions"/*; do
 done
 
 ### SETUP CUSTOM SCRIPTS ###
-# remove any dead symlinks from the custom completions directory or create it if it doesn't exist
+# remove any dead symlinks from the custom scripts directory or create it if it doesn't exist
 if [ -e "${HOME}/bin" ]; then
   find "${HOME}/bin" -type l ! -exec test -e {} \; -delete
 else

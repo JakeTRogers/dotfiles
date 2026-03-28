@@ -101,7 +101,7 @@ plugins=(
 zstyle :omz:plugins:ssh-agent agent-forwarding yes lifetime 12h
 
 
-source $ZSH/oh-my-zsh.sh
+source "$ZSH/oh-my-zsh.sh"
 
 # Load fzf-tab if in tmux session
 # Must be loaded after compinit (oh-my-zsh.sh) but before plugins that wrap widgets

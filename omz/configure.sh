@@ -40,7 +40,6 @@ if [ "${INSTALL_MODE}" = 'full' ]; then
 fi
 
 ln -sf "${DOTFILES_LOCATION}/omz/aliases.zsh" "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/aliases.zsh"
-ln -sf "${DOTFILES_LOCATION}/omz/env.zsh" "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/env.zsh"
 ln -sf --no-dereference "${DOTFILES_LOCATION}/omz/functions" "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/functions"
 ln -sf "${DOTFILES_LOCATION}/omz/functions.zsh" "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/functions.zsh"
 ln -sf "${DOTFILES_LOCATION}/omz/variables.zsh" "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/variables.zsh"

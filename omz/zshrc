@@ -114,6 +114,9 @@ ZSH_AUTOSUGGEST_STRATEGY=(history completion)
 
 # export MANPATH="/usr/local/man:$MANPATH"
 
+umask 022
+export PAGER='less -i -F -X'
+
 # You may need to manually set your language environment
 export LANG=en_US.UTF-8
 export LANGUAGE=en_US.UTF-8
@@ -126,7 +129,13 @@ if [[ -n $SSH_CONNECTION ]]; then
 else
   export VISUAL='nvim'
 fi
-  export EDITOR="$VISUAL"
+export EDITOR="$VISUAL"
+
+# auto accept and run autosuggest
+bindkey '^ ' autosuggest-execute
+
+# enforce emacs keybindings
+bindkey -e
 
 # Compilation flags
 # export ARCHFLAGS="-arch $(uname -m)"

@@ -28,24 +28,26 @@ else
   git clone --quiet https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
 fi
 
-# fzf-tab (only for full installs)
-if [ "${INSTALL_MODE}" = 'full' ]; then
-  if [ -d "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/fzf-tab" ]; then
-    echo "Updating fzf-tab"
-    git -C "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/fzf-tab" pull --quiet
-  else
-    echo "Installing fzf-tab"
-    git clone --quiet https://github.com/Aloxaf/fzf-tab ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/fzf-tab
-  fi
+# fzf-tab
+if [ -d "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/fzf-tab" ]; then
+  echo "Updating fzf-tab"
+  git -C "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/fzf-tab" pull --quiet
+else
+  echo "Installing fzf-tab"
+  git clone --quiet https://github.com/Aloxaf/fzf-tab "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/fzf-tab"
 fi
 
 ln -sf "${DOTFILES_LOCATION}/omz/aliases.zsh" "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/aliases.zsh"
-ln -sf "${DOTFILES_LOCATION}/omz/env.zsh" "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/env.zsh"
 ln -sf --no-dereference "${DOTFILES_LOCATION}/omz/functions" "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/functions"
 ln -sf "${DOTFILES_LOCATION}/omz/functions.zsh" "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/functions.zsh"
 ln -sf "${DOTFILES_LOCATION}/omz/variables.zsh" "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/variables.zsh"
 ln -sf "${DOTFILES_LOCATION}/omz/zshrc" "${HOME}/.zshrc"
 ln -sf "${DOTFILES_LOCATION}/omz/p10k.zsh" "${HOME}/.p10k.zsh"
+
+# remove any dead symlinks from the zsh custom directory
+if [ -e "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}" ]; then
+  find "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}" -maxdepth 1 -type l ! -exec test -e {} \; -delete
+fi
 
 # remove any dead symlinks from the custom completions directory or create it if it doesn't exist
 if [ -e "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/completions" ]; then
@@ -60,7 +62,7 @@ for completion in "${DOTFILES_LOCATION}/omz/completions"/*; do
 done
 
 ### SETUP CUSTOM SCRIPTS ###
-# remove any dead symlinks from the custom completions directory or create it if it doesn't exist
+# remove any dead symlinks from the custom scripts directory or create it if it doesn't exist
 if [ -e "${HOME}/bin" ]; then
   find "${HOME}/bin" -type l ! -exec test -e {} \; -delete
 else

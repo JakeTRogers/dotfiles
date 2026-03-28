@@ -11,7 +11,12 @@
 #######################################
 cdr() {
   local repo
-  repo=$(find ~/gitrepos -type d -name .git 2>/dev/null | sed 's#/.git$##' | fzf --prompt="repo> ") || return
+  repo=$(
+    fd --unrestricted --type d --glob '.git' "$HOME/gitrepos" 2>/dev/null |
+      sed 's#/.git/\?$##' |
+      fzf --prompt='repo> '
+  ) || return 1
+
   cd "$repo"
 }
 

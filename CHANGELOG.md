@@ -1,3 +1,9 @@
+## v3.3.0 (2026-04-12)
+
+### Feature
+
+- **omz**: add copipe function and completion for piping terminal input to Copilot
+
 ## v3.2.0 (2026-04-12)
 
 ### Feature

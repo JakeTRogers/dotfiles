@@ -1,4 +1,5 @@
 .idea
+.copilot
 *.code-workspace
 *.swp
 .DS_Store

@@ -1,3 +1,13 @@
+## v3.2.0 (2026-04-12)
+
+### Feature
+
+- **omz**: add GitHub CoPilot CLI powered conventional-commit commit messages(ccm) generator
+
+### Fix
+
+- **git**: add .copilot to global gitignore
+
 ## v3.1.1 (2026-03-28)
 
 ### Fix

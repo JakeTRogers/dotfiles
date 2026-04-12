@@ -1,0 +1,14 @@
+#compdef copipe
+
+# Completion for copipe - pipe terminal input to GitHub Copilot
+function _copipe() {
+  _arguments -s -S \
+    '(-h --help)'{-h,--help}'[Show help]' \
+    '(-p --prompt)'{-p,--prompt}'[Custom prompt text]:prompt text: ' \
+    '(-f --file)'{-f,--file}'[Read input from file]:file:_files' \
+    '--preset[Use a built-in analysis preset]:preset:(fix diff explain)' \
+    '--json[Output in JSON format]' \
+    '--model[Use a specific Copilot model]:model: ' \
+    '*--allow-tool[Allow a specific tool]:tool: ' \
+    '--show-prompt[Print the assembled prompt and exit]'
+}

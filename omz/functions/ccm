@@ -1,0 +1,211 @@
+#######################################
+# ccm
+#######################################
+setopt localoptions localtraps
+
+local model="gpt-4.1"
+local reasoning_effort=""
+local show_help=0
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h|--help)
+      show_help=1
+      shift
+      ;;
+    -m|--model)
+      if [[ $# -lt 2 ]]; then
+        pprint "Error: $1 requires a model argument." "$fgRed"
+        return 1
+      fi
+      model="$2"
+      shift 2
+      ;;
+    --model=)
+      pprint "Error: --model requires a non-empty value." "$fgRed"
+      return 1
+      ;;
+    --model=?*)
+      model="${1#*=}"
+      shift
+      ;;
+    -r|--reasoning-effort)
+      if [[ $# -lt 2 ]]; then
+        pprint "Error: $1 requires a reasoning effort argument." "$fgRed"
+        return 1
+      fi
+      reasoning_effort="$2"
+      shift 2
+      ;;
+    --reasoning-effort=)
+      reasoning_effort=""
+      shift
+      ;;
+    --reasoning-effort=?*)
+      reasoning_effort="${1#*=}"
+      shift
+      ;;
+    --)
+      shift
+      break
+      ;;
+    *)
+      pprint "Error: unknown argument: $1" "$fgRed"
+      return 1
+      ;;
+  esac
+done
+
+if [[ $# -gt 0 ]]; then
+  pprint "Error: unexpected argument: $1" "$fgRed"
+  return 1
+fi
+
+if [[ -z "${model//[[:space:]]/}" ]]; then
+  pprint "Error: --model requires a non-empty value." "$fgRed"
+  return 1
+fi
+
+if [[ -z "${reasoning_effort//[[:space:]]/}" ]]; then
+  reasoning_effort=""
+fi
+
+if (( show_help )); then
+  fold -w "$(tput cols)" -s <<'EOF'
+Usage: ccm [OPTIONS]
+Generate a Conventional Commit message from the currently staged changes using Copilot,
+then open git commit with the generated message.
+
+Options:
+  -m, --model <MODEL>                      Model to use for generation. Default: gpt-4.1
+  -r, --reasoning-effort <EFFORT>         Optional reasoning effort for supported models.
+  -h, --help                              Show this help
+
+Requirements:
+  - copilot CLI in PATH
+  - current directory inside a git repository
+  - at least one staged change
+
+Examples:
+  ccm
+  ccm --model gpt-5.4
+  ccm --model o4-mini --reasoning-effort high
+EOF
+  return 0
+fi
+
+# Dependency and state checks
+if ! command -v copilot >/dev/null 2>&1; then
+  pprint "Error: copilot CLI is not installed or not in PATH." "$fgRed"
+  return 1
+fi
+
+if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  pprint "Error: not inside a Git repository." "$fgRed"
+  return 1
+fi
+
+if git diff --cached --quiet; then
+  pprint "Error: no staged changes." "$fgRed"
+  return 1
+fi
+
+# Local variables
+local repo_root=""
+local context=""
+local prompt=""
+local message=""
+local msg_file=""
+local commit_status=0
+local -a copilot_args=()
+
+repo_root="$(git rev-parse --show-toplevel)" || {
+  pprint "Error: failed to determine the repository root." "$fgRed"
+  return 1
+}
+
+pprint "Collecting staged context..." "$fgBlue"
+if ! context="$(
+  printf '=== REPO ROOT ===\n'
+  printf '%s\n\n' "$repo_root"
+
+  printf '=== GIT STATUS ===\n'
+  git status
+  printf '\n'
+
+  printf '=== STAGED FILES ===\n'
+  git diff --cached --name-status
+  printf '\n'
+
+  printf '=== STAGED DIFF ===\n'
+  git diff --cached
+)"; then
+  pprint "Error: failed to collect staged context." "$fgRed"
+  return 1
+fi
+
+prompt=$(cat <<EOF
+Use the conventional-commit skill.
+
+Create a Conventional Commit message for the staged Git context below.
+
+Primarily use the provided Git context.
+If the staged diff is ambiguous, you may read files in the current repository to clarify intent.
+Do not execute commands.
+Do not modify files.
+
+Output requirements:
+- Output only the complete commit message as plain text
+- No markdown fences
+- No labels
+- No explanations
+- Keep the subject under 72 characters
+- Use imperative mood
+
+$context
+EOF
+)
+
+pprint "Asking Copilot for a commit message..." "$fgBlue"
+copilot_args=(
+  copilot
+  -p "$prompt"
+  -s
+  --model "$model"
+  --no-ask-user
+  --add-dir "$repo_root"
+)
+
+if [[ -n "$reasoning_effort" ]]; then
+  copilot_args+=(--reasoning-effort "$reasoning_effort")
+fi
+
+if ! message="$("${copilot_args[@]}")"; then
+  pprint "Error: Copilot failed to generate a commit message." "$fgRed"
+  return 1
+fi
+
+message="${message#"${message%%[![:space:]]*}"}"
+message="${message%"${message##*[![:space:]]}"}"
+
+if [[ -z "$message" || "$message" == "NO_STAGED_CHANGES" ]]; then
+  pprint "Error: Copilot did not return a usable commit message." "$fgRed"
+  return 1
+fi
+
+msg_file="$(mktemp "${TMPDIR:-/tmp}/copilot-commit-msg.XXXXXX")" || {
+  pprint "Error: failed to create a temporary commit message file." "$fgRed"
+  return 1
+}
+
+trap '[[ -n "$msg_file" ]] && rm -f -- "$msg_file"; return 130' INT
+
+printf '%s\n' "$message" > "$msg_file"
+
+pprint "Opening git commit editor..." "$fgBlue"
+git commit -S -e -F "$msg_file"
+commit_status=$?
+
+rm -f -- "$msg_file"
+
+return $commit_status

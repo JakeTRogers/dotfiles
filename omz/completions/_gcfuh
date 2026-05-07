@@ -1,11 +1,33 @@
 #compdef gcfuh
 
 # Completion for the "gcfuh" (git commit fixup helper) command.
-# Uses _commits_since_merge for commit hash completion.
+# Completes files with uncommitted changes.
+function _gcfuh_changed_files() {
+  if git rev-parse --git-dir >/dev/null 2>&1; then
+    local -a files
+    local line path
+
+    while IFS= read -r line; do
+      [[ -z "$line" ]] && continue
+      path="${line:3}"
+
+      # For renames, complete the destination path.
+      if [[ "$path" == *" -> "* ]]; then
+        path="${path##* -> }"
+      fi
+
+      files+=("$path")
+    done <<< "$(git status --short 2>/dev/null)"
+
+    typeset -U files
+    [[ ${#files[@]} -gt 0 ]] && _describe -t files 'changed files' files
+  fi
+}
+
 function _gcfuh() {
   _arguments -s -S \
     '(-h --help)'{-h,--help}'[Show help message]' \
-    '1::commit:_commits_since_merge'
+    '*:file:_gcfuh_changed_files'
 }
 
 _gcfuh "$@"

@@ -145,7 +145,7 @@ if ! context="$(
 fi
 
 prompt=$(cat <<EOF
-Use the conventional-commit skill.
+You **MUST** use the conventional-commit skill.
 
 Create a Conventional Commit message for the staged Git context below.
 
@@ -161,6 +161,8 @@ Output requirements:
 - No explanations
 - Keep the subject under 72 characters
 - Use imperative mood
+- NEVER use 'chore' as a commit type
+- do not use multiple scopes in a single commit
 
 $context
 EOF

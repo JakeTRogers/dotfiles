@@ -1,3 +1,13 @@
+## v3.4.0 (2026-05-07)
+
+### Feature
+
+- **omz**: improve gcfuh completion to suggest changed files instead of commits
+
+### Fix
+
+- **omz**: clarify commit skill requirements in ccm prompt
+
 ## v3.3.0 (2026-04-12)
 
 ### Feature

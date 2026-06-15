@@ -1,26 +1,31 @@
 #compdef gcfuh
 
 # Completion for the "gcfuh" (git commit fixup helper) command.
-# Completes files with uncommitted changes.
+# Completes files with staged or unstaged changes.
 function _gcfuh_changed_files() {
   if git rev-parse --git-dir >/dev/null 2>&1; then
     local -a files
-    local line path
+    local line changed_file
 
     while IFS= read -r line; do
       [[ -z "$line" ]] && continue
-      path="${line:3}"
+      changed_file="${line:3}"
 
       # For renames, complete the destination path.
-      if [[ "$path" == *" -> "* ]]; then
-        path="${path##* -> }"
+      if [[ "$changed_file" == *" -> "* ]]; then
+        changed_file="${changed_file##* -> }"
       fi
 
-      files+=("$path")
-    done <<< "$(git status --short 2>/dev/null)"
+      files+=("$changed_file")
+    done <<< "$(git status --short --untracked-files=all 2>/dev/null)"
 
     typeset -U files
-    [[ ${#files[@]} -gt 0 ]] && _describe -t files 'changed files' files
+    if [[ ${#files[@]} -eq 0 ]]; then
+      _message 'no staged or unstaged changes'
+      return 1
+    fi
+
+    _describe -V -t files 'changed files' files
   fi
 }
 

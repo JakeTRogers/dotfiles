@@ -1,3 +1,11 @@
+## v3.4.1 (2026-06-14)
+
+### Fix
+
+- **omz**: include staged changes in gcfuh completion
+- **omz**: preserve commit subjects in fixup completion
+- **omz**: replace deprecated gpt 4.1 model with 5.4-mini in ccm function
+
 ## v3.4.0 (2026-05-07)
 
 ### Feature

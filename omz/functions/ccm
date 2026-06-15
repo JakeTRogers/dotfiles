@@ -3,7 +3,7 @@
 #######################################
 setopt localoptions localtraps
 
-local model="gpt-4.1"
+local model="gpt-5.4-mini"
 local reasoning_effort=""
 local show_help=0
 
@@ -77,7 +77,7 @@ Generate a Conventional Commit message from the currently staged changes using C
 then open git commit with the generated message.
 
 Options:
-  -m, --model <MODEL>                      Model to use for generation. Default: gpt-4.1
+  -m, --model <MODEL>                      Model to use for generation. Default: gpt-5.4-mini
   -r, --reasoning-effort <EFFORT>         Optional reasoning effort for supported models.
   -h, --help                              Show this help
 

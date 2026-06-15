@@ -6,18 +6,25 @@ function _commits_since_merge() {
   if git rev-parse --git-dir >/dev/null 2>&1; then
     local -a commits
     local merge_base
+    local log_output
+    local line
 
     # Find where current branch diverged from main branch
     merge_base=$(git_find_branch_base)
 
     # If merge base found, show commits since then; otherwise show recent commits
     if [[ -n "$merge_base" ]]; then
-      commits=(${(f)"$(git log --oneline --no-decorate "$merge_base"..HEAD 2>/dev/null | awk '{print $1":"substr($0, index($0,$2))}')"})
+      log_output=$(git log --oneline --no-decorate --grep='^fixup! ' --invert-grep "$merge_base"..HEAD 2>/dev/null)
     else
-      commits=(${(f)"$(git log --oneline --no-decorate -n 25 2>/dev/null | awk '{print $1":"substr($0, index($0,$2))}')"})
+      log_output=$(git log --oneline --no-decorate --grep='^fixup! ' --invert-grep -n 25 2>/dev/null)
     fi
 
-    [[ ${#commits[@]} -gt 0 ]] && _describe -t commits 'commits' commits
+    commits=()
+    while IFS= read -r line; do
+      [[ -n "$line" ]] && commits+=("$line")
+    done < <(printf '%s\n' "$log_output" | awk '{print $1":"substr($0, index($0,$2))}')
+
+    [[ ${#commits[@]} -gt 0 ]] && _describe -V -t commits 'commits' commits
   fi
 }
 

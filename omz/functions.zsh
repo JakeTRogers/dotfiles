@@ -177,10 +177,10 @@ function gciaf() {
 #######################################
 function grias() {
   local target=$1
+  local base_branch=$target
 
   # If no argument, find the base branch
-  if [[ -z $target ]]; then
-    local base_branch
+  if [[ -z $base_branch ]]; then
     base_branch=$(git_find_branch_base -n)
     [[ -z $base_branch ]] && { echo "grias: could not find main/master/develop/development/production" >&2; return 1; }
   fi

@@ -25,6 +25,8 @@ With file arguments it provides per-file commit selection:
 
 Once it confirms there are commits to fixup, the function unstages all files to prevent accidental inclusion (your index is left untouched if there is nothing to do). Staged renames are re-paired so both the old and new path land in the same fixup. In no-args mode, it loops back if there are remaining changes.
 
+After creating one or more fixups, it offers to run an autosquash rebase (git rebase -i --autosquash) so you can squash them into their targets immediately.
+
 Keybindings in fzf:
   No-args mode, file selection:
     TAB       Toggle selection
@@ -100,6 +102,9 @@ done < <(git status --porcelain=v2 2>/dev/null)
 
 # Unstage everything to start fresh (now that we know there is work to do)
 git restore --staged . 2>/dev/null
+
+# Track how many fixups we create so we can offer an autosquash rebase at the end
+local fixups_created=0
 
 # ─── Files-passed mode ──────────────────────────────────────────────
 if [[ $# -gt 0 ]]; then
@@ -216,6 +221,7 @@ if [[ $# -gt 0 ]]; then
       if git commit --fixup "$target_hash"; then
         echo
         pprint "✓ Fixup commit created for ${target_hash}" "$fgGreen"
+        fixups_created=$((fixups_created + 1))
       else
         echo
         pprint "✗ Fixup commit failed for ${target_hash}" "$fgRed"
@@ -224,6 +230,15 @@ if [[ $# -gt 0 ]]; then
     done
   else
     pprint "Aborted." "$fgYellow"
+  fi
+
+  # Offer to autosquash the new fixups right away (reuses grias)
+  if [[ $fixups_created -gt 0 ]]; then
+    echo
+    local do_rebase
+    printf '%b' "${fgYellow}Run autosquash rebase now? [y/N]:${txReset} "
+    read -r do_rebase
+    [[ "$do_rebase" =~ ^[Yy]([Ee][Ss])?$ ]] && grias
   fi
 
   return 0
@@ -237,7 +252,7 @@ while true; do
   changes=$(git status -s 2>/dev/null)
   if [[ -z "$changes" ]]; then
     pprint "No uncommitted changes found." "$fgYellow"
-    return 0
+    break
   fi
 
   # Build arrays for file categorization
@@ -294,8 +309,8 @@ while true; do
       --preview 'hash=$(echo {} | cut -d" " -f1); git show --color=always --stat $hash | head -50'
   )
 
-  # Exit silently if user cancelled
-  [[ -z "$target_commit" ]] && return 0
+  # Stop the loop if user cancelled
+  [[ -z "$target_commit" ]] && break
 
   target_hash="${target_commit%% *}"
   target_subject="${target_commit#* }"
@@ -362,8 +377,8 @@ while true; do
       --preview "line={}; if [[ \$line == *${SEP}* ]]; then echo 'Section header'; else f=\${line##  }; git diff --no-ext-diff --color=always -- \"\$f\" 2>/dev/null | head -100; fi"
   )
 
-  # Exit silently if user cancelled
-  [[ -z "$selected_files" ]] && return 0
+  # Stop the loop if user cancelled
+  [[ -z "$selected_files" ]] && break
 
   # Filter out section headers and clean up file paths
   local -a files_to_add=()
@@ -414,6 +429,7 @@ while true; do
     if git commit --fixup "$target_hash"; then
       echo
       pprint "✓ Fixup commit created" "$fgGreen"
+      fixups_created=$((fixups_created + 1))
     else
       echo
       pprint "✗ Fixup commit failed" "$fgRed"
@@ -425,3 +441,12 @@ while true; do
 
   echo
 done
+
+# Offer to autosquash the new fixups right away (reuses grias)
+if [[ $fixups_created -gt 0 ]]; then
+  echo
+  local do_rebase
+  printf '%b' "${fgYellow}Run autosquash rebase now? [y/N]:${txReset} "
+  read -r do_rebase
+  [[ "$do_rebase" =~ ^[Yy]([Ee][Ss])?$ ]] && grias
+fi

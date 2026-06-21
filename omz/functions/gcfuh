@@ -23,7 +23,7 @@ With file arguments it provides per-file commit selection:
   - Files with no on-branch history can be assigned to any on-branch commit
   - Files are grouped by selected target and one fixup commit is created per target
 
-The function automatically unstages all files at start to prevent accidental inclusion. In no-args mode, it loops back if there are remaining changes.
+Once it confirms there are commits to fixup, the function unstages all files to prevent accidental inclusion (your index is left untouched if there is nothing to do). Staged renames are re-paired so both the old and new path land in the same fixup. In no-args mode, it loops back if there are remaining changes.
 
 Keybindings in fzf:
   No-args mode, file selection:
@@ -42,11 +42,18 @@ EOF
   return 0
 fi
 
-# Use clean zsh emulation and disable debug output
-setopt TYPESET_SILENT 2>/dev/null
+# Reset to zsh defaults locally so option changes don't leak into the shell
+emulate -L zsh
+setopt typeset_silent
 
 # Ensure we're in a git repository
 _fzf_git_check || return 1
+
+# This helper is fzf-driven; fail clearly if fzf is unavailable
+if ! command -v fzf >/dev/null 2>&1; then
+  pprint "gcfuh requires fzf, which was not found in PATH." "$fgYellow"
+  return 1
+fi
 
 # Separator for section headers (using box-drawing characters)
 local SEP='─────────'
@@ -57,27 +64,17 @@ local YELLOW=$'\033[33m'
 local GREEN=$'\033[32m'
 local BLUE=$'\033[34m'
 
-# Unstage all files to start fresh
-git restore --staged . 2>/dev/null
-
 # Find where current branch diverged from main branch
 local merge_boundary
 merge_boundary=$(git_find_branch_base)
 
-# Build list of ALL on-branch commits (not just those with current changes)
-# Exclude fixup commits (no fixup of fixup)
+# Build list of ALL on-branch commits (not just those with current changes).
+# Exclude autosquash commits (fixup!/squash!/amend!) so we never fixup a fixup.
 local -a unique_commits=()
-local all_commits commit_line
-all_commits=$(git log --format='%h %s' "${merge_boundary}..HEAD" 2>/dev/null)
-
+local commit_line
 while IFS= read -r commit_line; do
-  [[ -z "$commit_line" ]] && continue
-  # Skip fixup commits (subject starts with "fixup!")
-  if [[ "$commit_line" =~ ^[a-f0-9]+\ fixup! ]]; then
-    continue
-  fi
-  unique_commits+=("$commit_line")
-done <<< "$all_commits"
+  [[ -n "$commit_line" ]] && unique_commits+=("$commit_line")
+done < <(git log --format='%h %s' --grep='^fixup! ' --grep='^squash! ' --grep='^amend! ' --invert-grep "${merge_boundary}..HEAD" 2>/dev/null)
 
 # If no on-branch commits to fixup, inform user
 if [[ ${#unique_commits[@]} -eq 0 ]]; then
@@ -85,14 +82,31 @@ if [[ ${#unique_commits[@]} -eq 0 ]]; then
   return 0
 fi
 
+# Capture staged renames BEFORE unstaging. "git restore --staged" splits a
+# rename into a delete + untracked pair and loses the pairing, which would
+# leave the old-path deletion out of the fixup. Map destination -> source so
+# we can re-pair them: classify the destination by the source's history and
+# stage both paths together.
+local -A rename_map=()      # dest path -> source path
+local -A rename_src_set=()  # source path -> 1 (delete half to hide from lists)
+local _entry _rest _i
+while IFS= read -r _entry; do
+  [[ "$_entry" == 2\ * ]] || continue   # porcelain v2 type-2 = rename/copy
+  _rest="$_entry"
+  for _i in {1..9}; do _rest="${_rest#* }"; done  # strip 9 header fields
+  rename_map[${_rest%%$'\t'*}]="${_rest##*$'\t'}" # _rest is "dest<TAB>source"
+  rename_src_set[${_rest##*$'\t'}]=1
+done < <(git status --porcelain=v2 2>/dev/null)
+
+# Unstage everything to start fresh (now that we know there is work to do)
+git restore --staged . 2>/dev/null
+
 # ─── Files-passed mode ──────────────────────────────────────────────
 if [[ $# -gt 0 ]]; then
   local -a passed_files=("$@")
 
   # Validate passed files: must have uncommitted changes according to git status
   local -a valid_files=()
-  local status_output
-  status_output=$(git status -s 2>/dev/null)
   for file in "${passed_files[@]}"; do
     if git status -s -- "$file" | grep -q .; then
       valid_files+=("$file")
@@ -112,18 +126,16 @@ if [[ $# -gt 0 ]]; then
   local -a fixup_order=()       # ordered unique target hashes
 
   for file in "${valid_files[@]}"; do
-    # Find on-branch commits that touched this file (excluding fixup commits)
-    local -a file_candidates=()
-    local file_commits_output candidate_line
-    file_commits_output=$(git log --format='%h %s' "${merge_boundary}..HEAD" -- "$file" 2>/dev/null)
+    # For a renamed destination, history lives under the source path
+    local hist_path="$file"
+    [[ -n "${rename_map[$file]}" ]] && hist_path="${rename_map[$file]}"
 
+    # Find on-branch commits that touched this file (excluding autosquash commits)
+    local -a file_candidates=()
+    local candidate_line
     while IFS= read -r candidate_line; do
-      [[ -z "$candidate_line" ]] && continue
-      if [[ "$candidate_line" =~ ^[a-f0-9]+\ fixup! ]]; then
-        continue
-      fi
-      file_candidates+=("$candidate_line")
-    done <<< "$file_commits_output"
+      [[ -n "$candidate_line" ]] && file_candidates+=("$candidate_line")
+    done < <(git log --format='%h %s' --grep='^fixup! ' --grep='^squash! ' --grep='^amend! ' --invert-grep "${merge_boundary}..HEAD" -- "$hist_path" 2>/dev/null)
 
     # Fallback: if no on-branch commits touched this file, offer all on-branch commits
     if [[ ${#file_candidates[@]} -eq 0 ]]; then
@@ -187,14 +199,20 @@ if [[ $# -gt 0 ]]; then
   printf '%b' "${fgYellow}Proceed? [y/N]:${txReset} "
   read -r response
 
-  if [[ "$response" =~ ^[Yy]$ ]]; then
+  if [[ "$response" =~ ^[Yy]([Ee][Ss])?$ ]]; then
     for target_hash in "${fixup_order[@]}"; do
       local -a group_files=()
       while IFS= read -r file; do
         group_files+=("$file")
+        # Also stage the deletion half of a rename so the fixup is complete
+        [[ -n "${rename_map[$file]}" ]] && group_files+=("${rename_map[$file]}")
       done <<< "${fixup_file_map[$target_hash]}"
 
-      git add "${group_files[@]}"
+      if ! git add "${group_files[@]}"; then
+        echo
+        pprint "✗ Failed to stage files for ${target_hash}" "$fgRed"
+        return 1
+      fi
       if git commit --fixup "$target_hash"; then
         echo
         pprint "✓ Fixup commit created for ${target_hash}" "$fgGreen"
@@ -239,15 +257,22 @@ while true; do
       file="${file##* -> }"
     fi
 
+    # Skip the delete half of a staged rename; it is handled via its destination
+    [[ -n "${rename_src_set[$file]}" ]] && continue
+
+    # For a renamed destination, history lives under the source path
+    local hist_path="$file"
+    [[ -n "${rename_map[$file]}" ]] && hist_path="${rename_map[$file]}"
+
     # Get the last commit for this file
-    file_last_commit=$(git log -1 --format='%H' -- "$file" 2>/dev/null)
+    file_last_commit=$(git log -1 --format='%H' -- "$hist_path" 2>/dev/null)
 
     if [[ -z "$file_last_commit" ]]; then
       # New file - no commit history
       new_files+=("$file")
-    elif [[ -n "$merge_boundary" ]] && git merge-base --is-ancestor "$merge_boundary" "$file_last_commit" 2>/dev/null; then
+    elif [[ -n "$merge_boundary" && "$file_last_commit" != "$merge_boundary" ]] && git merge-base --is-ancestor "$merge_boundary" "$file_last_commit" 2>/dev/null; then
       # File's last commit is after the merge boundary - on current branch
-      commit_info=$(git log -1 --format='%h %s' -- "$file" 2>/dev/null)
+      commit_info=$(git log -1 --format='%h %s' -- "$hist_path" 2>/dev/null)
       short_hash="${commit_info%% *}"
       file_commits[$file]="$commit_info"
       on_branch_files+=("$file")
@@ -334,7 +359,7 @@ while true; do
       --border-label "📁 Select Files for ${target_hash} ${target_subject}" \
       --header $'Select files to include in fixup\nTAB (toggle) ╱ CTRL-A (all) ╱ CTRL-D (none)\n' \
       --bind 'ctrl-a:select-all,ctrl-d:deselect-all' \
-      --preview "f=\$(echo {} | sed 's/^  //'); [[ -f \"\$f\" ]] && git diff --no-ext-diff --color=always -- \"\$f\" 2>/dev/null | head -100 || echo 'Section header'"
+      --preview "line={}; if [[ \$line == *${SEP}* ]]; then echo 'Section header'; else f=\${line##  }; git diff --no-ext-diff --color=always -- \"\$f\" 2>/dev/null | head -100; fi"
   )
 
   # Exit silently if user cancelled
@@ -375,9 +400,17 @@ while true; do
   printf '%b' "${fgYellow}Proceed? [y/N]:${txReset} "
   read -r response
 
-  if [[ "$response" =~ ^[Yy]$ ]]; then
-    # Execute the fixup
-    git add "${files_to_add[@]}"
+  if [[ "$response" =~ ^[Yy]([Ee][Ss])?$ ]]; then
+    # Execute the fixup, also staging the deletion half of any rename
+    local -a add_paths=("${files_to_add[@]}")
+    for f in "${files_to_add[@]}"; do
+      [[ -n "${rename_map[$f]}" ]] && add_paths+=("${rename_map[$f]}")
+    done
+    if ! git add "${add_paths[@]}"; then
+      echo
+      pprint "✗ Failed to stage files" "$fgRed"
+      return 1
+    fi
     if git commit --fixup "$target_hash"; then
       echo
       pprint "✓ Fixup commit created" "$fgGreen"

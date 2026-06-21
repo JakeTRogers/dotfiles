@@ -15,11 +15,14 @@ This function helps you organize uncommitted changes into fixup commits for prev
 
 Without arguments it provides a two-stage interactive selection:
   1. Select a target commit to fixup (from commits after the most recent merge)
-  2. Select files to include in the fixup (grouped by their last commit)
+  2. Select files to include in the fixup (grouped by the commit that last
+     touched their changed lines, via git blame)
 
 With file arguments it provides per-file commit selection:
   - Each file is matched to the on-branch commits that touched it
   - If only one commit touched the file, it is auto-selected
+  - Otherwise the commit that last touched the changed lines (determined by
+    git blame) is suggested as the default (top) entry in the picker
   - Files with no on-branch history can be assigned to any on-branch commit
   - Files are grouped by selected target and one fixup commit is created per target
 
@@ -155,16 +158,36 @@ if [[ $# -gt 0 ]]; then
       target_subject="${file_candidates[1]#* }"
       pprint "Auto-selected ${target_hash}: ${target_subject} for ${file}" "$fgGreen"
     else
-      # Prompt user to select a commit for this file
+      # Suggest a target by blaming the changed lines, and float it to the top
+      # of the list (fzf highlights the first row by default). Skip for renames.
+      local blame_hash="" candidate
+      if [[ "$hist_path" == "$file" ]]; then
+        blame_hash=$(_gcfuh_blame_target "$file" "$merge_boundary")
+        blame_hash="${blame_hash%% *}"
+      fi
+      if [[ -n "$blame_hash" ]]; then
+        local -a ordered=()
+        for candidate in "${file_candidates[@]}"; do
+          [[ "${candidate%% *}" == "$blame_hash" ]] && ordered=("$candidate")
+        done
+        for candidate in "${file_candidates[@]}"; do
+          [[ "${candidate%% *}" != "$blame_hash" ]] && ordered+=("$candidate")
+        done
+        [[ ${#ordered[@]} -eq ${#file_candidates[@]} ]] && file_candidates=("${ordered[@]}")
+      fi
+
+      # Prompt user to select a commit for this file. Preview the file under
+      # its history path (the source path for renames) so candidates that
+      # predate a rename still render a useful diff.
       local escaped_file
-      escaped_file=$(printf '%q' "$file")
+      escaped_file=$(printf '%q' "$hist_path")
       local selected
       selected=$(
         for candidate in "${file_candidates[@]}"; do
           echo "$candidate"
         done | _fzf_git_fzf --no-multi --ansi \
           --border-label "🔧 Select Fixup Target for ${file}" \
-          --header $'Select which commit to fixup for this file\nCTRL-/ (toggle preview)\n' \
+          --header $'Select which commit to fixup for this file (top = suggested)\nCTRL-/ (toggle preview)\n' \
           --preview "hash=\$(echo {} | cut -d' ' -f1); git show --color=always \$hash -- ${escaped_file} 2>/dev/null | head -120"
       )
 
@@ -286,8 +309,13 @@ while true; do
       # New file - no commit history
       new_files+=("$file")
     elif [[ -n "$merge_boundary" && "$file_last_commit" != "$merge_boundary" ]] && git merge-base --is-ancestor "$merge_boundary" "$file_last_commit" 2>/dev/null; then
-      # File's last commit is after the merge boundary - on current branch
-      commit_info=$(git log -1 --format='%h %s' -- "$hist_path" 2>/dev/null)
+      # File's last commit is after the merge boundary - on current branch.
+      # Prefer the commit that last touched the changed lines (blame-based);
+      # fall back to the file's last commit. Skip blame for renames, whose
+      # working-tree changes live under a different path than their history.
+      commit_info=""
+      [[ "$hist_path" == "$file" ]] && commit_info=$(_gcfuh_blame_target "$file" "$merge_boundary")
+      [[ -z "$commit_info" ]] && commit_info=$(git log -1 --format='%h %s' -- "$hist_path" 2>/dev/null)
       short_hash="${commit_info%% *}"
       file_commits[$file]="$commit_info"
       on_branch_files+=("$file")

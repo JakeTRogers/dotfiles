@@ -1,0 +1,33 @@
+#######################################
+# git_delete_head_semver_tags
+#######################################
+if [[ $1 == "--help" || $1 == "-h" ]]; then
+  fold -w "$(tput cols)" -s <<'EOF'
+Usage: git_delete_head_semver_tags
+Delete any local semver tags (vX.Y.Z or X.Y.Z) that point at HEAD.
+
+Intended to strip the tag that `cz bump` creates on its bump commit, so the
+commit can be rebased/squashed freely and tagged later (see git_tag_semver).
+EOF
+  return 0
+fi
+
+if ! git rev-parse --git-dir &>/dev/null; then
+  echo "Not a git repository" >&2
+  return 1
+fi
+
+local -a tags
+tags=("${(@f)$(git tag --points-at HEAD | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+$')}")
+tags=("${(@)tags:#}")                 # drop the empty element when grep matched nothing
+
+if (( ${#tags[@]} == 0 )); then
+  echo "No semver tags found on HEAD"
+  return 0
+fi
+
+local tag
+for tag in "${tags[@]}"; do
+  echo "Deleting tag $tag from HEAD"
+  git tag -d "$tag"
+done

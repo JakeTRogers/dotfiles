@@ -189,6 +189,17 @@ function grias() {
 }
 
 #######################################
+# czbnt - commitizen bump, then strip the tag it created
+# Arguments:
+#   Any arguments accepted by `cz bump` (e.g. --increment PATCH)
+# Outputs:
+#   Runs `cz bump`, then deletes the semver tag it left on HEAD
+#######################################
+function czbnt() {
+  cz bump "$@" && git_delete_head_semver_tags
+}
+
+#######################################
 # _gcfuh_blame_target - suggest a fixup target by blaming changed lines
 #
 # Blames the lines a file's unstaged changes actually touch (the old side of

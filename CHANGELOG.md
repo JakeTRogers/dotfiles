@@ -1,3 +1,15 @@
+## v3.5.0 (2026-06-21)
+
+### Feature
+
+- **omz**: suggest gcfuh fixup target via git blame
+- **omz**: offer autosquash rebase after gcfuh creates fixups
+
+### Fix
+
+- **omz**: use grias target argument as rebase base
+- **omz**: harden gcfuh fixup helper
+
 ## v3.4.1 (2026-06-14)
 
 ### Fix

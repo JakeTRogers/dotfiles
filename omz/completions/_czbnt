@@ -1,0 +1,12 @@
+#compdef czbnt
+
+# Completion for "czbnt" (cz bump, then strip the tag it created).
+# Offers the most common `cz bump` flags; see `cz bump --help` for the full set.
+function _czbnt() {
+  _arguments -s \
+    '--increment[Manually specify the increment]:increment:(MAJOR MINOR PATCH)' \
+    '--prerelease[Choose a prerelease phase]:phase:(alpha beta rc)' \
+    '--changelog[Generate the changelog for the newest version]' \
+    '--dry-run[Show the bump without applying it]' \
+    '--yes[Answer yes to all prompts]'
+}

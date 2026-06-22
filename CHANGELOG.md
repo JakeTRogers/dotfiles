@@ -1,3 +1,9 @@
+## v3.6.0 (2026-06-21)
+
+### Feature
+
+- **omz**: add czbnt to bump without leaving a tag
+
 ## v3.5.0 (2026-06-21)
 
 ### Feature

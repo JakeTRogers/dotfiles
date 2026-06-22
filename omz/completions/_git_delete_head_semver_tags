@@ -1,0 +1,7 @@
+#compdef git_delete_head_semver_tags
+
+# Completion for the "git_delete_head_semver_tags" command.
+function _git_delete_head_semver_tags() {
+  _arguments -s -S \
+    '(- *)'{-h,--help}'[Show help message]'
+}

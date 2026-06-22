@@ -40,6 +40,7 @@ Individual function files that are autoloaded on-demand. Each file contains a si
 - **`decode_cert`** - Decode SSL/TLS certificates
 - **`decode_jwt`** - Decode JWT tokens
 - **`get_k8s_images`** - Extract container images from Kubernetes pods with filtering and parsing options
+- **`git_delete_head_semver_tags`** - Delete local semver tags pointing at HEAD (e.g. the one `cz bump` creates)
 - **`git_pr_check`** - Check subdirectories for GitHub pull requests
 - **`git_tag_semver`** - Semantically tag a git repository with major/minor/patch versions
 - **`install_it`** - Use Linux `install` to install binaries in `/usr/local/bin`
@@ -53,8 +54,10 @@ Individual function files that are autoloaded on-demand. Each file contains a si
 
 Zsh completion functions (prefixed with `_`) symlinked to `$ZSH_CUSTOM/completions/`:
 
+- **`_czbnt`** - Completion for czbnt function
 - **`_decode_cert`** - Completion for decode_cert function
 - **`_decode_jwt`** - Completion for decode_jwt function
+- **`_git_delete_head_semver_tags`** - Completion for git_delete_head_semver_tags function
 - **`_fzf`** - FZF completion
 - **`_getRelease`** - Completion for getRelease CLI
 - **`_install_it`** - Completion for install_it function

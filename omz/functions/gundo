@@ -1,0 +1,10 @@
+################################
+# gundo - Undo the last git commit (soft reset)
+# Arguments:
+#   None
+# Outputs:
+#   Resets the last commit but keeps changes staged
+# Returns:
+#   0 on success, 128 if not in a git repository
+################################
+git reset --soft HEAD~1

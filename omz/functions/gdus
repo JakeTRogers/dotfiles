@@ -1,0 +1,8 @@
+#######################################
+# git diff staged with 0 lines of context
+# Arguments:
+#   Files to diff (optional, defaults to all)
+# Outputs:
+#   Git diff output
+#######################################
+git diff -U0 --cached "$@"

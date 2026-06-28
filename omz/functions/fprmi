@@ -1,0 +1,30 @@
+#######################################
+# fprmi - Remove podman images
+#
+# Interactive selection of images with fzf (supports multiselect),
+# then removes the selected images.
+#
+# Arguments:
+#   query                 Optional fzf search query
+#
+# Outputs:
+#   Interactive fzf selection, then removes selected images
+#######################################
+if _fp_wants_help "$@"; then
+  _fp_command_help fprmi
+  return 0
+fi
+
+_check_podman || return 1
+
+local query="$1"
+
+podman images --format "$_FP_IMAGE_FORMAT" | fzf -q "$query" --no-sort -m --tac \
+  --delimiter $'\t' \
+  --border-label '🐳 Images' \
+  --header 'TAB (select multiple) ╱ CTRL-R (reload) ╱ ALT-I (inspect)' \
+  --preview-window 'down,60%' \
+  --preview 'podman inspect {1} | jq -C '\''.[0] | {Id: .Id, RepoTags: .RepoTags, Created: .Created, Size: .Size, Architecture: .Architecture, Os: .Os}'\''' \
+  --bind "ctrl-r:reload(podman images --format '$_FP_IMAGE_FORMAT')" \
+  --bind 'alt-i:execute(podman inspect {1} | jq -C . | ${=PAGER:-less} -R > /dev/tty)' \
+  | cut -f1 | xargs -r podman rmi

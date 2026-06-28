@@ -1,0 +1,114 @@
+#######################################
+# _fp_command_help - Print help for an fp podman helper
+#
+# Arguments:
+#   $1 - Command name
+# Returns:
+#   0 on success, 1 for unknown command
+#######################################
+case "$1" in
+  fpe)
+    printf '%s\n' \
+      'Usage: fpe [options] [query]' \
+      '' \
+      'Exec into a running podman container selected with fzf.' \
+      '' \
+      'Options:' \
+      '  -u, --user USER       Run as specified user' \
+      '  -s, --shell SHELL     Use specified shell (default: /bin/bash)' \
+      '  -w, --workdir PATH    Set working directory' \
+      '  -c, --cmd COMMAND     Execute command instead of interactive shell' \
+      '  -h, --help            Show this help message'
+    ;;
+  fpse)
+    printf '%s\n' \
+      'Usage: fpse [options] [query]' \
+      '' \
+      'Start a podman container if needed, then exec into it.' \
+      '' \
+      'Options:' \
+      '  -u, --user USER       Run as specified user' \
+      '  -s, --shell SHELL     Use specified shell (default: /bin/bash)' \
+      '  -w, --workdir PATH    Set working directory' \
+      '  -c, --cmd COMMAND     Execute command instead of interactive shell' \
+      '  -h, --help            Show this help message'
+    ;;
+  fpa)
+    printf '%s\n' \
+      'Usage: fpa [query]' \
+      '' \
+      'Attach to a running podman container selected with fzf.' \
+      '' \
+      'Options:' \
+      '  -h, --help            Show this help message'
+    ;;
+  fpsa)
+    printf '%s\n' \
+      'Usage: fpsa [query]' \
+      '' \
+      'Start a podman container if needed, then attach to it.' \
+      '' \
+      'Options:' \
+      '  -h, --help            Show this help message'
+    ;;
+  fps)
+    printf '%s\n' \
+      'Usage: fps [query]' \
+      '' \
+      'Stop running podman containers selected with fzf.' \
+      '' \
+      'Options:' \
+      '  -h, --help            Show this help message'
+    ;;
+  fprm)
+    printf '%s\n' \
+      'Usage: fprm [query]' \
+      '' \
+      'Remove podman containers selected with fzf.' \
+      '' \
+      'Options:' \
+      '  -h, --help            Show this help message'
+    ;;
+  fprmi)
+    printf '%s\n' \
+      'Usage: fprmi [query]' \
+      '' \
+      'Remove podman images selected with fzf.' \
+      '' \
+      'Options:' \
+      '  -h, --help            Show this help message'
+    ;;
+  fpl)
+    printf '%s\n' \
+      'Usage: fpl [options] [query]' \
+      '' \
+      'View logs from podman containers selected with fzf.' \
+      '' \
+      'Options:' \
+      '  -f, --follow          Follow log output' \
+      '  -n, --lines LINES     Number of lines to show' \
+      '  -h, --help            Show this help message'
+    ;;
+  fpst)
+    printf '%s\n' \
+      'Usage: fpst [query]' \
+      '' \
+      'Show live stats for running podman containers selected with fzf.' \
+      '' \
+      'Options:' \
+      '  -h, --help            Show this help message'
+    ;;
+  fprestart)
+    printf '%s\n' \
+      'Usage: fprestart [query]' \
+      '' \
+      'Restart podman containers selected with fzf.' \
+      '' \
+      'Options:' \
+      '  -h, --help            Show this help message'
+    ;;
+  *)
+    echo "fp: unknown command: $1" >&2
+    return 1
+    ;;
+esac

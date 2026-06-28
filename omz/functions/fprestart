@@ -1,0 +1,33 @@
+#######################################
+# fprestart - Restart podman containers
+#
+# Interactive selection of containers with fzf (supports multiselect),
+# then restarts the selected containers.
+#
+# Arguments:
+#   query                 Optional fzf search query
+#
+# Outputs:
+#   Interactive fzf selection, then restarts selected containers
+#######################################
+if _fp_wants_help "$@"; then
+  _fp_command_help fprestart
+  return 0
+fi
+
+_check_podman || return 1
+
+local query="$1"
+
+podman ps -a --format "$_FP_CONTAINER_FORMAT" | fzf -m -q "$query" \
+  --delimiter $'\t' \
+  --border-label '🐳 All Containers' \
+  --header 'TAB (select multiple) ╱ CTRL-R (reload) ╱ CTRL-L (logs) ╱ ALT-I (inspect) ╱ CTRL-S (stats) ╱ CTRL-D (force remove)' \
+  --preview-window 'down,60%' \
+  --preview 'podman inspect {1} | jq -C '\''.[0] | {Status: .State.Status, Image: .ImageName, Name: .Name, Created: .Created, Command: .Config.Cmd, Ports: .NetworkSettings.Ports, Mounts: [.Mounts[].Destination]}'\''' \
+  --bind "ctrl-r:reload(podman ps -a --format '$_FP_CONTAINER_FORMAT')" \
+  --bind 'ctrl-l:execute(podman logs --tail 50 --color {1} | ${=PAGER:-less} -R > /dev/tty)' \
+  --bind 'alt-i:execute(podman inspect {1} | jq -C . | ${=PAGER:-less} -R > /dev/tty)' \
+  --bind 'ctrl-s:execute(podman stats --no-stream {1} > /dev/tty; read -k 1)' \
+  --bind "ctrl-d:reload(podman rm -f {1} >/dev/null 2>&1; podman ps -a --format '$_FP_CONTAINER_FORMAT')" \
+  | cut -f1 | xargs -r podman restart

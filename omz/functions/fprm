@@ -1,0 +1,32 @@
+#######################################
+# fprm - Remove podman containers
+#
+# Interactive selection of containers with fzf (supports multiselect),
+# then removes the selected containers.
+#
+# Arguments:
+#   query                 Optional fzf search query
+#
+# Outputs:
+#   Interactive fzf selection, then removes selected containers
+#######################################
+if _fp_wants_help "$@"; then
+  _fp_command_help fprm
+  return 0
+fi
+
+_check_podman || return 1
+
+local query="$1"
+
+podman ps -a --format "$_FP_CONTAINER_FORMAT" | fzf -q "$query" --no-sort -m --tac \
+  --delimiter $'\t' \
+  --border-label '🐳 All Containers' \
+  --header 'TAB (select multiple) ╱ CTRL-R (reload) ╱ CTRL-L (logs) ╱ ALT-I (inspect) ╱ CTRL-S (stats)' \
+  --preview-window 'down,60%' \
+  --preview 'podman inspect {1} | jq -C '\''.[0] | {Status: .State.Status, Image: .ImageName, Name: .Name, Created: .Created, Command: .Config.Cmd, Ports: .NetworkSettings.Ports, Mounts: [.Mounts[].Destination]}'\''' \
+  --bind "ctrl-r:reload(podman ps -a --format '$_FP_CONTAINER_FORMAT')" \
+  --bind 'ctrl-l:execute(podman logs --tail 50 --color {1} | ${=PAGER:-less} -R > /dev/tty)' \
+  --bind 'alt-i:execute(podman inspect {1} | jq -C . | ${=PAGER:-less} -R > /dev/tty)' \
+  --bind 'ctrl-s:execute(podman stats --no-stream {1} > /dev/tty; read -k 1)' \
+  | cut -f1 | xargs -r podman rm

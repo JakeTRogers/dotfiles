@@ -1,0 +1,47 @@
+#######################################
+# fpe - Exec into a running podman container
+#
+# Interactive selection of running container with fzf, then exec into it.
+# Supports custom user, shell, working directory, and command execution.
+#
+# Arguments:
+#   -u, --user USER       Run as specified user
+#   -s, --shell SHELL     Use specified shell (default: /bin/bash)
+#   -w, --workdir PATH    Set working directory
+#   -c, --cmd COMMAND     Execute command instead of interactive shell
+#   query                 Optional fzf search query
+#
+# Outputs:
+#   Interactive fzf selection, then executes into container
+#######################################
+if _fp_wants_help "$@"; then
+  _fp_command_help fpe
+  return 0
+fi
+
+_check_podman || return 1
+
+local -a opt_u opt_s opt_w opt_c
+zparseopts -D -E u:=opt_u -user:=opt_u s:=opt_s -shell:=opt_s w:=opt_w -workdir:=opt_w c:=opt_c -cmd:=opt_c
+
+local user="${opt_u[2]}"
+local shell="${opt_s[2]:-/bin/bash}"
+local workdir="${opt_w[2]}"
+local cmd="${opt_c[2]}"
+local query="$1"
+
+local cid
+cid=$(podman ps --format "$_FP_CONTAINER_FORMAT" | fzf -1 -q "$query" \
+  --delimiter $'\t' \
+  --border-label '🐳 Running Containers' \
+  --header 'CTRL-R (reload) ╱ CTRL-L (logs) ╱ ALT-I (inspect) ╱ CTRL-S (stats) ╱ CTRL-D (force remove)' \
+  --preview-window 'down,60%' \
+  --preview 'podman inspect {1} | jq -C '\''.[0] | {Status: .State.Status, Image: .ImageName, Name: .Name, Created: .Created, Command: .Config.Cmd, Ports: .NetworkSettings.Ports, Mounts: [.Mounts[].Destination]}'\''' \
+  --bind "ctrl-r:reload(podman ps --format '$_FP_CONTAINER_FORMAT')" \
+  --bind 'ctrl-l:execute(podman logs --tail 50 --color {1} | ${=PAGER:-less} -R > /dev/tty)' \
+  --bind 'alt-i:execute(podman inspect {1} | jq -C . | ${=PAGER:-less} -R > /dev/tty)' \
+  --bind 'ctrl-s:execute(podman stats --no-stream {1} > /dev/tty; read -k 1)' \
+  --bind "ctrl-d:reload(podman rm -f {1} >/dev/null 2>&1; podman ps --format '$_FP_CONTAINER_FORMAT')" \
+  | cut -f1)
+
+[[ -n "$cid" ]] && _fp_exec_container "$cid" "$user" "$shell" "$workdir" "$cmd"

@@ -1,0 +1,56 @@
+#######################################
+# fp - Show help for podman fzf helpers or dispatch to one
+#
+# Arguments:
+#   help [command]       Show fp summary or help for a specific command
+#   <command> [args...]  Run the specified fp helper
+# Outputs:
+#   Help text or command output
+# Returns:
+#   0 on success, 1 for unknown commands
+#######################################
+local command="${1:-help}"
+
+if [[ $# -gt 0 ]]; then
+  shift
+fi
+
+case "$command" in
+  help|-h|--help)
+    if [[ -n "$1" ]]; then
+      _fp_command_help "$1"
+      return $?
+    fi
+
+    printf '%s\n' \
+      'Usage: fp [help] [command]' \
+      '' \
+      'Podman fzf helpers:' \
+      '  fpe        Exec into a running container' \
+      '  fpse       Start a container, then exec into it' \
+      '  fpa        Attach to a running container' \
+      '  fpsa       Start a container, then attach to it' \
+      '  fps        Stop running containers' \
+      '  fprm       Remove containers' \
+      '  fprmi      Remove images' \
+      '  fpl        View logs' \
+      '  fpst       View stats' \
+      '  fprestart  Restart containers' \
+      '' \
+      'Examples:' \
+      '  fp' \
+      '  fp help fpl' \
+      '  fpl --help' \
+      '' \
+      'Run any command above with --help for details.'
+    ;;
+  fpe|fpse|fpa|fpsa|fps|fprm|fprmi|fpl|fpst|fprestart)
+    "$command" "$@"
+    ;;
+  *)
+    echo "fp: unknown command: $command" >&2
+    _fp_command_help "$command" >/dev/null 2>&1
+    fp help >&2
+    return 1
+    ;;
+esac

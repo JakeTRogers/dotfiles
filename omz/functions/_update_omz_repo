@@ -1,0 +1,65 @@
+#######################################
+# _update_omz_repo - Update (or check) a single git repository for update_omz_all
+#
+# Reads the dry_run flag and increments the total/updated/skipped counters from
+# the calling update_omz_all scope via zsh dynamic scoping, so it is a helper for
+# update_omz_all rather than a standalone command.
+#
+# Arguments:
+#   $1 - directory path
+#   $2 - display name
+# Returns:
+#   0 on success or skip, 1 on update failure
+#######################################
+local dir=$1
+local name=$2
+
+((total++))
+
+if [[ $dry_run -eq 1 ]]; then
+  # Dry-run mode: fetch and check status
+  if ! git -C "$dir" fetch origin --quiet 2>/dev/null; then
+    pprint "⚠️  $name: fetch failed" "$fgYellow"
+    ((skipped++))
+    return 0
+  fi
+
+  # Get upstream tracking branch
+  local upstream
+  upstream=$(git -C "$dir" rev-parse --abbrev-ref "@{upstream}" 2>/dev/null)
+
+  if [[ -z $upstream ]]; then
+    pprint "⚠️  $name: no upstream tracking branch" "$fgYellow"
+    ((skipped++))
+    return 0
+  fi
+
+  # Count commits behind
+  local commits_behind
+  commits_behind=$(git -C "$dir" rev-list --count HEAD..@{upstream} 2>/dev/null)
+
+  if [[ $commits_behind -eq 0 ]]; then
+    pprint "✅ $name: up to date" "$fgGreen"
+  else
+    pprint "🔴 $name: $commits_behind commit(s) behind" "$fgRed"
+  fi
+  ((updated++))
+else
+  # Update mode: pull changes
+  echo "Updating $name..."
+
+  # Check for upstream first
+  if ! git -C "$dir" rev-parse --abbrev-ref "@{upstream}" >/dev/null 2>&1; then
+    pprint "⚠️  $name: no upstream tracking branch, skipping" "$fgYellow"
+    ((skipped++))
+    return 0
+  fi
+
+  if ! git -C "$dir" pull -p 2>&1; then
+    pprint "✗ $name failed, try --dry-run to diagnose" "$fgRed"
+    return 1
+  fi
+  ((updated++))
+fi
+
+return 0

@@ -56,7 +56,7 @@ _fzf_git_check || return 1
 
 # This helper is fzf-driven; fail clearly if fzf is unavailable
 if ! command -v fzf >/dev/null 2>&1; then
-  pprint "gcfuh requires fzf, which was not found in PATH." "$fgYellow"
+  pprint "🔴 gcfuh requires fzf, which was not found in PATH." "$fgRed" >&2
   return 1
 fi
 
@@ -83,7 +83,7 @@ done < <(git log --format='%h %s' --grep='^fixup! ' --grep='^squash! ' --grep='^
 
 # If no on-branch commits to fixup, inform user
 if [[ ${#unique_commits[@]} -eq 0 ]]; then
-  pprint "No on-branch commits found to fixup." "$fgYellow"
+  pprint "⚠️  No on-branch commits found to fixup." "$fgYellow"
   return 0
 fi
 
@@ -119,12 +119,12 @@ if [[ $# -gt 0 ]]; then
     if git status -s -- "$file" | grep -q .; then
       valid_files+=("$file")
     else
-      pprint "Skipping unknown file: $file" "$fgYellow"
+      pprint "⚠️  Skipping unknown file: $file" "$fgYellow"
     fi
   done
 
   if [[ ${#valid_files[@]} -eq 0 ]]; then
-    pprint "No valid files to process." "$fgYellow"
+    pprint "⚠️  No valid files to process." "$fgYellow"
     return 0
   fi
 
@@ -156,7 +156,7 @@ if [[ $# -gt 0 ]]; then
       # Auto-select the single candidate
       target_hash="${file_candidates[1]%% *}"
       target_subject="${file_candidates[1]#* }"
-      pprint "Auto-selected ${target_hash}: ${target_subject} for ${file}" "$fgGreen"
+      pprint "✅ Auto-selected ${target_hash}: ${target_subject} for ${file}" "$fgGreen"
     else
       # Suggest a target by blaming the changed lines, and float it to the top
       # of the list (fzf highlights the first row by default). Skip for renames.
@@ -192,7 +192,7 @@ if [[ $# -gt 0 ]]; then
       )
 
       if [[ -z "$selected" ]]; then
-        pprint "Selection cancelled. No fixup commits were created." "$fgYellow"
+        pprint "⚠️  Selection cancelled. No fixup commits were created." "$fgYellow"
         return 0
       fi
 
@@ -238,21 +238,21 @@ if [[ $# -gt 0 ]]; then
 
       if ! git add "${group_files[@]}"; then
         echo
-        pprint "✗ Failed to stage files for ${target_hash}" "$fgRed"
+        pprint "🔴 Failed to stage files for ${target_hash}" "$fgRed"
         return 1
       fi
       if git commit --fixup "$target_hash"; then
         echo
-        pprint "✓ Fixup commit created for ${target_hash}" "$fgGreen"
+        pprint "✅ Fixup commit created for ${target_hash}" "$fgGreen"
         fixups_created=$((fixups_created + 1))
       else
         echo
-        pprint "✗ Fixup commit failed for ${target_hash}" "$fgRed"
+        pprint "🔴 Fixup commit failed for ${target_hash}" "$fgRed"
         return 1
       fi
     done
   else
-    pprint "Aborted." "$fgYellow"
+    pprint "⚠️  Aborted." "$fgYellow"
   fi
 
   # Offer to autosquash the new fixups right away (reuses grias)
@@ -274,7 +274,7 @@ while true; do
   local changes
   changes=$(git status -s 2>/dev/null)
   if [[ -z "$changes" ]]; then
-    pprint "No uncommitted changes found." "$fgYellow"
+    pprint "⚠️  No uncommitted changes found." "$fgYellow"
     break
   fi
 
@@ -420,7 +420,7 @@ while true; do
 
   # Check if any files were actually selected
   if [[ ${#files_to_add[@]} -eq 0 ]]; then
-    pprint "No files selected." "$fgYellow"
+    pprint "⚠️  No files selected." "$fgYellow"
     continue
   fi
 
@@ -451,20 +451,20 @@ while true; do
     done
     if ! git add "${add_paths[@]}"; then
       echo
-      pprint "✗ Failed to stage files" "$fgRed"
+      pprint "🔴 Failed to stage files" "$fgRed"
       return 1
     fi
     if git commit --fixup "$target_hash"; then
       echo
-      pprint "✓ Fixup commit created" "$fgGreen"
+      pprint "✅ Fixup commit created" "$fgGreen"
       fixups_created=$((fixups_created + 1))
     else
       echo
-      pprint "✗ Fixup commit failed" "$fgRed"
+      pprint "🔴 Fixup commit failed" "$fgRed"
       return 1
     fi
   else
-    pprint "Aborted." "$fgYellow"
+    pprint "⚠️  Aborted." "$fgYellow"
   fi
 
   echo

@@ -1,0 +1,40 @@
+#######################################
+# _fp_exec_container - Exec into a container with properly separated args
+#
+# Arguments:
+#   $1 - Container ID
+#   $2 - User
+#   $3 - Shell
+#   $4 - Working directory
+#   $5 - Command string
+# Returns:
+#   podman exec exit status
+#######################################
+local cid="$1"
+local user="$2"
+local shell="$3"
+local workdir="$4"
+local cmd="$5"
+local -a exec_args
+
+# When no user is specified, inherit the container's configured user.
+# podman exec defaults to root (UID 0), which fails in rootless containers
+# that lack a root entry in /etc/passwd.
+if [[ -z "$user" ]]; then
+  user=$(podman inspect --format '{{.Config.User}}' "$cid" 2>/dev/null)
+fi
+
+exec_args=(exec -it)
+
+[[ -n "$user" ]] && exec_args+=(-u "$user")
+[[ -n "$workdir" ]] && exec_args+=(-w "$workdir")
+
+exec_args+=("$cid")
+
+if [[ -n "$cmd" ]]; then
+  exec_args+=("$shell" -lc "$cmd")
+else
+  exec_args+=("$shell")
+fi
+
+podman "${exec_args[@]}"

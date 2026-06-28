@@ -1,0 +1,16 @@
+#######################################
+# _check_podman - Check if podman is available
+#
+# Verifies that podman command is available in PATH.
+# Prints error message if not found.
+#
+# Arguments:
+#   None
+# Returns:
+#   0 if podman is available, 1 if not found
+#######################################
+if ! command -v podman &> /dev/null; then
+  pprint "🔴 podman: command not found" "$fgRed" >&2
+  return 1
+fi
+return 0

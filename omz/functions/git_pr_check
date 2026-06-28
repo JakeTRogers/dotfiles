@@ -12,22 +12,21 @@ EOF
   return 0
 fi
 
+local current_dir dir
 current_dir=$(pwd)
-for dir in $(find "${1:-.}" -mindepth 1 -maxdepth 1 -type d -print); do
+for dir in "${1:-.}"/*(/N); do
   cd "$dir"
   # has a .git directory
   if [ -d .git -o -d refs ]; then
     # has a GitHub remote
     if git remote -v | grep -iq github; then
       echo
-      pprint "🟢 ${dir}" $fgGreen
+      pprint "✅ ${dir}" "$fgGreen"
       gh pr list
       echo
     # does not have a GitHub remote
     else
-      pprint "🟠 ${dir}, not using GitHub" $fgYellow
-      cd ..
-      continue
+      pprint "⚠️  ${dir}, not using GitHub" "$fgYellow"
     fi
   # does not have a .git directory
   else

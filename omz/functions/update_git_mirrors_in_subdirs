@@ -1,0 +1,49 @@
+#######################################
+# update all git mirrors in subdirectories of the current directory
+# Arguments:
+#   None
+# Outputs:
+#   Writes the git fetch and push status to stdout
+# Returns:
+#   0 on success, 1 if any operations failed
+#######################################
+local dir
+local failed=0
+
+# (N) nullglob so an empty directory loops zero times; (/) restricts to
+# directories and yields names without a trailing slash
+for dir in *(N/); do
+  pprint "🔄 Processing: $dir" "$fgBlue"
+
+  # Check if it's a git repository
+  if ! git -C "$dir" rev-parse --git-dir &>/dev/null; then
+    pprint "  ⚠️  Skipping: not a git repository" "$fgYellow"
+    echo
+    continue
+  fi
+
+  # Fetch with prune
+  if git -C "$dir" fetch -p origin; then
+    pprint "  ✅ Fetch completed" "$fgGreen"
+  else
+    pprint "  🔴 Fetch failed" "$fgRed"
+    ((failed++))
+  fi
+
+  # Push mirror
+  if git -C "$dir" push --mirror; then
+    pprint "  ✅ Mirror push completed" "$fgGreen"
+  else
+    pprint "  🔴 Mirror push failed" "$fgRed"
+    ((failed++))
+  fi
+
+  echo
+done
+
+if [[ $failed -gt 0 ]]; then
+  pprint "🔴 Completed with $failed error(s)" "$fgRed"
+  return 1
+else
+  pprint "✅ All mirrors updated successfully" "$fgGreen"
+fi

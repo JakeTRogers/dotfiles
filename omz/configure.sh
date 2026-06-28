@@ -39,7 +39,6 @@ fi
 
 ln -sf "${DOTFILES_LOCATION}/omz/aliases.zsh" "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/aliases.zsh"
 ln -sf --no-dereference "${DOTFILES_LOCATION}/omz/functions" "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/functions"
-ln -sf "${DOTFILES_LOCATION}/omz/functions.zsh" "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/functions.zsh"
 ln -sf "${DOTFILES_LOCATION}/omz/variables.zsh" "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/variables.zsh"
 ln -sf "${DOTFILES_LOCATION}/omz/zshrc" "${HOME}/.zshrc"
 ln -sf "${DOTFILES_LOCATION}/omz/p10k.zsh" "${HOME}/.p10k.zsh"

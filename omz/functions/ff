@@ -1,0 +1,14 @@
+################################
+# ff - Fuzzy find a file and open it in the editor
+# Arguments:
+#   None
+# Outputs:
+#   Interactive fzf selection of files in the current directory, then opens the selected file in the default editor
+# Returns:
+#   0 on success, 1 if no selection made
+################################
+local file
+file=$(fzf) || return
+local -a editor_cmd
+editor_cmd=( ${(z)${EDITOR:-vim}} )
+"${editor_cmd[@]}" "$file"

@@ -29,12 +29,12 @@ fi
 
 # Dependency check
 if ! command -v kubectl >/dev/null 2>&1; then
-  pprint "kubectl is required, but not found." "$fgRed"
+  pprint "🔴 kubectl is required, but not found." "$fgRed" >&2
   return 1
 fi
 
 if ! command -v jq >/dev/null 2>&1; then
-  pprint "jq is required, but not found." "$fgRed"
+  pprint "🔴 jq is required, but not found." "$fgRed" >&2
   return 1
 fi
 
@@ -53,7 +53,7 @@ while :; do
       ;;
     -k|--kind)
       if [[ -z $2 ]]; then
-        pprint "ERROR: '--kind' requires a non-empty option argument." "$fgRed"
+        pprint "🔴 '--kind' requires a non-empty option argument." "$fgRed" >&2
         return 1
       fi
       kinds="$2"
@@ -64,7 +64,7 @@ while :; do
       shift
       ;;
     --kind=)
-      pprint "ERROR: '--kind' requires a non-empty option argument." "$fgRed"
+      pprint "🔴 '--kind' requires a non-empty option argument." "$fgRed" >&2
       return 1
       ;;
     --)  # End of all options
@@ -72,7 +72,7 @@ while :; do
       break
       ;;
     -?*)
-      pprint "Unknown option: $1" "$fgRed"
+      pprint "🔴 unknown option: $1" "$fgRed" >&2
       return 1
       ;;
     *)  # No more options, break out of loop
@@ -109,7 +109,7 @@ for k in "${kind_list[@]}"; do
     app)  kind_filter+='(.spec.containers // [])[]?, ' ;;
     eph)  kind_filter+='(.spec.ephemeralContainers // [])[]?, ' ;;
     *)
-      pprint "Invalid container kind: $k" "$fgRed"
+      pprint "🔴 invalid container kind: $k" "$fgRed" >&2
       return 1
       ;;
   esac

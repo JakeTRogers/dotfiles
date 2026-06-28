@@ -1,0 +1,8 @@
+#######################################
+# czbnt - commitizen bump, then strip the tag it created
+# Arguments:
+#   Any arguments accepted by `cz bump` (e.g. --increment PATCH)
+# Outputs:
+#   Runs `cz bump`, then deletes the semver tag it left on HEAD
+#######################################
+cz bump "$@" && git_delete_head_semver_tags

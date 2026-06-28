@@ -29,7 +29,7 @@ local prefix=''                                  # Default to no prefix
 [[ $latest_tag == v* ]] && prefix='v'            # enable version prefix
 latest_tag=${latest_tag#v}                       # Remove 'v' prefix for version incrementing
 
-echo "Latest tag: $latest_tag"
+pprint "🔵 Latest tag: $latest_tag" "$fgBlue"
 local major=$(echo $latest_tag | cut -d. -f1)
 local minor=$(echo $latest_tag | cut -d. -f2)
 local patch=$(echo $latest_tag | cut -d. -f3)
@@ -47,22 +47,22 @@ case $1 in
     patch=$((patch + 1))
     ;;
   *)
-    echo "Invalid argument: $1"
+    pprint "🔴 invalid argument: $1" "$fgRed" >&2
     return 1
     ;;
 esac
 major=${prefix}${major}                          # add v to major version if prefix is enabled
 local commit=${3:-HEAD}                          # Default to HEAD if no commit is provided
-echo "tagging version: $major.$minor.$patch on $commit"
+pprint "🏷️  tagging version: $major.$minor.$patch on $commit" "$fgGreen"
 git rev-parse $major.$minor.$patch &>/dev/null && git tag -d $major.$minor.$patch
 git tag -sa $major.$minor.$patch -m "$major.$minor.$patch" $commit
 
 # handle floating tags
 if [[ $2 == 'float' ]]; then
-  echo "tagging version: $major.$minor on $commit"
+  pprint "🏷️  tagging version: $major.$minor on $commit" "$fgGreen"
   git rev-parse $major.$minor &>/dev/null && git tag -d $major.$minor
   git tag -sa $major.$minor -m "$major.$minor" $commit
-  echo "tagging version: $major on $commit"
+  pprint "🏷️  tagging version: $major on $commit" "$fgGreen"
   git rev-parse $major &>/dev/null && git tag -d $major
   git tag -sa $major -m "$major" $commit
 fi

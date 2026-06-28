@@ -1,0 +1,83 @@
+#######################################
+# _gcfuh_blame_target - suggest a fixup target by blaming changed lines
+#
+# Blames the lines a file's unstaged changes actually touch (the old side of
+# each diff hunk) against HEAD, and returns the newest on-branch commit among
+# the results. This is more precise than "the file's last commit" when a file
+# spans several branch commits. Pure additions and new/untracked files yield
+# nothing (there are no committed lines to blame).
+#
+# Usage:
+#   suggestion=$(_gcfuh_blame_target path/to/file "$merge_boundary")
+#
+# Arguments:
+#   $1  File path (must exist in HEAD)
+#   $2  Merge boundary commit (output of git_find_branch_base)
+# Returns:
+#   "<short-hash> <subject>" of the suggested commit, or empty string
+#######################################
+emulate -L zsh
+local file=$1 merge_boundary=$2
+[[ -n "$file" && -n "$merge_boundary" ]] || return 0
+
+# Only tracked files have committed lines to blame
+git cat-file -e "HEAD:$file" 2>/dev/null || return 0
+
+# Map on-branch commit full-hash -> order index (0 = newest), excluding
+# autosquash commits, so we can both filter and rank blame results.
+local -A on_branch_idx=()
+local idx=0 full_hash
+while IFS= read -r full_hash; do
+  [[ -n "$full_hash" ]] && on_branch_idx[$full_hash]=$idx && idx=$((idx + 1))
+done < <(git log --format='%H' --grep='^fixup! ' --grep='^squash! ' --grep='^amend! ' --invert-grep "${merge_boundary}..HEAD" 2>/dev/null)
+[[ ${#on_branch_idx[@]} -eq 0 ]] && return 0
+
+# Walk the diff and record the HEAD line numbers that are actually removed or
+# modified (lines starting with '-'), tracking the old-side line counter.
+# Context and added lines are skipped so we never blame unrelated lines.
+local -a removed=()
+local line hunk in_hunk=0 old_lineno=0
+while IFS= read -r line; do
+  if [[ "$line" == @@* ]]; then
+    hunk="${line#@@ -}"; hunk="${hunk%% +*}"   # "oldStart[,oldCount]"
+    old_lineno="${hunk%%,*}"
+    in_hunk=1
+    continue
+  fi
+  (( in_hunk )) || continue
+  case "$line" in
+    '\'*) ;;                                       # "\ No newline at end of file"
+    +*) ;;                                         # added line: no old counterpart
+    -*) removed+=($old_lineno); old_lineno=$((old_lineno + 1)) ;;
+    *)  old_lineno=$((old_lineno + 1)) ;;          # context line
+  esac
+done < <(git diff --no-ext-diff -- "$file" 2>/dev/null)
+[[ ${#removed[@]} -eq 0 ]] && return 0             # pure additions: nothing to blame
+
+# Group the removed line numbers (already ascending) into contiguous ranges
+local -a ranges=()
+local ln run_start=-1 run_prev=-1
+for ln in "${removed[@]}"; do
+  if (( run_start < 0 )); then run_start=$ln; run_prev=$ln
+  elif (( ln == run_prev + 1 )); then run_prev=$ln
+  else ranges+=("${run_start},${run_prev}"); run_start=$ln; run_prev=$ln
+  fi
+done
+(( run_start >= 0 )) && ranges+=("${run_start},${run_prev}")
+
+# Blame each range in HEAD; keep the newest on-branch commit touched.
+local best_idx=-1 best_hash="" r bline
+for r in "${ranges[@]}"; do
+  while IFS= read -r bline; do
+    [[ "$bline" =~ '^([0-9a-f]{40}) ' ]] || continue
+    full_hash=$match[1]
+    [[ -n "${on_branch_idx[$full_hash]}" ]] || continue
+    if (( best_idx < 0 || on_branch_idx[$full_hash] < best_idx )); then
+      best_idx=$on_branch_idx[$full_hash]
+      best_hash=$full_hash
+    fi
+  done < <(git blame -L "$r" --porcelain HEAD -- "$file" 2>/dev/null)
+done
+
+[[ -n "$best_hash" ]] && git log -1 --format='%h %s' "$best_hash" 2>/dev/null
+return 0

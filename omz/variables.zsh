@@ -34,6 +34,10 @@
 [ -z $fgGrey ]      && declare -r fgGrey=$(tput setaf 243)   && export fgGrey        # grey
 [ -z $fgLtGrey ]    && declare -r fgLtGrey=$(tput setaf 249) && export fgLtGrey      # light grey
 
+# podman fzf-helper (fp*) table formats, consumed by the autoloaded fp* functions
+(( ${+_FP_CONTAINER_FORMAT} )) || typeset -gr _FP_CONTAINER_FORMAT=$'{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'
+(( ${+_FP_IMAGE_FORMAT} ))     || typeset -gr _FP_IMAGE_FORMAT=$'{{.ID}}\t{{.Repository}}:{{.Tag}}\t{{.CreatedSince}}\t{{.Size}}'
+
 # text attributes using ANSI escape
 [ -z $txBold ]      && declare -r txBold=$(tput bold)        && export txBold        # bold
 [ -z $txHalf ]      && declare -r txHalf=$(tput dim)         && export txHalf        # half-bright

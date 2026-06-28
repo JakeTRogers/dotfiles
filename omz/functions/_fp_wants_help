@@ -1,0 +1,15 @@
+#######################################
+# _fp_wants_help - Check whether help was requested
+#
+# Arguments:
+#   Command arguments to inspect
+# Returns:
+#   0 if -h or --help is present, 1 otherwise
+#######################################
+local arg
+
+for arg in "$@"; do
+  [[ "$arg" == "-h" || "$arg" == "--help" ]] && return 0
+done
+
+return 1

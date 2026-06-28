@@ -1,0 +1,8 @@
+#######################################
+# git commit all fixup
+# Arguments:
+#   Commit hash to fixup
+# Outputs:
+#   Commit message
+#######################################
+git commit -a --fixup "$@"

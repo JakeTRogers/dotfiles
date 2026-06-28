@@ -98,3 +98,6 @@ alias gitrebaseall='def_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/de
 
 # zsh stuff
 alias n=nvim
+
+# bat stuff
+alias batp='bat --plain'

@@ -1,0 +1,36 @@
+#######################################
+# fpsa - Start and attach to a podman container
+#
+# Interactive selection of any container (including stopped) with fzf,
+# starts it if needed, then attach to it.
+#
+# Arguments:
+#   query                 Optional fzf search query
+#
+# Outputs:
+#   Interactive fzf selection, starts container, then attaches to it
+#######################################
+if _fp_wants_help "$@"; then
+  _fp_command_help fpsa
+  return 0
+fi
+
+_check_podman || return 1
+
+local query="$1"
+
+local cid
+cid=$(podman ps -a --format "$_FP_CONTAINER_FORMAT" | fzf -1 -q "$query" \
+  --delimiter $'\t' \
+  --border-label '🐳 All Containers' \
+  --header 'CTRL-R (reload) ╱ CTRL-L (logs) ╱ ALT-I (inspect) ╱ CTRL-S (stats) ╱ CTRL-D (force remove)' \
+  --preview-window 'down,60%' \
+  --preview 'podman inspect {1} | jq -C '\''.[0] | {Status: .State.Status, Image: .ImageName, Name: .Name, Created: .Created, Command: .Config.Cmd, Ports: .NetworkSettings.Ports, Mounts: [.Mounts[].Destination]}'\''' \
+  --bind "ctrl-r:reload(podman ps -a --format '$_FP_CONTAINER_FORMAT')" \
+  --bind 'ctrl-l:execute(podman logs --tail 50 --color {1} | ${=PAGER:-less} -R > /dev/tty)' \
+  --bind 'alt-i:execute(podman inspect {1} | jq -C . | ${=PAGER:-less} -R > /dev/tty)' \
+  --bind 'ctrl-s:execute(podman stats --no-stream {1} > /dev/tty; read -k 1)' \
+  --bind "ctrl-d:reload(podman rm -f {1} >/dev/null 2>&1; podman ps -a --format '$_FP_CONTAINER_FORMAT')" \
+  | cut -f1)
+
+[[ -n "$cid" ]] && podman start "$cid" && podman attach "$cid"

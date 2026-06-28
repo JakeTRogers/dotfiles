@@ -1,0 +1,17 @@
+#######################################
+# _decode_base64_url - Decode a base64url-encoded string
+#
+# Restores RFC 4648 padding, translates the base64url alphabet (-_) to the
+# standard base64 alphabet (+/), then decodes. Used by decode_jwt to decode
+# individual JWT segments.
+#
+# Arguments:
+#   $1 - base64url-encoded string
+# Outputs:
+#   Decoded bytes on stdout (empty on decode failure)
+#######################################
+local len=$(( ${#1} % 4 ))
+local result="$1"
+[[ $len -eq 2 ]] && result="$1=="
+[[ $len -eq 3 ]] && result="$1="
+printf '%s' "$result" | tr '_-' '/+' | base64 -d 2>/dev/null

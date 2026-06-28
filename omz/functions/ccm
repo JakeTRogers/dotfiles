@@ -15,14 +15,14 @@ while [[ $# -gt 0 ]]; do
       ;;
     -m|--model)
       if [[ $# -lt 2 ]]; then
-        pprint "Error: $1 requires a model argument." "$fgRed"
+        pprint "🔴 $1 requires a model argument." "$fgRed" >&2
         return 1
       fi
       model="$2"
       shift 2
       ;;
     --model=)
-      pprint "Error: --model requires a non-empty value." "$fgRed"
+      pprint "🔴 --model requires a non-empty value." "$fgRed" >&2
       return 1
       ;;
     --model=?*)
@@ -31,7 +31,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     -r|--reasoning-effort)
       if [[ $# -lt 2 ]]; then
-        pprint "Error: $1 requires a reasoning effort argument." "$fgRed"
+        pprint "🔴 $1 requires a reasoning effort argument." "$fgRed" >&2
         return 1
       fi
       reasoning_effort="$2"
@@ -50,19 +50,19 @@ while [[ $# -gt 0 ]]; do
       break
       ;;
     *)
-      pprint "Error: unknown argument: $1" "$fgRed"
+      pprint "🔴 unknown argument: $1" "$fgRed" >&2
       return 1
       ;;
   esac
 done
 
 if [[ $# -gt 0 ]]; then
-  pprint "Error: unexpected argument: $1" "$fgRed"
+  pprint "🔴 unexpected argument: $1" "$fgRed" >&2
   return 1
 fi
 
 if [[ -z "${model//[[:space:]]/}" ]]; then
-  pprint "Error: --model requires a non-empty value." "$fgRed"
+  pprint "🔴 --model requires a non-empty value." "$fgRed" >&2
   return 1
 fi
 
@@ -96,17 +96,17 @@ fi
 
 # Dependency and state checks
 if ! command -v copilot >/dev/null 2>&1; then
-  pprint "Error: copilot CLI is not installed or not in PATH." "$fgRed"
+  pprint "🔴 copilot CLI is not installed or not in PATH." "$fgRed" >&2
   return 1
 fi
 
 if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  pprint "Error: not inside a Git repository." "$fgRed"
+  pprint "🔴 not inside a Git repository." "$fgRed" >&2
   return 1
 fi
 
 if git diff --cached --quiet; then
-  pprint "Error: no staged changes." "$fgRed"
+  pprint "🔴 no staged changes." "$fgRed" >&2
   return 1
 fi
 
@@ -120,11 +120,11 @@ local commit_status=0
 local -a copilot_args=()
 
 repo_root="$(git rev-parse --show-toplevel)" || {
-  pprint "Error: failed to determine the repository root." "$fgRed"
+  pprint "🔴 failed to determine the repository root." "$fgRed" >&2
   return 1
 }
 
-pprint "Collecting staged context..." "$fgBlue"
+pprint "📝 Collecting staged context..." "$fgBlue"
 if ! context="$(
   printf '=== REPO ROOT ===\n'
   printf '%s\n\n' "$repo_root"
@@ -140,7 +140,7 @@ if ! context="$(
   printf '=== STAGED DIFF ===\n'
   git diff --cached
 )"; then
-  pprint "Error: failed to collect staged context." "$fgRed"
+  pprint "🔴 failed to collect staged context." "$fgRed" >&2
   return 1
 fi
 
@@ -168,7 +168,7 @@ $context
 EOF
 )
 
-pprint "Asking Copilot for a commit message..." "$fgBlue"
+pprint "🤖 Asking Copilot for a commit message..." "$fgBlue"
 copilot_args=(
   copilot
   -p "$prompt"
@@ -183,7 +183,7 @@ if [[ -n "$reasoning_effort" ]]; then
 fi
 
 if ! message="$("${copilot_args[@]}")"; then
-  pprint "Error: Copilot failed to generate a commit message." "$fgRed"
+  pprint "🔴 Copilot failed to generate a commit message." "$fgRed" >&2
   return 1
 fi
 
@@ -191,12 +191,12 @@ message="${message#"${message%%[![:space:]]*}"}"
 message="${message%"${message##*[![:space:]]}"}"
 
 if [[ -z "$message" || "$message" == "NO_STAGED_CHANGES" ]]; then
-  pprint "Error: Copilot did not return a usable commit message." "$fgRed"
+  pprint "🔴 Copilot did not return a usable commit message." "$fgRed" >&2
   return 1
 fi
 
 msg_file="$(mktemp "${TMPDIR:-/tmp}/copilot-commit-msg.XXXXXX")" || {
-  pprint "Error: failed to create a temporary commit message file." "$fgRed"
+  pprint "🔴 failed to create a temporary commit message file." "$fgRed" >&2
   return 1
 }
 
@@ -204,7 +204,7 @@ trap '[[ -n "$msg_file" ]] && rm -f -- "$msg_file"; return 130' INT
 
 printf '%s\n' "$message" > "$msg_file"
 
-pprint "Opening git commit editor..." "$fgBlue"
+pprint "🔵 Opening git commit editor..." "$fgBlue"
 git commit -S -e -F "$msg_file"
 commit_status=$?
 

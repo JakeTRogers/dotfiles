@@ -52,78 +52,18 @@ done
 
 local total=0
 local updated=0
-local failed=0
 local skipped=0
-
-#######################################
-# Process a single git repository
-# Arguments:
-#   $1 - directory path
-#   $2 - display name
-#######################################
-function _process_repo() {
-  local dir=$1
-  local name=$2
-
-  ((total++))
-
-  if [[ $dry_run -eq 1 ]]; then
-    # Dry-run mode: fetch and check status
-    if ! git -C "$dir" fetch origin --quiet 2>/dev/null; then
-      pprint "⚠️  $name: fetch failed" "$fgYellow"
-      ((skipped++))
-      return 0
-    fi
-
-    # Get upstream tracking branch
-    local upstream
-    upstream=$(git -C "$dir" rev-parse --abbrev-ref "@{upstream}" 2>/dev/null)
-
-    if [[ -z $upstream ]]; then
-      pprint "⚠️  $name: no upstream tracking branch" "$fgYellow"
-      ((skipped++))
-      return 0
-    fi
-
-    # Count commits behind
-    local commits_behind
-    commits_behind=$(git -C "$dir" rev-list --count HEAD..@{upstream} 2>/dev/null)
-
-    if [[ $commits_behind -eq 0 ]]; then
-      pprint "✅ $name: up to date" "$fgGreen"
-    else
-      pprint "🔴 $name: $commits_behind commit(s) behind" "$fgRed"
-    fi
-    ((updated++))
-  else
-    # Update mode: pull changes
-    echo "Updating $name..."
-
-    # Check for upstream first
-    if ! git -C "$dir" rev-parse --abbrev-ref "@{upstream}" >/dev/null 2>&1; then
-      pprint "⚠️  $name: no upstream tracking branch, skipping" "$fgYellow"
-      ((skipped++))
-      return 0
-    fi
-
-    if ! git -C "$dir" pull -p 2>&1; then
-      pprint "✗ $name failed, try --dry-run to diagnose" "$fgRed"
-      return 1
-    fi
-    ((updated++))
-  fi
-}
 
 # Process Oh-My-Zsh core
 if [[ $dry_run -eq 1 ]]; then
-  _process_repo "$ZSH" "oh-my-zsh"
+  _update_omz_repo "$ZSH" "oh-my-zsh"
 else
-  echo "Updating oh-my-zsh..."
+  pprint "🔄 Updating oh-my-zsh..." "$fgBlue"
   ((total++))
   if omz update; then
     ((updated++))
   else
-    pprint "✗ oh-my-zsh failed" "$fgRed"
+    pprint "🔴 oh-my-zsh failed" "$fgRed"
     return 1
   fi
 fi
@@ -133,7 +73,7 @@ if [[ -d "$ZSH_CUSTOM/themes" ]]; then
   for dir in "$ZSH_CUSTOM/themes"/*; do
     [[ -d "$dir" ]] || continue
     local name=$(basename "$dir")
-    _process_repo "$dir" "$name" || return 1
+    _update_omz_repo "$dir" "$name" || return 1
   done
 fi
 
@@ -142,22 +82,20 @@ if [[ -d "$ZSH_CUSTOM/plugins" ]]; then
   for dir in "$ZSH_CUSTOM/plugins"/*; do
     [[ -d "$dir" ]] || continue
     local name=$(basename "$dir")
-    _process_repo "$dir" "$name" || return 1
+    _update_omz_repo "$dir" "$name" || return 1
   done
 fi
 
-# Display summary
+# Display summary. Update failures abort early (fail-fast above), so a summary
+# is only ever reached on success: report what was updated and what was skipped.
 echo
 local action_word="updated"
 [[ $dry_run -eq 1 ]] && action_word="checked"
 
-if [[ $failed -gt 0 ]]; then
-  pprint "Summary: $updated $action_word, $failed failed, $skipped skipped (total: $total)" "$fgRed"
-  return 1
-elif [[ $skipped -gt 0 ]]; then
-  pprint "Summary: $updated $action_word, $failed failed, $skipped skipped (total: $total)" "$fgYellow"
+if [[ $skipped -gt 0 ]]; then
+  pprint "⚠️  Summary: $updated $action_word, $skipped skipped (total: $total)" "$fgYellow"
 else
-  pprint "Summary: $updated $action_word, $failed failed, $skipped skipped (total: $total)" "$fgGreen"
+  pprint "✅ Summary: $updated $action_word (total: $total)" "$fgGreen"
 fi
 
 return 0

@@ -1,3 +1,21 @@
+## v3.7.0 (2026-06-28)
+
+### Feature
+
+- **bat**: add batp alias for plain output
+
+### Fix
+
+- **omz**: fix ghist base commit echo wrapper and git_pr_check leaks
+
+### Refactor
+
+- **omz**: extract decode_jwt and update_omz_all inline helpers to autoload files
+- **omz**: drop functions.zsh, finalize autoload migration
+- **omz**: autoload podman fp helpers, move fp formats to variables.zsh
+- **omz**: autoload fzf/file pickers and git mirror updater
+- **omz**: autoload git helper functions
+
 ## v3.6.0 (2026-06-21)
 
 ### Feature

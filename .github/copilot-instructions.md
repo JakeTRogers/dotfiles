@@ -35,8 +35,7 @@ The orchestration flow is: `install.sh` → `bin/dotfiles <tool>` → `<tool>/in
 ### Zsh/Oh-My-Zsh Structure
 Custom zsh files live in [omz/](omz/) and are symlinked to `$ZSH_CUSTOM`:
 - `aliases.zsh` - Shell aliases
-- `functions.zsh` - Function autoloads
-- `functions/` - Individual function files (sourced on-demand)
+- `functions/` - Individual function files, autoloaded on-demand (one function per file)
 - `completions/` - Completion functions (prefixed with `_`)
 - `env.zsh`, `variables.zsh` - Environment setup
 

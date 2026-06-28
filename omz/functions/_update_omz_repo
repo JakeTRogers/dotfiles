@@ -46,7 +46,7 @@ if [[ $dry_run -eq 1 ]]; then
   ((updated++))
 else
   # Update mode: pull changes
-  echo "Updating $name..."
+  pprint "🔄 Updating $name..." "$fgBlue"
 
   # Check for upstream first
   if ! git -C "$dir" rev-parse --abbrev-ref "@{upstream}" >/dev/null 2>&1; then
@@ -56,7 +56,7 @@ else
   fi
 
   if ! git -C "$dir" pull -p 2>&1; then
-    pprint "✗ $name failed, try --dry-run to diagnose" "$fgRed"
+    pprint "🔴 $name failed, try --dry-run to diagnose" "$fgRed"
     return 1
   fi
   ((updated++))

@@ -13,28 +13,28 @@ local failed=0
 # (N) nullglob so an empty directory loops zero times; (/) restricts to
 # directories and yields names without a trailing slash
 for dir in *(N/); do
-  echo "Processing: $dir"
+  pprint "🔄 Processing: $dir" "$fgBlue"
 
   # Check if it's a git repository
   if ! git -C "$dir" rev-parse --git-dir &>/dev/null; then
-    echo "  ⚠️  Skipping: not a git repository"
+    pprint "  ⚠️  Skipping: not a git repository" "$fgYellow"
     echo
     continue
   fi
 
   # Fetch with prune
   if git -C "$dir" fetch -p origin; then
-    echo "  ✓ Fetch completed"
+    pprint "  ✅ Fetch completed" "$fgGreen"
   else
-    echo "  ✗ Fetch failed"
+    pprint "  🔴 Fetch failed" "$fgRed"
     ((failed++))
   fi
 
   # Push mirror
   if git -C "$dir" push --mirror; then
-    echo "  ✓ Mirror push completed"
+    pprint "  ✅ Mirror push completed" "$fgGreen"
   else
-    echo "  ✗ Mirror push failed"
+    pprint "  🔴 Mirror push failed" "$fgRed"
     ((failed++))
   fi
 
@@ -42,8 +42,8 @@ for dir in *(N/); do
 done
 
 if [[ $failed -gt 0 ]]; then
-  echo "⚠️  Completed with $failed error(s)"
+  pprint "🔴 Completed with $failed error(s)" "$fgRed"
   return 1
 else
-  echo "✅ All mirrors updated successfully"
+  pprint "✅ All mirrors updated successfully" "$fgGreen"
 fi

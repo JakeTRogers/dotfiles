@@ -33,7 +33,7 @@ fi
 
 # Dependency check
 if ! command -v copilot >/dev/null 2>&1; then
-  echo "copipe: 'copilot' command not found. Install GitHub Copilot CLI first." >&2
+  pprint "🔴 copipe: 'copilot' command not found. Install GitHub Copilot CLI first." "$fgRed" >&2
   return 1
 fi
 
@@ -60,7 +60,7 @@ while [[ $# -gt 0 ]]; do
         prompt_text="$2"
         shift 2
       else
-        echo "copipe: --prompt requires a value" >&2
+        pprint "🔴 copipe: --prompt requires a value" "$fgRed" >&2
         return 1
       fi
       ;;
@@ -73,7 +73,7 @@ while [[ $# -gt 0 ]]; do
         file_path="$2"
         shift 2
       else
-        echo "copipe: --file requires a value" >&2
+        pprint "🔴 copipe: --file requires a value" "$fgRed" >&2
         return 1
       fi
       ;;
@@ -86,7 +86,7 @@ while [[ $# -gt 0 ]]; do
         preset="$2"
         shift 2
       else
-        echo "copipe: --preset requires a value" >&2
+        pprint "🔴 copipe: --preset requires a value" "$fgRed" >&2
         return 1
       fi
       ;;
@@ -103,7 +103,7 @@ while [[ $# -gt 0 ]]; do
         model="$2"
         shift 2
       else
-        echo "copipe: --model requires a value" >&2
+        pprint "🔴 copipe: --model requires a value" "$fgRed" >&2
         return 1
       fi
       ;;
@@ -116,7 +116,7 @@ while [[ $# -gt 0 ]]; do
         allow_tools+=("$2")
         shift 2
       else
-        echo "copipe: --allow-tool requires a value" >&2
+        pprint "🔴 copipe: --allow-tool requires a value" "$fgRed" >&2
         return 1
       fi
       ;;
@@ -133,11 +133,11 @@ while [[ $# -gt 0 ]]; do
       break
       ;;
     -*)
-      echo "copipe: unknown option: $1" >&2
+      pprint "🔴 copipe: unknown option: $1" "$fgRed" >&2
       return 1
       ;;
     *)
-      echo "copipe: unexpected argument: $1" >&2
+      pprint "🔴 copipe: unexpected argument: $1" "$fgRed" >&2
       return 1
       ;;
   esac
@@ -145,20 +145,20 @@ done
 
 # Validate preset name
 if [[ -n "$preset" ]] && [[ "$preset" != "fix" && "$preset" != "diff" && "$preset" != "explain" ]]; then
-  echo "copipe: unknown preset: $preset (choose from: fix, diff, explain)" >&2
+  pprint "🔴 copipe: unknown preset: $preset (choose from: fix, diff, explain)" "$fgRed" >&2
   return 1
 fi
 
 # Require at least one of --prompt or --preset
 if [[ -z "$prompt_text" && -z "$preset" ]]; then
-  echo "copipe: at least one of --prompt or --preset is required" >&2
+  pprint "🔴 copipe: at least one of --prompt or --preset is required" "$fgRed" >&2
   return 1
 fi
 
 # Read input: file takes precedence over stdin
 if [[ -n "$file_path" ]]; then
   if [[ ! -r "$file_path" ]]; then
-    echo "copipe: cannot read file: $file_path" >&2
+    pprint "🔴 copipe: cannot read file: $file_path" "$fgRed" >&2
     return 1
   fi
   input=$(<"$file_path")
@@ -168,7 +168,7 @@ fi
 
 # Validate input is not empty/whitespace-only
 if [[ ! "$input" =~ [^[:space:]] ]]; then
-  echo "copipe: input is empty" >&2
+  pprint "🔴 copipe: input is empty" "$fgRed" >&2
   return 1
 fi
 

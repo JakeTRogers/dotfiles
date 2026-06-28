@@ -108,7 +108,7 @@ case "$1" in
       '  -h, --help            Show this help message'
     ;;
   *)
-    echo "fp: unknown command: $1" >&2
+    pprint "🔴 fp: unknown command: $1" "$fgRed" >&2
     return 1
     ;;
 esac

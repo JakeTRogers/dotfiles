@@ -21,12 +21,12 @@ for dir in "${1:-.}"/*(/N); do
     # has a GitHub remote
     if git remote -v | grep -iq github; then
       echo
-      pprint "🟢 ${dir}" "$fgGreen"
+      pprint "✅ ${dir}" "$fgGreen"
       gh pr list
       echo
     # does not have a GitHub remote
     else
-      pprint "🟠 ${dir}, not using GitHub" "$fgYellow"
+      pprint "⚠️  ${dir}, not using GitHub" "$fgYellow"
     fi
   # does not have a .git directory
   else

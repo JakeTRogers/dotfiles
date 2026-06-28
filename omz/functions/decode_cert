@@ -35,7 +35,7 @@ fi
 local tools=("certigo" "jq" "yq")
 for tool in "${tools[@]}"; do
   if ! command -v "$tool" >/dev/null 2>&1; then
-    pprint "$tool is required, but not found." "$fgRed"
+    pprint "🔴 $tool is required, but not found." "$fgRed" >&2
     return 1
   fi
 done
@@ -78,7 +78,7 @@ while [[ $# -gt 0 ]]; do
     *)
       # If it's not recognized, try to determine if it is a url, file, or domain
       if [[ "$1" =~ ftp://.* ]] || [[ "$1" =~ http://.* ]]; then
-        pprint "Error: HTTP and FTP do not use certs and are not supported." "$fgRed" "$txBold"
+        pprint "🔴 HTTP and FTP do not use certs and are not supported." "$fgRed" "$txBold" >&2
         return 1
       elif [[ "$1" =~ ftps://.* ]] || [[ "$1" =~ https://.* ]]; then
         target_type="url"
@@ -95,7 +95,7 @@ done
 
 # Check if a certificate file was provided
 if [ -z "$target_type" ]; then
-  pprint "Error: a url, domain, or certificate file must be provided." "$fgRed"
+  pprint "🔴 a url, domain, or certificate file must be provided." "$fgRed" >&2
   return 1
 fi
 
@@ -105,14 +105,14 @@ case "$target_type" in
     target=$(sed -E 's/(https:\/\/|ftps:\/\/)//;s/\/.*//' <<< "$target")
     # validate the domain name is resolvable
     if ! host "${target%%:*}" &>/dev/null; then
-      pprint "Error: $target is not resolvable" "$fgRed"
+      pprint "🔴 $target is not resolvable" "$fgRed" >&2
       return 1
     fi
     ;;
   file)
     # Check if the certificate file exists
     if [ ! -f "$target" ]; then
-      pprint "Error: file not found: $target" "$fgRed"
+      pprint "🔴 file not found: $target" "$fgRed" >&2
       return 1
     fi
     ;;

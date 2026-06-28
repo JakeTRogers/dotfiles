@@ -13,7 +13,7 @@ EOF
 fi
 
 if ! git rev-parse --git-dir &>/dev/null; then
-  echo "Not a git repository" >&2
+  pprint "🔴 not a git repository" "$fgRed" >&2
   return 1
 fi
 
@@ -22,12 +22,12 @@ tags=("${(@f)$(git tag --points-at HEAD | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+$')}
 tags=("${(@)tags:#}")                 # drop the empty element when grep matched nothing
 
 if (( ${#tags[@]} == 0 )); then
-  echo "No semver tags found on HEAD"
+  pprint "🔵 No semver tags found on HEAD" "$fgBlue"
   return 0
 fi
 
 local tag
 for tag in "${tags[@]}"; do
-  echo "Deleting tag $tag from HEAD"
+  pprint "🗑️  Deleting tag $tag from HEAD" "$fgYellow"
   git tag -d "$tag"
 done

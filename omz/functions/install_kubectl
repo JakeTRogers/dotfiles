@@ -22,7 +22,7 @@ if [ -n "$1" ]; then
     if [[ "$1" =~ '^[0-9]\.[0-9]{2}$' ]]; then
       version="$(/usr/bin/curl -L -s https://dl.k8s.io/release/stable-${1}.txt)"
     else
-      pprint "🔴 Invalid version format. Please use the format X.YY" $fgRed
+      pprint "🔴 invalid version format, please use the format X.YY" "$fgRed" >&2
       return 1
     fi
 elif [ -z "$1" ]; then
@@ -31,8 +31,8 @@ fi
 
 /usr/bin/curl  -o ~/install/kubectl -L "https://dl.k8s.io/release/${version}/bin/linux/amd64/kubectl"
 if [ $? -ne 0 ]; then
-  pprint "🔴 Failed to download kubectl ${version}" $fgRed
+  pprint "🔴 failed to download kubectl ${version}" "$fgRed" >&2
   return 1
 fi
 sudo /usr/bin/install -o root -g root -m 0755 ~/install/kubectl /usr/local/bin/kubectl
-[ $? -eq 0 ] && pprint "🟢 Installed kubectl ${version}" $fgGreen
+[ $? -eq 0 ] && pprint "📦 Installed kubectl ${version}" "$fgGreen"

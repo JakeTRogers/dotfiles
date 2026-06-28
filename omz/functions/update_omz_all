@@ -58,12 +58,12 @@ local skipped=0
 if [[ $dry_run -eq 1 ]]; then
   _update_omz_repo "$ZSH" "oh-my-zsh"
 else
-  echo "Updating oh-my-zsh..."
+  pprint "🔄 Updating oh-my-zsh..." "$fgBlue"
   ((total++))
   if omz update; then
     ((updated++))
   else
-    pprint "✗ oh-my-zsh failed" "$fgRed"
+    pprint "🔴 oh-my-zsh failed" "$fgRed"
     return 1
   fi
 fi
@@ -93,9 +93,9 @@ local action_word="updated"
 [[ $dry_run -eq 1 ]] && action_word="checked"
 
 if [[ $skipped -gt 0 ]]; then
-  pprint "Summary: $updated $action_word, $skipped skipped (total: $total)" "$fgYellow"
+  pprint "⚠️  Summary: $updated $action_word, $skipped skipped (total: $total)" "$fgYellow"
 else
-  pprint "Summary: $updated $action_word (total: $total)" "$fgGreen"
+  pprint "✅ Summary: $updated $action_word (total: $total)" "$fgGreen"
 fi
 
 return 0

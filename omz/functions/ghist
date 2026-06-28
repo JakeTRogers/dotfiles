@@ -21,7 +21,7 @@ EOF
 fi
 
 # Ensure we're in a git repository
-git rev-parse --git-dir >/dev/null 2>&1 || { echo "ghist: not a git repository" >&2; return 1; }
+git rev-parse --git-dir >/dev/null 2>&1 || { pprint "🔴 ghist: not a git repository" "$fgRed" >&2; return 1; }
 
 local log_format='%C(yellow)%h%C(reset) %C(green)%G?%C(reset) %C(blue)%an%C(reset) %C(cyan)%cr%C(reset) %s %C(auto)%d%C(reset)'
 
@@ -41,15 +41,15 @@ fi
 local base_branch
 base_branch=$(git_find_branch_base -n)
 
-[[ -z "$base_branch" ]] && { echo "🔴 ghist: could not find main/master/develop/development/production" >&2; return 1; }
+[[ -z "$base_branch" ]] && { pprint "🔴 ghist: could not find main/master/develop/development/production" "$fgRed" >&2; return 1; }
 
 local commit_count=$(git rev-list --count "${base_branch}..HEAD" 2>/dev/null)
 if [[ $commit_count -eq 0 ]]; then
-  echo "🟡 No commits ahead of $base_branch"
+  pprint "🔵 No commits ahead of $base_branch" "$fgBlue"
   return 0
 fi
 
 git log --decorate --pretty=format:"$log_format" --date-order "${base_branch}..HEAD"
 git log -1 --format='%C(yellow)%h%C(reset) %s' "$base_branch"
 echo ""
-echo "🟢 $commit_count commits ahead of $base_branch"
+pprint "✅ $commit_count commits ahead of $base_branch" "$fgGreen"

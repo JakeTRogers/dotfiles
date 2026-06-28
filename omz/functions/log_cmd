@@ -20,7 +20,7 @@ local header="####################################################\n"
 # check if log file has been named
 if [ -z "${CMD_LOG_FILE}" ]; then
   local CMD_LOG_FILE="/tmp/command.log"
-  echo "No log file specified, using default: ${CMD_LOG_FILE}\n"
+  pprint "🔵 No log file specified, using default: ${CMD_LOG_FILE}" "$fgBlue"
 fi
 
 {

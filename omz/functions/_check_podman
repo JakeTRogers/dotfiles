@@ -10,7 +10,7 @@
 #   0 if podman is available, 1 if not found
 #######################################
 if ! command -v podman &> /dev/null; then
-  echo "podman: command not found" >&2
+  pprint "🔴 podman: command not found" "$fgRed" >&2
   return 1
 fi
 return 0

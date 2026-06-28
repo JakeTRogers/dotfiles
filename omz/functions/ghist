@@ -50,6 +50,6 @@ if [[ $commit_count -eq 0 ]]; then
 fi
 
 git log --decorate --pretty=format:"$log_format" --date-order "${base_branch}..HEAD"
-echo "$(git log -1 --format='%C(yellow)%h%C(reset) %s' "$base_branch")"
+git log -1 --format='%C(yellow)%h%C(reset) %s' "$base_branch"
 echo ""
 echo "🟢 $commit_count commits ahead of $base_branch"

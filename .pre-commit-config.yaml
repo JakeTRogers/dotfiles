@@ -17,3 +17,19 @@ repos:
       - id: end-of-file-fixer
       - id: trailing-whitespace
         args: [ --markdown-linebreak-ext=md ]
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: 745eface02aef23e168a8afb6b5737818efbea95  # frozen: v0.11.0.1
+    hooks:
+      - id: shellcheck
+        # shellcheck cannot parse zsh; zsh files are covered by the zsh-syntax hook.
+        # omz/{install,configure}.sh are zsh, fzf-git.sh is vendored, git-template
+        # hooks are pre-commit-generated shims
+        exclude_types: [ zsh ]
+        exclude: ^(omz/(install|configure)\.sh|fzf/fzf-git\.sh|git/git-template/hooks/.*)$
+  - repo: local
+    hooks:
+      - id: zsh-syntax
+        name: zsh syntax check (zsh -n)
+        language: system
+        entry: bin/zsh_syntax_check
+        files: ^(omz/(functions|completions)/[^/]+|omz/zshrc|omz/(install|configure)\.sh|.*\.zsh)$

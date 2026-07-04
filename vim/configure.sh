@@ -3,14 +3,11 @@
 set -e
 
 if [ "${INSTALL_MODE}" = 'full' ]; then
-  test -d ${HOME}/.vim || mkdir ${HOME}/.vim
-  test -d ${HOME}/.vim/autoload || mkdir ${HOME}/.vim/autoload
-  test -d ${HOME}/.vim/bundle || mkdir ${HOME}/.vim/bundle
-  test -d ${HOME}/.vim/ftdetect || mkdir ${HOME}/.vim/ftdetect
+  mkdir -p "${HOME}/.vim/autoload" "${HOME}/.vim/bundle" "${HOME}/.vim/ftdetect"
   ln -sf "${DOTFILES_LOCATION}/vim/vimrc" "${HOME}/.vimrc"
 
   # install vim pathogen
-  curl -LSso ~/.vim/autoload/pathogen.vim https://raw.githubusercontent.com/tpope/vim-pathogen/master/autoload/pathogen.vim
+  curl -fLSso "${HOME}/.vim/autoload/pathogen.vim" https://raw.githubusercontent.com/tpope/vim-pathogen/master/autoload/pathogen.vim
 
   # array of vim plugins to be cloned
   vim_plugins=( \
@@ -32,12 +29,12 @@ if [ "${INSTALL_MODE}" = 'full' ]; then
 
   # clone vim plugins
   for repo in "${vim_plugins[@]}"; do
-    if [ -d "${HOME}/.vim/bundle/$(basename $repo .git)" ]; then
-      echo "Updating $(basename $repo .git)"
-      git -C "${HOME}/.vim/bundle/$(basename $repo .git)" pull --quiet
+    if [ -d "${HOME}/.vim/bundle/$(basename "$repo" .git)" ]; then
+      echo "Updating $(basename "$repo" .git)"
+      git -C "${HOME}/.vim/bundle/$(basename "$repo" .git)" pull --quiet
     else
-      echo "Installing $(basename $repo .git)"
-      git -C "${HOME}/.vim/bundle" clone --quiet $repo
+      echo "Installing $(basename "$repo" .git)"
+      git -C "${HOME}/.vim/bundle" clone --quiet "$repo"
     fi
   done
 fi

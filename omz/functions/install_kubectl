@@ -16,23 +16,56 @@ EOF
   return 0
 fi
 
-local version=""
+local arch version tmp_dir
+case "$(uname -m)" in
+  x86_64|amd64) arch="amd64" ;;
+  aarch64|arm64) arch="arm64" ;;
+  *)
+    pprint "🔴 unsupported architecture: $(uname -m)" "$fgRed" >&2
+    return 1
+    ;;
+esac
+
 if [ -n "$1" ]; then
     # test if the version is valid
-    if [[ "$1" =~ '^[0-9]\.[0-9]{2}$' ]]; then
-      version="$(/usr/bin/curl -L -s https://dl.k8s.io/release/stable-${1}.txt)"
+    if [[ "$1" =~ '^[0-9]+\.[0-9]+$' ]]; then
+      version="$(curl -fsSL "https://dl.k8s.io/release/stable-${1}.txt")"
     else
-      pprint "🔴 invalid version format, please use the format X.YY" "$fgRed" >&2
+      pprint "🔴 invalid version format, please use the format X.Y" "$fgRed" >&2
       return 1
     fi
 elif [ -z "$1" ]; then
-    version="$(/usr/bin/curl -L -s https://dl.k8s.io/release/stable.txt)"
+    version="$(curl -fsSL https://dl.k8s.io/release/stable.txt)"
 fi
 
-/usr/bin/curl  -o ~/install/kubectl -L "https://dl.k8s.io/release/${version}/bin/linux/amd64/kubectl"
-if [ $? -ne 0 ]; then
-  pprint "🔴 failed to download kubectl ${version}" "$fgRed" >&2
+if [[ ! "$version" =~ '^v[0-9]' ]]; then
+  pprint "🔴 failed to determine kubectl version to install" "$fgRed" >&2
   return 1
 fi
-sudo /usr/bin/install -o root -g root -m 0755 ~/install/kubectl /usr/local/bin/kubectl
-[ $? -eq 0 ] && pprint "📦 Installed kubectl ${version}" "$fgGreen"
+
+tmp_dir="$(mktemp -d)" || return 1
+if ! curl -fsSL -o "${tmp_dir}/kubectl" "https://dl.k8s.io/release/${version}/bin/linux/${arch}/kubectl"; then
+  pprint "🔴 failed to download kubectl ${version}" "$fgRed" >&2
+  rm -rf "${tmp_dir}"
+  return 1
+fi
+
+# verify the download against its published sha256 before installing
+if ! curl -fsSL -o "${tmp_dir}/kubectl.sha256" "https://dl.k8s.io/release/${version}/bin/linux/${arch}/kubectl.sha256"; then
+  pprint "🔴 failed to download checksum for kubectl ${version}" "$fgRed" >&2
+  rm -rf "${tmp_dir}"
+  return 1
+fi
+if ! echo "$(cat "${tmp_dir}/kubectl.sha256")  ${tmp_dir}/kubectl" | sha256sum --check --quiet; then
+  pprint "🔴 checksum verification failed for kubectl ${version}" "$fgRed" >&2
+  rm -rf "${tmp_dir}"
+  return 1
+fi
+
+if ! sudo install -o root -g root -m 0755 "${tmp_dir}/kubectl" /usr/local/bin/kubectl; then
+  pprint "🔴 failed to install kubectl ${version}" "$fgRed" >&2
+  rm -rf "${tmp_dir}"
+  return 1
+fi
+pprint "📦 Installed kubectl ${version}" "$fgGreen"
+rm -rf "${tmp_dir}"

@@ -26,18 +26,40 @@ if [ "${INSTALL_MODE}" = 'full' ]; then
   )
 
   # clone vim plugins and pin them to their commit hash
+  plugin_names=()
   for entry in "${vim_plugins[@]}"; do
     repo="${entry% *}"
     commit="${entry#* }"
-    plugin_dir="${HOME}/.vim/bundle/$(basename "$repo" .git)"
+    plugin_name="$(basename "$repo" .git)"
+    plugin_dir="${HOME}/.vim/bundle/${plugin_name}"
+    plugin_names+=("$plugin_name")
 
     if [ -d "$plugin_dir" ]; then
-      echo "Updating $(basename "$repo" .git)"
+      echo "Updating $plugin_name"
       git -C "$plugin_dir" fetch --quiet --tags origin
     else
-      echo "Installing $(basename "$repo" .git)"
+      echo "Installing $plugin_name"
       git clone --quiet "$repo" "$plugin_dir"
     fi
     git -C "$plugin_dir" checkout --quiet "$commit"
+  done
+
+  # remove any previously installed plugins that are no longer listed above
+  for plugin_dir in "${HOME}/.vim/bundle"/*; do
+    [ -d "$plugin_dir" ] || continue
+    plugin_name="$(basename "$plugin_dir")"
+
+    keep=false
+    for name in "${plugin_names[@]}"; do
+      if [ "$name" = "$plugin_name" ]; then
+        keep=true
+        break
+      fi
+    done
+
+    if [ "$keep" = false ]; then
+      echo "Removing $plugin_name"
+      rm -rf "$plugin_dir"
+    fi
   done
 fi

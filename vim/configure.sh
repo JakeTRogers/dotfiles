@@ -13,13 +13,9 @@ if [ "${INSTALL_MODE}" = 'full' ]; then
   vim_plugins=( \
     'https://github.com/altercation/vim-colors-solarized.git' \
     'https://github.com/ctrlpvim/ctrlp.vim.git' \
-    'https://github.com/garbas/vim-snipmate.git' \
     'https://github.com/godlygeek/tabular.git' \
-    'https://github.com/MarcWeber/vim-addon-mw-utils.git' \
     'https://github.com/myusuf3/numbers.vim.git' \
-    'https://github.com/rodjek/vim-puppet.git' \
     'https://github.com/scrooloose/nerdtree.git' \
-    'https://github.com/scrooloose/syntastic.git' \
     'https://github.com/sheerun/vim-polyglot.git' \
     'https://github.com/tomtom/tlib_vim.git' \
     'https://github.com/tpope/vim-surround.git' \

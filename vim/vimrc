@@ -16,16 +16,8 @@ nnoremap <F5> :previous<CR>
 nnoremap <F6> :next<CR>
 
 set statusline+=%#warningmsg#
-set statusline+=%{SyntasticStatuslineFlag()}
 set statusline+=%*
 
-let g:syntastic_always_populate_loc_list = 1
-let g:syntastic_auto_loc_list = 1
-let g:syntastic_check_on_open = 1
-let g:syntastic_check_on_wq = 1
-let g:syntastic_enable_signs=1
-let g:syntastic_puppet_checkers=['puppet', 'puppetlint']
-let g:syntastic_puppet_puppetlint_args=" --no-class_inherits_from_params_class-check --no-relative_classname_inclusion --no-140chars-check"
 let mapleader=','
   "if exists(":Tabularize")
     nmap <Leader>a= :Tabularize /=<CR>
@@ -51,16 +43,6 @@ let g:enable_numbers = 0
 let g:numbers_exclude = ['unite', 'tagbar', 'startify', 'gundo', 'vimshell', 'w3m', 'nerdtree' ,'ctrlp']
 nnoremap <F3> :NumbersToggle<CR>
 "NUMBERS END
-
-"VIMWIKI
-let g:vimwiki_list = [{'path': '/mnt/WORK/vimwiki/', 'syntax': 'markdown', 'ext': '.md'}]
-set nocompatible
-filetype plugin on
-"VIMWIKI END
-
-"SNIPMATE
-let g:snipMate = { 'snippet_version' : 1 }
-"SNIPMATE END
 
 " Append modeline after last line in buffer.
 " Use substitute() instead of printf() to handle '%%s' modeline in LaTeX

@@ -1,0 +1,21 @@
+name: Lint
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+  workflow_dispatch:
+
+concurrency:
+  group: lint-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+    - name: Install zsh
+      run: sudo apt-get update -qq && sudo apt-get install -y -qq zsh
+    - name: Run pre-commit on all files
+      run: pipx run pre-commit run --all-files --show-diff-on-failure

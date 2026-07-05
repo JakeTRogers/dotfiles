@@ -37,16 +37,29 @@ else
   temp_dir="$(mktemp -d)"
   trap cleanup EXIT
 
-  readonly archive_name="getRelease_Linux_$(detect_arch).tar.gz"
+  archive_name="getRelease_Linux_$(detect_arch).tar.gz"
+  readonly archive_name
   readonly archive_url="${release_url_base}/${archive_name}"
   readonly archive_path="${temp_dir}/${archive_name}"
   readonly extract_dir="${temp_dir}/extract"
-  readonly install_cmd="$(command -v install)"
+  install_cmd="$(command -v install)"
+  readonly install_cmd
 
   mkdir -p "${extract_dir}"
 
   if ! curl -fsSL "${archive_url}" -o "${archive_path}"; then
     echo "🔴 failed to download ${archive_name} from ${archive_url}"
+    exit 1
+  fi
+
+  # verify the archive against the release's published checksums before extracting
+  if ! curl -fsSL "${release_url_base}/checksums.txt" -o "${temp_dir}/checksums.txt"; then
+    echo "🔴 failed to download checksums.txt from ${release_url_base}"
+    exit 1
+  fi
+
+  if ! (cd "${temp_dir}" && sha256sum --check --quiet --ignore-missing checksums.txt); then
+    echo "🔴 checksum verification failed for ${archive_name}"
     exit 1
   fi
 
@@ -58,6 +71,7 @@ else
     exit 1
   fi
 
+  # shellcheck disable=SC2086,SC2154  # $elevate is exported by install.sh and must word-split
   $elevate "${install_cmd}" -m 0755 -o root -g root "${binary_path}" "${install_path}"
 
   if [[ ! -x "${install_path}" ]]; then

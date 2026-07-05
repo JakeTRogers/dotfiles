@@ -7,13 +7,18 @@ set -e
 ###
 
 # DOTFILES repo path
-export DOTFILES_LOCATION=$(pwd)
+DOTFILES_LOCATION="$(pwd)"
+export DOTFILES_LOCATION
 
 # INSTALL_MODE == 'full' for workstation, else minimal for devcontainers
 export INSTALL_MODE="${1}"
 
 # create elevate variable to use sudo if needed
-[ "$EUID" -eq 0 ] && elevate='' || elevate='sudo'
+if [ "$EUID" -eq 0 ]; then
+  elevate=''
+else
+  elevate='sudo'
+fi
 export elevate
 
 ###

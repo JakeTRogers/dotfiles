@@ -30,6 +30,6 @@ if command -v fzf &> /dev/null; then
     _fzf_git_each_files | xargs git add
   }
   gswt() {
-    cd "$(_fzf_git_worktrees --no-multi)"
+    cd "$(_fzf_git_worktrees --no-multi)" || return
   }
 fi

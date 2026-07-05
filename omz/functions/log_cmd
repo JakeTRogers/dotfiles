@@ -7,7 +7,7 @@ Usage: log_cmd <command>
 Log a shell command, its stdout, and stderr to a file.
 
 Variables:
-  CMD_LOG_FILE - the file to log the command and its output to (default: /tmp/command.log)
+  CMD_LOG_FILE - the file to log the command and its output to (default: ~/command.log)
 
 Arguments:
   command  Command to execute and log.
@@ -17,16 +17,16 @@ fi
 
 local header="####################################################\n"
 
-# check if log file has been named
+# check if log file has been named; default lives in $HOME, not world-writable /tmp
 if [ -z "${CMD_LOG_FILE}" ]; then
-  local CMD_LOG_FILE="/tmp/command.log"
+  local CMD_LOG_FILE="${HOME}/command.log"
   pprint "🔵 No log file specified, using default: ${CMD_LOG_FILE}" "$fgBlue"
 fi
 
 {
-  printf "${header}"
+  printf '%b' "${header}"
   printf "\`%s\` executed at $(date '+%Y-%m-%d %H:%M:%S')\n" "$*"
-  printf "${header}"
+  printf '%b' "${header}"
   "$@"
   printf "\n"
 } 2>&1 | tee -a "${CMD_LOG_FILE}"

@@ -7,9 +7,14 @@
 # Returns:
 #   0 on success, 1 if no selection made
 #######################################
-local repo
+local repo fd_cmd
+# debian/ubuntu package fd as fdfind
+fd_cmd=$(command -v fd || command -v fdfind) || {
+  pprint "🔴 fd is required, but not found." "$fgRed" >&2
+  return 1
+}
 repo=$(
-  fd --unrestricted --type d --glob '.git' "$HOME/gitrepos" 2>/dev/null |
+  "$fd_cmd" --unrestricted --type d --glob '.git' "$HOME/gitrepos" 2>/dev/null |
     sed 's#/.git/\?$##' |
     fzf --prompt='repo> '
 ) || return 1

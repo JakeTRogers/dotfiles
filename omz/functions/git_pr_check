@@ -15,9 +15,9 @@ fi
 local current_dir dir
 current_dir=$(pwd)
 for dir in "${1:-.}"/*(/N); do
-  cd "$dir"
+  cd "$dir" || continue
   # has a .git directory
-  if [ -d .git -o -d refs ]; then
+  if [[ -d .git || -d refs ]]; then
     # has a GitHub remote
     if git remote -v | grep -iq github; then
       echo

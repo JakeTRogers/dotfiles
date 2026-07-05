@@ -1,0 +1,55 @@
+name: Install Smoke Test
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+  workflow_dispatch:
+
+concurrency:
+  group: smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  install-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: ubuntu:24.04        # dev container baseline — required
+            experimental: false
+          - image: rockylinux:9        # Red Hat fleet proxy — advisory (getRelease API rate limits can flake)
+            experimental: true
+          - image: opensuse/leap:15.6  # SUSE fleet proxy — advisory
+            experimental: true
+    continue-on-error: ${{ matrix.experimental }}
+    container: ${{ matrix.image }}
+    env:
+      DEBIAN_FRONTEND: noninteractive
+    steps:
+    - name: Bootstrap container prerequisites
+      shell: sh
+      # sudo is required by getRelease's default installcommand; tar/gzip by getRelease/install.sh
+      run: |
+        if command -v apt-get > /dev/null; then
+          apt-get update -qq && apt-get install -y -qq sudo git ca-certificates tar gzip
+        elif command -v dnf > /dev/null; then
+          dnf install -q -y sudo git ca-certificates tar gzip
+        elif command -v zypper > /dev/null; then
+          zypper -nq install sudo git ca-certificates tar gzip
+        else
+          echo "no supported package manager found" && exit 1
+        fi
+    - name: Checkout code
+      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+    - name: Run installer (minimal mode)
+      run: ./install.sh
+    - name: Verify install results
+      run: |
+        test -L "$HOME/.zshrc"
+        test -d "$HOME/.oh-my-zsh"
+        for c in zsh getRelease bat fd fzf rg; do
+          command -v "$c" || { echo "missing: $c"; exit 1; }
+        done
+        TERM=xterm-256color zsh -ic 'echo SMOKE_OK' | grep -q SMOKE_OK

@@ -1,0 +1,2 @@
+# scripts source user/omz files that shellcheck cannot resolve
+disable=SC1090,SC1091

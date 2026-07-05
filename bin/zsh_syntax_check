@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# syntax-check zsh files; zsh -n only accepts one script per invocation
+set -u
+
+rc=0
+for f in "$@"; do
+  if ! zsh --no-rcs -n "$f"; then
+    echo "🔴 zsh syntax error: ${f}"
+    rc=1
+  fi
+done
+exit $rc

@@ -4,7 +4,7 @@ alias dutop='sudo du -m --max-depth=1 . | sort -nr | head -n50'
 alias grep='grep --color=auto'
 alias grepify=' tr -s "\n" "|" | sed "s/|$//"'
 alias h='history'
-alias ip4="/?bin/ip -o -4 a | grep -v ': lo' | sed 's/[0-9]\+\:\s*//;s/\// \//' | column -t"
+alias ip4="command ip -o -4 a | grep -v ': lo' | sed 's/[0-9]\+\:\s*//;s/\// \//' | column -t"
 alias l='ls -alF'
 alias la='ls -la'
 alias lal='ls -altr'

@@ -5,10 +5,12 @@ function cmd_exists() {
   command -v "${1}" &> /dev/null
 }
 
+# $elevate is exported by install.sh and must word-split ('' or 'sudo')
+# shellcheck disable=SC2086,SC2154
 function install_package() {
   if cmd_exists 'apt'; then
     $elevate /usr/bin/apt-get -qq update > /dev/null
-    $elevate /usr/bin/apt-get -qq install --allow-unauthenticated -y "$package" > /dev/null
+    $elevate /usr/bin/apt-get -qq install -y "$package" > /dev/null
   elif cmd_exists 'microdnf'; then
     $elevate /usr/bin/microdnf -q install -y "$package" > /dev/null
   elif cmd_exists 'yum'; then

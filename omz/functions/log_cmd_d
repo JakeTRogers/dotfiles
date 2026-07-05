@@ -14,10 +14,15 @@ fi
 
 local header="####################################################\n"
 
+# mktemp avoids clobbering/symlink games with a predictable name in world-writable /tmp
+local log_file
+log_file="$(mktemp "${TMPDIR:-/tmp}/cmd-$(date '+%Y_%m_%d_%H-%M-%S')-XXXXXX.log")" || return 1
+pprint "🔵 logging to ${log_file}" "$fgBlue"
+
 {
-  printf "${header}"
+  printf '%b' "${header}"
   printf "Command executed: %s\n\n" "$*"
-  printf "${header}"
+  printf '%b' "${header}"
   "$@"
   printf "\n"
-} 2>&1 | tee "/tmp/cmd-$(date '+%Y_%m_%d_%H-%M-%S').log"
+} 2>&1 | tee "${log_file}"

@@ -1,3 +1,23 @@
+## v3.8.0 (2026-07-05)
+
+### Feature
+
+- **vim**: prune bundle plugins no longer in the pinned list
+- **vim**: pin vim plugins to a sha to harden against supply chain attacks
+
+### Fix
+
+- **omz**: export terminal color variables after assignment
+- **fzf**: guard worktree switch against cd failure
+- **vim**: remove deprecated vim plugins
+- **vim**: remove obsolete plugin config
+- **omz**: add completion for depflow
+- **git**: add .claude/settings.local.json to global gitignore
+- harden package installs and downloads
+- **omz**: fix function bugs and portability issues
+- **omz**: harden omz install and configure scripts
+- **omz**: replace unescaped glob in ip4 alias
+
 ## v3.7.0 (2026-06-28)
 
 ### Feature

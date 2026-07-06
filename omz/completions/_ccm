@@ -1,0 +1,16 @@
+#compdef ccm
+
+# Completion for "ccm" - generate a Conventional Commit message via Copilot.
+function _ccm() {
+  local -a effort_levels
+  effort_levels=(
+    'low:Faster, less thorough reasoning'
+    'medium:Balanced reasoning effort'
+    'high:Slower, more thorough reasoning'
+  )
+
+  _arguments -s -S \
+    '(-m --model)'{-m,--model}'[Model to use for generation (default: gpt-5.4-mini)]:model:' \
+    '(-r --reasoning-effort)'{-r,--reasoning-effort}'[Reasoning effort for supported models]:effort:(($effort_levels))' \
+    '(-h --help)'{-h,--help}'[Show help]'
+}

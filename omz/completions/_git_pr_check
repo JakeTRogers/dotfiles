@@ -1,0 +1,8 @@
+#compdef git_pr_check
+
+# Completion for "git_pr_check" - check sub-directories for pull requests.
+function _git_pr_check() {
+  _arguments -s -S \
+    '(-h --help)'{-h,--help}'[Show help]' \
+    '1:directory:_files -/'
+}

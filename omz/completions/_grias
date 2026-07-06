@@ -1,0 +1,14 @@
+#compdef grias
+
+# Completion for "grias" - interactive rebase with autosquash.
+function _grias() {
+  local -a refs
+
+  if git rev-parse --git-dir >/dev/null 2>&1; then
+    refs=(${(f)"$(git for-each-ref --format='%(refname:short):branch' refs/heads refs/remotes 2>/dev/null)"})
+    refs+=(${(f)"$(git for-each-ref --format='%(refname:short):tag' refs/tags 2>/dev/null)"})
+  fi
+
+  _arguments -s -S \
+    '1:target:(($refs))'
+}

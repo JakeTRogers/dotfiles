@@ -1,0 +1,13 @@
+#compdef fpe fpse
+
+# Completion for "fpe" (exec into a running container) and "fpse" (start then
+# exec into a container) - both share the same flag surface.
+function _fpe() {
+  _arguments -s -S \
+    '(-u --user)'{-u,--user}'[Run as specified user]:user:' \
+    '(-s --shell)'{-s,--shell}'[Shell to use (default: /bin/bash)]:shell:_files' \
+    '(-w --workdir)'{-w,--workdir}'[Working directory to set]:directory:_files -/' \
+    '(-c --cmd)'{-c,--cmd}'[Command to execute instead of interactive shell]:command:' \
+    '(-h --help)'{-h,--help}'[Show help]' \
+    '*:query:'
+}

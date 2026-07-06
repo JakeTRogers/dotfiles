@@ -1,0 +1,10 @@
+#compdef fpl
+
+# Completion for "fpl" - view logs from podman containers.
+function _fpl() {
+  _arguments -s -S \
+    '(-f --follow)'{-f,--follow}'[Follow log output]' \
+    '(-n --lines)'{-n,--lines}'[Number of lines to show (default: all)]:lines:' \
+    '(-h --help)'{-h,--help}'[Show help]' \
+    '*:query:'
+}

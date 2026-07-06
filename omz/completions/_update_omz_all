@@ -1,0 +1,8 @@
+#compdef update_omz_all
+
+# Completion for "update_omz_all" - update Oh-My-Zsh core, themes, and plugins.
+function _update_omz_all() {
+  _arguments -s -S \
+    '--dry-run[Check update status without performing updates]' \
+    '(-h --help)'{-h,--help}'[Show help]'
+}

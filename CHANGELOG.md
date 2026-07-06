@@ -1,3 +1,9 @@
+## v3.8.1 (2026-07-05)
+
+### Fix
+
+- **omz**: add zsh completions for fp podman helpers and misc commands
+
 ## v3.8.0 (2026-07-05)
 
 ### Feature

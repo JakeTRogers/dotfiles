@@ -1,0 +1,35 @@
+#compdef fp
+
+# Completion for the "fp" podman fzf helper dispatcher.
+function _fp() {
+  local -a commands
+  commands=(
+    'help:Show fp summary or help for a specific command'
+    'fpe:Exec into a running container'
+    'fpse:Start a container, then exec into it'
+    'fpa:Attach to a running container'
+    'fpsa:Start a container, then attach to it'
+    'fps:Stop running containers'
+    'fprm:Remove containers'
+    'fprmi:Remove images'
+    'fpl:View logs'
+    'fpst:View stats'
+    'fprestart:Restart containers'
+  )
+
+  local curcontext="$curcontext" state
+
+  _arguments -C -s -S \
+    '(-h --help)'{-h,--help}'[Show help]' \
+    '1: :->command' \
+    '2: :->subcommand'
+
+  case $state in
+    command)
+      _describe -t commands 'fp command' commands
+      ;;
+    subcommand)
+      [[ ${words[2]} == help ]] && _describe -t commands 'command' commands
+      ;;
+  esac
+}

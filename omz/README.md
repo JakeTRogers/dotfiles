@@ -70,9 +70,9 @@ Individual function files that are autoloaded on-demand. Each file contains a si
 
 Zsh completion functions (prefixed with `_`) symlinked to `$ZSH_CUSTOM/completions/`.
 
-Hand-written completions for the custom functions above: `_copipe`, `_czbnt`, `_decode_cert`, `_decode_jwt`, `_gcfuh`, `_gciaf`, `_gcif`, `_gdu`, `_gdus`, `_get_k8s_images`, `_ghist`, `_git_delete_head_semver_tags`, `_git_tag_semver`, `_install_it`, plus the shared helper `_commits_since_merge`.
+Hand-written completions for the custom functions above: `_ccm`, `_copipe`, `_czbnt`, `_decode_cert`, `_decode_jwt`, `_fp` (dispatcher), `_fpe` (also covers `fpse`), `_fpl`, `_fp_simple` (covers `fpa`, `fpsa`, `fps`, `fprm`, `fprmi`, `fpst`, `fprestart`), `_gcfuh`, `_gciaf`, `_gcif`, `_gdu`, `_gdus`, `_get_k8s_images`, `_ghist`, `_git_delete_head_semver_tags`, `_git_pr_check`, `_git_tag_semver`, `_grias`, `_install_it`, `_update_omz_all`, plus the shared helper `_commits_since_merge`.
 
-Generated/vendored completions: `_bat`, `_fd`, `_rg` (shipped by the upstream tools) and `_getRelease`, `_depflow` (Cobra-generated for external CLIs).
+Generated/vendored completions: `_bat`, `_fd`, `_rg` (shipped by the upstream tools) and `_getRelease`, `_depflow`, `_dyff`, `_goDiffIt`, `_kustomize`, `_subnetCalc`, `_timeBuddy` (Cobra-generated for external CLIs).
 
 #### `scripts/`
 

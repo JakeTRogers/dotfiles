@@ -34,7 +34,7 @@ All plugins are defined as separate Lua modules that return lazy.nvim plugin spe
 
 - **`autopairs.lua`** - Auto-close brackets, quotes, etc.
 - **`nvim-surround.lua`** - Surround text objects
-- **`comment.lua`** - Commenting utilities
+- **`comment.lua`** - Commenting utilities with `nvim-ts-context-commentstring` for context-aware comments
 - **`substitute.lua`** - Text substitution
 - **`vim-maximizer.lua`** - Maximize/restore windows
 - **`marks.lua`** - Enhanced mark visualization
@@ -42,7 +42,7 @@ All plugins are defined as separate Lua modules that return lazy.nvim plugin spe
 #### Navigation & Search
 
 - **`nvim-tree.lua`** - File explorer with `nvim-web-devicons`
-- **`fzf.lua`** - Fuzzy finder integration
+- **`fzf.lua`** - Fuzzy finder integration with `mini.icons`
 - **`treesitter.lua`** - Syntax parsing and highlighting
 - **`trouble.lua`** - Diagnostics list
 - **`init.lua`** - Common dependencies:
@@ -68,7 +68,9 @@ All plugins are defined as separate Lua modules that return lazy.nvim plugin spe
 - **`mason.lua`** - LSP server installer with:
   - `mason-lspconfig` - LSP integration bridge
   - `mason-tool-installer` - Automatic tool installation
-- **`lspconfig.lua`** - LSP server configurations
+- **`lspconfig.lua`** - LSP server configurations with:
+  - `nvim-lsp-file-operations` - File operation support for LSP
+  - `neodev.nvim` - Neovim Lua API completion and docs
 
 #### Specialized
 

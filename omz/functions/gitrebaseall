@@ -45,7 +45,7 @@ git rev-parse --git-dir &>/dev/null || {
   return 1
 }
 
-local arg branch candidate response def_branch start_branch
+local arg branch response def_branch start_branch
 local dry_run=0
 local assume_yes=0
 
@@ -69,21 +69,12 @@ if [[ -n "$(git status --porcelain 2>/dev/null)" ]]; then
   return 1
 fi
 
-# Prefer the default branch the remote advertises. This is resolved on its own
-# line rather than as "symbolic-ref | sed || fallback": in that form the "||"
-# binds to the pipeline, whose status is sed's and therefore always 0, so the
-# fallback could never run.
-def_branch=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null)
+# One shared answer to "what is the default branch": git_find_branch_base asks
+# origin/HEAD first and falls back to the conventional names. It may return the
+# remote-tracking ref, but this function checks the branch out, so strip the
+# remote prefix and require the local branch below.
+def_branch=$(git_find_branch_base -n)
 def_branch=${def_branch#origin/}
-
-if [[ -z "$def_branch" ]]; then
-  for candidate in main master development production develop; do
-    if git show-ref --verify --quiet "refs/heads/$candidate"; then
-      def_branch=$candidate
-      break
-    fi
-  done
-fi
 
 if [[ -z "$def_branch" ]]; then
   pprint "🔴 gitrebaseall: could not determine the default branch." "$fgRed" >&2

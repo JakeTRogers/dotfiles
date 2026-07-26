@@ -1,0 +1,9 @@
+#compdef git_find_branch_base
+
+# Completion for "git_find_branch_base" - merge base commit, or branch name.
+_git_find_branch_base() {
+  _arguments -s -S \
+    '(-n --name)'{-n,--name}'[Return the branch name instead of the commit hash]'
+}
+
+_git_find_branch_base "$@"

@@ -33,6 +33,14 @@ repos:
         language: system
         entry: bin/zsh_syntax_check
         files: ^(omz/(functions|completions)/[^/]+|omz/zshrc|omz/(install|configure)\.sh|.*\.zsh)$
+      - id: zsh-function-test
+        name: zsh function correctness checks
+        # `zsh -n` above only parses. This runs the functions: it catches
+        # variables leaked into the caller's shell, source patterns that are
+        # always wrong, and regressions in the shared helpers' behaviour.
+        language: system
+        entry: bin/zsh_function_test
+        files: ^omz/functions/[^/]+$
       - id: cheatsheet-audit
         name: cheatsheet drift check
         # `cheat` builds itself from function docstrings and alias comments, so

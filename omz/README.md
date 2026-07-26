@@ -140,3 +140,21 @@ shows the plan and stops, `--yes` skips the prompt for scripted use.
 5. The function will be automatically available after reloading Zsh
 
 Run `bin/cheatsheet_audit` to confirm steps 2 and 4 are satisfied; pre-commit runs it for you.
+
+## Function Conventions
+
+`bin/zsh_function_test` enforces these on every commit, and `zsh -n` cannot: it runs the
+functions rather than just parsing them. Run it with no arguments to check everything, or
+with paths to check only those.
+
+- **Declare every variable `local`.** Autoloaded functions run in the caller's scope, so an
+  undeclared name becomes a global that outlives the command. The check snapshots the shell's
+  namespace, runs the function, and diffs.
+- **Start with `emulate -L zsh`.** Otherwise options set in the interactive shell
+  (`nullglob`, `extendedglob`, `shwordsplit`, `ksharrays`) change how the function behaves.
+  The one-line passthroughs (`gdu`, `gdus`, `gciaf`, `gcif`, `gundo`, `czbnt`) are exempt.
+- **`local MATCH MBEGIN MEND` before any `[[ =~ ]]`.** The match variables are written into
+  the enclosing scope; declaring them local is the only way to contain them.
+- **Strip the empty element after `${(@f)$(...)}`.** Splitting empty output yields an array
+  of one empty string, not an empty array, so a later `${#arr}` test passes and the command
+  runs with an empty argument. Follow every such split with `arr=("${(@)arr:#}")`.

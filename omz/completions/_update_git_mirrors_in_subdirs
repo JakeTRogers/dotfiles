@@ -1,0 +1,11 @@
+#compdef update_git_mirrors_in_subdirs
+
+# Completion for "update_git_mirrors_in_subdirs" - fetch and mirror-push every
+# repo in the current directory's subdirectories. Previously covered by
+# _no_args; it takes flags now, so it needs its own file.
+function _update_git_mirrors_in_subdirs() {
+  _arguments -s -S \
+    '(-n --dry-run)'{-n,--dry-run}'[List the repositories that would be pushed, then stop]' \
+    '(-y --yes)'{-y,--yes}'[Skip the confirmation prompt]' \
+    '(-h --help)'{-h,--help}'[Show help]'
+}

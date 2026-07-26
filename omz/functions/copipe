@@ -163,6 +163,12 @@ if [[ -n "$file_path" ]]; then
   fi
   input=$(<"$file_path")
 else
+  # Without this, forgetting the pipe leaves copipe blocked on the terminal
+  # with no output, looking like a hang.
+  if [[ -t 0 ]]; then
+    pprint "🔴 copipe: no input on stdin. Pipe a command into it, or use -f FILE." "$fgRed" >&2
+    return 1
+  fi
   input=$(cat)
 fi
 

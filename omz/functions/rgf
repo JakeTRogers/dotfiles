@@ -7,13 +7,22 @@
 # Returns:
 #   0 on success, 1 if no selection made or pattern is empty
 ################################
+setopt local_options extended_glob
+
 local query="$1"
 [[ -z "$query" ]] && { pprint "Usage: rgf <pattern>" "$fgRed" >&2; return 1; }
 local file
 file=$(rg --line-number --no-heading "$query" | fzf --delimiter : --nth 1,2,3..) || return
-local f l
-f=$(echo "$file" | cut -d: -f1)
-l=$(echo "$file" | cut -d: -f2)
+[[ -n "$file" ]] || return 1
+
+# rg emits "path:line:text", and the path may itself contain colons, so
+# splitting on the first colon loses part of the name. Strip from the first
+# ":<digits>:" instead: "%%" removes the longest matching suffix, which is the
+# leftmost such position. <-> is zsh's "one or more digits" glob.
+local f l rest
+f=${file%%:<->:*}
+rest=${file#"$f":}
+l=${rest%%:*}
 local -a editor_cmd
 editor_cmd=( ${(z)${EDITOR:-vim}} )
-"${editor_cmd[@]}" "+${l}" "$f"
+"${editor_cmd[@]}" "+${l}" -- "$f"

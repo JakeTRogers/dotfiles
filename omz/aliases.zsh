@@ -120,10 +120,6 @@ alias k8tc='kubectl top pods -A --sort-by=cpu'
 # pods by memory
 alias k8tm='kubectl top pods -A --sort-by=memory'
 
-# git stuff
-# ⚠ Rebase every local branch onto the default branch and force-push each
-alias gitrebaseall='def_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed "s@^refs/remotes/origin/@@" || { git branch | grep -m1 -E "development|production|main|master" | tr -d " *"; }); for branch in $(git branch | grep -vE "development|production|main|master" | tr -d " *"); do echo "Rebasing $branch..."; git checkout $branch && git rebase $def_branch && git push origin $branch -f || { echo "❌ Failed on $branch"; git rebase --abort 2>/dev/null; git checkout $def_branch; return 1; }; echo;done; git checkout $def_branch; git branch -v'
-
 # zsh stuff
 # Open nvim
 alias n=nvim

@@ -15,7 +15,7 @@ case "$1" in
       '' \
       'Options:' \
       '  -u, --user USER       Run as specified user' \
-      '  -s, --shell SHELL     Use specified shell (default: /bin/bash)' \
+      '  -s, --shell SHELL     Use specified shell (default: bash, or sh if absent)' \
       '  -w, --workdir PATH    Set working directory' \
       '  -c, --cmd COMMAND     Execute command instead of interactive shell' \
       '  -h, --help            Show this help message'
@@ -28,7 +28,7 @@ case "$1" in
       '' \
       'Options:' \
       '  -u, --user USER       Run as specified user' \
-      '  -s, --shell SHELL     Use specified shell (default: /bin/bash)' \
+      '  -s, --shell SHELL     Use specified shell (default: bash, or sh if absent)' \
       '  -w, --workdir PATH    Set working directory' \
       '  -c, --cmd COMMAND     Execute command instead of interactive shell' \
       '  -h, --help            Show this help message'

@@ -9,6 +9,8 @@
 ################################
 local file
 file=$(fzf) || return
+[[ -n "$file" ]] || return 1
 local -a editor_cmd
 editor_cmd=( ${(z)${EDITOR:-vim}} )
-"${editor_cmd[@]}" "$file"
+# "--" so a filename beginning with a dash is not read as an editor option
+"${editor_cmd[@]}" -- "$file"

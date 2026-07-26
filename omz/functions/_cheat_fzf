@@ -1,0 +1,235 @@
+#######################################
+# _cheat_fzf - Interactive cheatsheet picker with a detail preview pane
+#
+# Reads cheatsheet TSV rows on stdin and runs them through fzf. The preview
+# pane cannot call back into autoloaded functions, because fzf spawns it in a
+# fresh shell where FPATH is not exported, so the dataset and a small POSIX
+# preview script are written to temp files and referenced by path.
+#
+# Selecting a function or alias prints its name on stdout, for the caller to
+# insert on the command line. Key bindings print nothing; you press them.
+#
+# Inputs:
+#   Cheatsheet TSV rows on stdin
+# Outputs:
+#   The selected name on stdout, or nothing
+# Returns:
+#   0 on selection, 1 if cancelled or fzf is unavailable
+#######################################
+emulate -L zsh
+setopt local_options no_nomatch
+
+if ! command -v fzf >/dev/null 2>&1; then
+  pprint "🔴 fzf is required, but not found." "$fgRed" >&2
+  return 1
+fi
+
+local zc="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
+local functions_dir="$zc/functions"
+local aliases_file="$zc/aliases.zsh"
+
+local data_file preview_script toggle_script state_file own_file all_file
+data_file="$(mktemp -t cheat_data.XXXXXX)"       || return 1
+preview_script="$(mktemp -t cheat_preview.XXXXXX)" || return 1
+toggle_script="$(mktemp -t cheat_toggle.XXXXXX)" || return 1
+state_file="$(mktemp -t cheat_state.XXXXXX)"     || return 1
+own_file="$(mktemp -t cheat_own.XXXXXX)"         || return 1
+all_file="$(mktemp -t cheat_all.XXXXXX)"         || return 1
+trap "rm -f -- ${(q)data_file} ${(q)preview_script} ${(q)toggle_script} ${(q)state_file} ${(q)own_file} ${(q)all_file}" EXIT INT TERM
+
+# Indexed dataset: idx, category, kind, name, summary, source.
+local -a rows
+rows=("${(@f)$(cat)}")
+rows=("${(@)rows:#}")
+(( ${#rows} )) || { pprint "🔴 cheat: no entries to show." "$fgRed" >&2; return 1 }
+
+local i
+for i in {1..${#rows}}; do
+  print -r -- "${i}"$'\t'"${rows[$i]}"
+done > "$data_file"
+
+cat > "$preview_script" <<'PREVIEW'
+#!/bin/sh
+# Renders one cheatsheet row. Invoked by fzf in its own shell, so it may not
+# assume anything beyond POSIX sh and the paths handed to it.
+data=$1; fdir=$2; afile=$3; idx=$4
+
+row=$(awk -F'\t' -v i="$idx" '$1 == i { print; exit }' "$data")
+[ -n "$row" ] || exit 0
+
+kind=$(printf '%s\n'    "$row" | cut -f3)
+name=$(printf '%s\n'    "$row" | cut -f4)
+summary=$(printf '%s\n' "$row" | cut -f5)
+src=$(printf '%s\n'     "$row" | cut -f6-)
+
+printf '\033[1;36m%s\033[0m\n' "$name"
+case $summary in
+  '⚠'*) printf '\033[31m%s\033[0m\n\n' "$summary" ;;
+  *)    printf '%s\n\n' "$summary" ;;
+esac
+
+highlight() {
+  if command -v bat >/dev/null 2>&1; then
+    bat --color=always -l bash --style=plain --paging=never
+  else
+    cat
+  fi
+}
+
+rule() { printf '\033[2m%s\033[0m\n' "── $1 ──"; }
+
+case $src in
+  fn:*)
+    n=${src#fn:}
+    f="$fdir/$n"
+    [ -r "$f" ] || exit 0
+
+    # Prose from the docstring, past the "# <name> - <summary>" header line
+    # already shown above. Empty for the functions that keep their detail in a
+    # --help heredoc instead.
+    body=$(awk '
+      NR <= 2 { next }
+      /^#######/ { exit }
+      { sub(/^# ?/, ""); print }
+    ' "$f")
+    [ -n "$body" ] && printf '%s\n\n' "$body"
+
+    # Three help idioms are in use across functions/. Take the first that
+    # yields anything, and fall back to the source itself.
+    help=$(sed -n "/<<'EOF'/,/^EOF\$/p" "$f" | sed '1d;$d')
+
+    if [ -z "$help" ]; then
+      case $n in
+        fp?*)
+          help=$(awk -v n="$n" '
+            $0 == "  " n ")" { p = 1; next }
+            p && $0 == "    ;;" { exit }
+            p { print }
+          ' "$fdir/_fp_command_help" 2>/dev/null |
+            sed -e '/printf/d' \
+                -e 's/[[:space:]]*\\$//' \
+                -e "s/^[[:space:]]*'//" \
+                -e "s/'[[:space:]]*\$//")
+          ;;
+      esac
+    fi
+
+    if [ -n "$help" ]; then
+      rule "$n --help"
+      printf '%s\n' "$help"
+    else
+      rule "source"
+      sed -n '/^#######/,$p' "$f" | sed '1,/^#######/d' | head -n 60 | highlight
+    fi
+    ;;
+  ali:*)
+    n=${src#ali:}
+    [ -r "$afile" ] || exit 0
+    awk -v n="$n" '
+      index($0, "alias " n "=") == 1 { p = 1; print; next }
+      p && (index($0, "alias ") == 1 || index($0, "# ") == 1) { exit }
+      p { print }
+    ' "$afile" | highlight
+    ;;
+  txt:*)
+    printf '%b\n' "${src#txt:}"
+    ;;
+esac
+
+case $kind in
+  key) ;;
+  *) printf '\n\033[2m── enter inserts "%s" on the command line ──\033[0m\n' "$name" ;;
+esac
+PREVIEW
+chmod +x -- "$preview_script"
+
+# Parse once into parallel arrays: the name column width has to be known
+# before any display line can be formatted.
+local -a f_cat f_kind f_name f_summary
+local pad=0 cat kind name summary src
+for i in {1..${#rows}}; do
+  IFS=$'\t' read -r cat kind name summary src <<< "${rows[$i]}"
+  f_cat+=("$cat"); f_kind+=("$kind"); f_name+=("$name"); f_summary+=("$summary")
+  # omz plugin aliases are hidden by default, so they must not stretch the
+  # name column that the visible entries line up against.
+  if [[ "$cat" != omz ]] && (( ${#name} > pad )); then
+    pad=${#name}
+  fi
+done
+(( pad > 30 )) && pad=30
+
+# Fields: index, formatted display, raw name. --with-nth=2 shows only the
+# middle one; the raw name stays addressable as {3} for the copy binding.
+#
+# Two lists are written: this config alone, and that plus the oh-my-zsh plugin
+# aliases. The plugin aliases outnumber everything here roughly three to one,
+# so they stay behind ALT-A rather than burying the entries worth finding.
+local -a display
+local badge color line
+for i in {1..${#rows}}; do
+  case "${f_kind[$i]}" in
+    key) badge='key' color="${fgYellow:-}" ;;
+    fn)  badge='fn ' color="${fgGreen:-}" ;;
+    *)   badge='ali' color="${fgCyan:-}" ;;
+  esac
+  line="${i}"$'\t'"$(printf '%s%s%s %s%-*s%s %s' \
+    "${color}" "$badge" "${txReset:-}" \
+    "${txBold:-}" "$pad" "${f_name[$i]}" "${txReset:-}" \
+    "${f_summary[$i]}")"$'\t'"${f_name[$i]}"
+  display+=("$line")
+  [[ "${f_cat[$i]}" == omz ]] || print -r -- "$line" >> "$own_file"
+done
+print -rl -- "${display[@]}" > "$all_file"
+
+# ALT-A flips between the two lists. fzf's transform action lets the script
+# emit the actions to run, so the prompt can track the state as well.
+cat > "$toggle_script" <<'TOGGLE'
+#!/bin/sh
+state=$1; own=$2; all=$3
+if [ -s "$state" ]; then
+  : > "$state"
+  printf 'reload(cat %s)+change-prompt(cheat> )' "$own"
+else
+  echo on > "$state"
+  printf 'reload(cat %s)+change-prompt(cheat+omz> )' "$all"
+fi
+TOGGLE
+chmod +x -- "$toggle_script"
+
+local -a copy_bind
+if command -v wl-copy >/dev/null 2>&1; then
+  copy_bind=(--bind "ctrl-y:execute-silent(printf '%s' {3} | wl-copy)")
+elif command -v xclip >/dev/null 2>&1; then
+  copy_bind=(--bind "ctrl-y:execute-silent(printf '%s' {3} | xclip -selection clipboard)")
+fi
+
+local selected
+selected="$(
+  fzf --ansi \
+      --no-multi \
+      --delimiter=$'\t' \
+      --with-nth=2 \
+      --prompt='cheat> ' \
+      --border-label=' shortcuts ' \
+      --border-label-pos=2 \
+      --color='header:italic,label:blue' \
+      --header=$'enter insert  ·  ctrl-y copy  ·  alt-a omz aliases\nshift-↑↓ scroll preview  ·  ctrl-/ resize preview  ·  esc cancel' \
+      --preview="${(qq)preview_script} ${(qq)data_file} ${(qq)functions_dir} ${(qq)aliases_file} {1}" \
+      --preview-window='bottom,35%,border-top,wrap' \
+      --bind='ctrl-/:change-preview-window(bottom,70%,border-top|hidden|)' \
+      --bind='shift-up:preview-up,shift-down:preview-down' \
+      --bind='ctrl-u:preview-half-page-up,ctrl-d:preview-half-page-down' \
+      --bind="alt-a:transform:${(qq)toggle_script} ${(qq)state_file} ${(qq)own_file} ${(qq)all_file}" \
+      "${copy_bind[@]}" \
+      < "$own_file"
+)" || return 1
+
+[[ -n "$selected" ]] || return 1
+
+# Map the choice back to its row. Key bindings are not insertable.
+local idx="${selected%%$'\t'*}"
+local row="${rows[$idx]}"
+IFS=$'\t' read -r cat kind name summary _ <<< "$row"
+[[ "$kind" == key ]] && return 0
+
+print -r -- "$name"

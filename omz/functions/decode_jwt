@@ -1,5 +1,5 @@
 #######################################
-# decode_jwt
+# decode_jwt - Decode a JWT and format EPOCH timestamps to ISO 8601
 #######################################
 if [[ $# -eq 0 || $1 == "--help" || $1 == "-h" ]]; then
   fold -w "$(tput cols)" -s <<'EOF'

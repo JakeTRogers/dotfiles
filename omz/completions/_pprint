@@ -1,0 +1,30 @@
+#compdef pprint
+
+# Completion for "pprint" - pretty print with color and text decorations.
+#
+# The style arguments are the fg*/bg*/tx* parameters from variables.zsh, of
+# which there are three dozen. They are read from the live shell rather than
+# hardcoded, so anything added to variables.zsh shows up here automatically.
+_pprint() {
+  local state line
+  typeset -A opt_args
+
+  _arguments -s \
+    '-n[Do not output the trailing newline]' \
+    '(-h --help)'{-h,--help}'[Show help]' \
+    '1:text to print:' \
+    '*:style:->styles'
+
+  case "$state" in
+    styles)
+      local -a styles
+      styles=( ${(k)parameters[(I)(fg|bg|tx)[A-Z]*]} )
+      (( ${#styles} )) || return 1
+      # Insert with the $ so the result is usable as-is: pprint "hi" $fgRed
+      styles=( ${styles/#/\$} )
+      _describe -t styles 'style' styles
+      ;;
+  esac
+}
+
+_pprint "$@"

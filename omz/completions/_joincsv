@@ -1,0 +1,11 @@
+#compdef joincsv
+
+# Completion for "joincsv" - join two CSV files on their first column.
+_joincsv() {
+  _arguments -s -S \
+    '(-h --help)'{-h,--help}'[Show help]' \
+    '1:first csv:_files -g "*.(csv|CSV)"' \
+    '2:second csv:_files -g "*.(csv|CSV)"'
+}
+
+_joincsv "$@"

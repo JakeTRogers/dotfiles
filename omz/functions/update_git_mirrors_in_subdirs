@@ -1,5 +1,5 @@
 #######################################
-# update all git mirrors in subdirectories of the current directory
+# update_git_mirrors_in_subdirs - ⚠ Update all git mirrors in subdirectories of the current directory
 # Arguments:
 #   None
 # Outputs:

@@ -1,0 +1,133 @@
+#######################################
+# cheat - Searchable reference for this shell's keys, aliases, and functions
+#
+# With no arguments prints a grouped overview screen. Given a category or
+# search term, filters to it. With --fzf opens the interactive picker, which is
+# what CTRL-G ? is bound to.
+#
+# The data is derived from the shell config itself: function docstring headers,
+# aliases.zsh comments, and a curated key binding table in _cheat_data.
+#
+# Arguments:
+#   [TERM]       Filter to a category or match against names and summaries
+#   --fzf        Open the interactive picker instead of the static screen
+#   --keys       Key bindings only
+#   --list       Raw TSV, for scripting
+#   --audit      Report drift between the config and README.md
+#   -h, --help   Show this help
+# Outputs:
+#   Formatted reference on stdout, paged when the terminal is interactive
+# Returns:
+#   0 on success, 1 on an unknown option or a failed audit
+#######################################
+emulate -L zsh
+setopt local_options extended_glob
+
+local mode=screen term=""
+local -a filter_cats
+
+while (( $# )); do
+  case "$1" in
+    -h|--help)
+      fold -w "${COLUMNS:-$(tput cols)}" -s <<'EOF'
+Usage: cheat [TERM] [OPTIONS]
+Searchable reference for this shell's key bindings, aliases, and functions.
+
+Options:
+  --fzf         Open the interactive picker (bound to CTRL-G ?)
+  --keys        Show key bindings only
+  --list        Emit the raw TSV dataset, for scripting
+  --audit       Report drift between the shell config and omz/README.md
+  -h, --help    Show this help
+
+Arguments:
+  TERM          A category name, or any text to match against names and
+                summaries. Categories: keys, fzf-git, picker, git, k8s,
+                podman, files, crypto, ai, install, date, general, zsh,
+                bat, misc
+
+Examples:
+  cheat                 # everything, grouped and paged
+  cheat git             # just the git category
+  cheat fixup           # anything mentioning "fixup"
+  cheat --keys          # the one-screen key binding overview
+  cheat --fzf           # interactive picker with a preview pane
+EOF
+      return 0
+      ;;
+    --fzf)   mode=fzf ;;
+    --keys)  filter_cats=(keys fzf-git picker tmux tmux-pane tmux-tools tmux-copy) ;;
+    --list)  mode=list ;;
+    --audit) mode=audit ;;
+    -*)
+      pprint "🔴 cheat: unknown option: $1" "$fgRed" >&2
+      cheat --help >&2
+      return 1
+      ;;
+    *) term="$1" ;;
+  esac
+  shift
+done
+
+# --audit works on repo files, not the live shell, so it lives in a standalone
+# script that pre-commit can also run. $ZSH_CUSTOM/aliases.zsh is a symlink
+# back into the working tree, which is how we find the repo.
+if [[ "$mode" == audit ]]; then
+  local zc="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
+  local repo
+  repo="$(readlink -f -- "$zc/aliases.zsh" 2>/dev/null)"
+  repo="${repo%/omz/aliases.zsh}"
+  if [[ -z "$repo" || ! -x "$repo/bin/cheatsheet_audit" ]]; then
+    pprint "🔴 cheat: could not locate the dotfiles repo from $zc/aliases.zsh" "$fgRed" >&2
+    return 1
+  fi
+  "$repo/bin/cheatsheet_audit" "$repo"
+  return $?
+fi
+
+# Build the dataset once, then narrow it. The picker also carries the
+# oh-my-zsh plugin aliases; the static screen omits them to stay glanceable.
+local -a data data_args
+[[ "$mode" == fzf ]] && data_args=(--all)
+data=("${(@f)$(_cheat_data "${data_args[@]}")}")
+data=("${(@)data:#}")
+
+# --keys narrows to the binding categories. The joined alternation has to go
+# through ${~...}, or zsh treats the expanded "a|b|c" as literal text.
+if (( ${#filter_cats} )); then
+  local cat_pat="(${(j:|:)filter_cats})"$'\t'"*"
+  data=("${(@M)data:#${~cat_pat}}")
+fi
+
+# A bare TERM is an exact category first, then a case-insensitive substring
+# match across the whole row. The category match also accepts a family prefix,
+# so "tmux" pulls in tmux-pane, tmux-tools, and tmux-copy alongside tmux.
+if [[ -n "$term" ]]; then
+  local -a matched
+  matched=("${(@M)data:#(#i)${term}(|-*)$'\t'*}")
+  (( ${#matched} )) || matched=("${(@M)data:#(#i)*${term}*}")
+  data=("${matched[@]}")
+fi
+
+if (( ! ${#data} )); then
+  pprint "🔴 cheat: nothing matched \"${term}\"" "$fgRed" >&2
+  return 1
+fi
+
+case "$mode" in
+  list)
+    print -rl -- "${data[@]}"
+    ;;
+  fzf)
+    print -rl -- "${data[@]}" | _cheat_fzf
+    ;;
+  screen)
+    if [[ -t 1 ]] && command -v less >/dev/null 2>&1; then
+      print -rl -- "${data[@]}" | _cheat_render | less -iRFX
+    elif [[ -t 1 ]]; then
+      print -rl -- "${data[@]}" | _cheat_render
+    else
+      print -rl -- "${data[@]}" | _cheat_render --no-color
+    fi
+    ;;
+esac

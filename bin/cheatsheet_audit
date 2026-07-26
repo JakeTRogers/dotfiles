@@ -1,0 +1,151 @@
+#!/usr/bin/env bash
+# Report drift between the shell config and the documentation that describes it.
+#
+# `cheat` derives its dataset from the docstring header of each functions/ file
+# and the comment above each alias in aliases.zsh, so an entry that is missing
+# one of those silently disappears from the cheatsheet. README.md restates the
+# same information by hand and drifts the same way. This checks all of it.
+#
+# Usage: cheatsheet_audit [REPO_ROOT]
+set -uo pipefail
+
+repo="${1:-}"
+if [[ -z "$repo" ]]; then
+  repo="$(git rev-parse --show-toplevel 2>/dev/null)" || repo="$PWD"
+fi
+
+functions_dir="$repo/omz/functions"
+aliases_file="$repo/omz/aliases.zsh"
+readme="$repo/omz/README.md"
+
+for required in "$functions_dir" "$aliases_file" "$readme"; do
+  if [[ ! -e "$required" ]]; then
+    echo "🔴 cheatsheet_audit: not a dotfiles checkout: missing $required" >&2
+    exit 2
+  fi
+done
+
+issues=0
+report() {
+  # report <heading> <line>...  — mapfile yields a single empty element for
+  # empty input, so drop blanks before deciding whether there is anything here.
+  local heading="$1"; shift
+  local -a lines=()
+  local line
+  for line in "$@"; do
+    [[ -n "${line// /}" ]] && lines+=("$line")
+  done
+  (( ${#lines[@]} )) || return 0
+  echo "⚠ $heading"
+  printf '    %s\n' "${lines[@]}"
+  issues=$(( issues + ${#lines[@]} ))
+}
+
+# --- 1. Function docstring headers ------------------------------------------
+# _cheat_data keys on "# <name> - <description>" as line 2, with the name
+# matching the filename.
+mapfile -t bad_headers < <(
+  for f in "$functions_dir"/*; do
+    [[ -f "$f" ]] || continue
+    base="${f##*/}"
+    [[ "$base" == _* ]] && continue
+    header="$(sed -n '2p' "$f")"
+    if [[ ! "$header" =~ ^\#\ ([A-Za-z_][A-Za-z0-9_]*)\ -\ .+$ ]]; then
+      echo "functions/$base — line 2 is not '# $base - <description>'"
+    elif [[ "${BASH_REMATCH[1]}" != "$base" ]]; then
+      echo "functions/$base — header names '${BASH_REMATCH[1]}', not '$base'"
+    fi
+  done
+)
+report "functions missing a parseable docstring header:" "${bad_headers[@]}"
+
+# --- 2. Alias descriptions ---------------------------------------------------
+# The comment directly above each alias is its description. A section header of
+# the form "# <topic> stuff" does not count.
+mapfile -t undocumented_aliases < <(
+  awk '
+    /^# [A-Za-z0-9]+ stuff$/ { prev = ""; next }
+    /^alias / {
+      name = $0; sub(/^alias /, "", name); sub(/=.*/, "", name)
+      if (prev !~ /^# /) print "alias " name " — no description comment above it"
+      prev = ""; next
+    }
+    { prev = $0 }
+  ' "$aliases_file"
+)
+report "aliases missing a description comment:" "${undocumented_aliases[@]}"
+
+# --- 3. README function list vs reality --------------------------------------
+# Two different readings of the same section, because the two directions need
+# opposite biases. "Is it documented?" counts any backticked name, so the fp
+# bullet covers the whole fp* family. "Is it stale?" counts only bullet heads,
+# so prose mentions like `cd` or `install` are not mistaken for entries.
+# shellcheck disable=SC2016  # backticks here are literal markdown, not a subshell
+readme_section="$(sed -n '/^#### `functions\/`/,/^#### /p' "$readme")"
+# shellcheck disable=SC2016
+mapfile -t readme_names < <(
+  grep -o '`[A-Za-z_][A-Za-z0-9_]*`' <<<"$readme_section" |
+    tr -d '`' | sort -u
+)
+# shellcheck disable=SC2016
+mapfile -t readme_entries < <(
+  sed -nE 's/^- \*\*`([A-Za-z_][A-Za-z0-9_]*)`\*\*.*/\1/p' <<<"$readme_section" | sort -u
+)
+mapfile -t actual_names < <(
+  for f in "$functions_dir"/*; do
+    [[ -f "$f" ]] || continue
+    base="${f##*/}"
+    [[ "$base" == _* ]] && continue
+    echo "$base"
+  done | sort -u
+)
+
+mapfile -t missing_from_readme < <(
+  comm -23 <(printf '%s\n' "${actual_names[@]}") <(printf '%s\n' "${readme_names[@]}")
+)
+report "functions defined but absent from README.md:" "${missing_from_readme[@]}"
+
+mapfile -t stale_in_readme < <(
+  comm -13 <(printf '%s\n' "${actual_names[@]}") <(printf '%s\n' "${readme_entries[@]}")
+)
+report "named in README.md but no longer defined in functions/:" "${stale_in_readme[@]}"
+
+# --- 4. User commands defined outside functions/ -----------------------------
+# This is the class that lost gcof/gaf/gswt: real commands living in a sourced
+# .zsh file, so nothing autoloads, completes, or documents them.
+mapfile -t stray_functions < <(
+  for f in "$repo"/omz/*.zsh "$repo"/fzf/*.zsh; do
+    [[ -f "$f" ]] || continue
+    grep -oE '^[[:space:]]*[A-Za-z][A-Za-z0-9_-]*\(\)[[:space:]]*\{' "$f" |
+      tr -d ' \t(){}' |
+      while read -r fn; do
+        [[ -n "$fn" ]] || continue
+        echo "${f#"$repo"/}: $fn() — belongs in omz/functions/"
+      done
+  done
+)
+report "shell functions defined outside omz/functions/:" "${stray_functions[@]}"
+
+# --- 5. README kubernetes alias table vs reality -----------------------------
+readme_table="$(sed -n '/^#### Kubernetes Aliases/,/^### /p' "$readme")"
+# shellcheck disable=SC2016  # backticks here are literal markdown, not a subshell
+mapfile -t table_aliases < <(
+  grep -oE '^\| `[a-z0-9]+`' <<<"$readme_table" | tr -d '| `' | sort -u
+)
+mapfile -t actual_k8s < <(
+  grep -oE '^alias k8[a-z]*' "$aliases_file" | sed 's/^alias //' | sort -u
+)
+mapfile -t k8s_drift < <(
+  comm -3 <(printf '%s\n' "${actual_k8s[@]}") <(printf '%s\n' "${table_aliases[@]}") |
+    sed -e 's/^\t/README table only: /' -e 's/^\([^ ]\)/defined but not in README table: \1/'
+)
+report "kubernetes alias table drift:" "${k8s_drift[@]}"
+
+# --- verdict -----------------------------------------------------------------
+if (( issues )); then
+  echo
+  echo "🔴 cheatsheet_audit: $issues issue(s)"
+  exit 1
+fi
+
+echo "✅ cheatsheet_audit: config and docs agree"

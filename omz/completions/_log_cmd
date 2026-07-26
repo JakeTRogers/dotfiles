@@ -1,0 +1,19 @@
+#compdef log_cmd log_cmd_d
+
+# Completion for "log_cmd" and "log_cmd_d" - run a command with its output
+# logged to a file. Both wrap an arbitrary command, so complete a command name
+# in the first position and then hand off to that command's own completion,
+# the same way _sudo does.
+_log_cmd() {
+  if (( CURRENT == 2 )); then
+    _alternative \
+      'commands:command:_command_names -e' \
+      'options:option:((-h\:"Show help" --help\:"Show help"))'
+  else
+    shift words
+    (( CURRENT-- ))
+    _normal
+  fi
+}
+
+_log_cmd "$@"

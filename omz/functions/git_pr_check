@@ -1,5 +1,5 @@
 #######################################
-# git_pr_check
+# git_pr_check - Check sub-directories for pull requests
 #######################################
 if [[ $1 == "--help" || $1 == "-h" ]]; then
   fold -w "$(tput cols)" -s <<'EOF'

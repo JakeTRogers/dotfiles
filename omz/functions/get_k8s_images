@@ -1,5 +1,5 @@
 #######################################
-# get_k8s_images
+# get_k8s_images - Get container images used by pods in a Kubernetes cluster
 #######################################
 if [[ $1 == "--help" || $1 == "-h" ]]; then
   fold -w "$(tput cols)" -s <<'EOF'

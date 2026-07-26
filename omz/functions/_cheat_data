@@ -1,0 +1,191 @@
+#######################################
+# _cheat_data - Emit the cheatsheet dataset as tab-separated rows
+#
+# Three producers feed one stream: a curated key binding table (the only data
+# that cannot be derived, since `bindkey -L` yields widget names rather than
+# meanings), plus descriptions parsed out of the function docstrings and
+# aliases.zsh comments that the repo already maintains.
+#
+# Fields, tab separated:
+#   1 category  grouping key, e.g. keys, fzf-git, git, k8s
+#   2 kind      key | fn | ali
+#   3 name      chord, function name, or alias name
+#   4 summary   one line description, may start with "⚠" to flag a sharp edge
+#   5 source    where the preview pane should read detail from:
+#                 fn:<name>   docstring in $ZSH_CUSTOM/functions/<name>
+#                 ali:<name>  definition in $ZSH_CUSTOM/aliases.zsh
+#                 txt:<text>  literal text, \n escapes expanded by the reader
+#
+# Arguments:
+#   --all   also emit aliases provided by oh-my-zsh plugins (category "omz")
+# Outputs:
+#   TSV rows on stdout, unsorted
+# Returns:
+#   0 always
+#######################################
+emulate -L zsh
+setopt local_options no_nomatch
+
+local all=0
+[[ "$1" == "--all" ]] && all=1
+
+local zc="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
+local aliases_file="$zc/aliases.zsh"
+local functions_dir="$zc/functions"
+
+# ---------------------------------------------------------------------------
+# 1. Curated key bindings.
+#
+# Sourced from omz/zshrc (^space), `fzf --zsh` (^t/^r/alt-c), and the chord
+# loop plus picker --header/--bind strings in fzf/fzf-git.sh.
+# ---------------------------------------------------------------------------
+local -a curated
+curated=(
+  $'keys\tkey\tCTRL-SPACE\tAccept and run the current autosuggestion\ttxt:Runs the greyed-out suggestion immediately, rather than\\njust accepting it onto the command line.\\n\\nBound in omz/zshrc as: bindkey \'^ \' autosuggest-execute'
+  $'keys\tkey\tCTRL-T\tfzf file picker, inserts the path\ttxt:Fuzzy-find a file anywhere below the current directory and\\ninsert its path at the cursor.\\n\\nPreview pane shows the file through bat.'
+  $'keys\tkey\tCTRL-R\tfzf history search\ttxt:Fuzzy-find a previous command and put it on the line.\\n\\n  ?  toggle the preview pane (hidden by default)'
+  $'keys\tkey\tALT-C\tfzf cd into a subdirectory\ttxt:Fuzzy-find a directory below the current one and cd into it.\\n\\nPreview pane shows the directory tree.'
+  $'keys\tkey\tCTRL-G ?\tThis cheatsheet\ttxt:Opens the searchable cheatsheet picker.\\n\\nReplaces the stock fzf-git binding list, which showed only the\\nCTRL-G chords in a cramped zle message area.'
+
+  $'fzf-git\tkey\tCTRL-G CTRL-F\tFiles - git status\ttxt:Pick from files git reports as changed or untracked.\\n\\n  CTRL-O  open in browser      ALT-E   open in editor\\n  CTRL-/  cycle preview        TAB     multi-select\\n\\nAlso bound without the second CTRL: CTRL-G f'
+  $'fzf-git\tkey\tCTRL-G CTRL-B\tBranches\ttxt:Pick from local branches.\\n\\n  CTRL-O     open in browser    ALT-A  show all branches\\n  ALT-ENTER  accept without the remote prefix\\n  CTRL-/     cycle preview     TAB    multi-select\\n\\nAlso bound without the second CTRL: CTRL-G b'
+  $'fzf-git\tkey\tCTRL-G CTRL-T\tTags\ttxt:Pick from tags.\\n\\n  CTRL-O  open in browser      ALT-R  toggle raw view\\n\\nAlso bound without the second CTRL: CTRL-G t'
+  $'fzf-git\tkey\tCTRL-G CTRL-R\tRemotes\ttxt:Pick from configured remotes.\\n\\n  CTRL-O  open in browser\\n\\nAlso bound without the second CTRL: CTRL-G r'
+  $'fzf-git\tkey\tCTRL-G CTRL-H\tCommit hashes\ttxt:Pick from the commit log.\\n\\n  CTRL-O  open in browser      CTRL-D  show diff\\n  CTRL-S  toggle sort          ALT-F   list files in commit\\n  ALT-R   toggle raw view\\n\\nAlso bound without the second CTRL: CTRL-G h'
+  $'fzf-git\tkey\tCTRL-G CTRL-S\tStashes\ttxt:Pick from the stash list.\\n\\n  CTRL-X  drop the selected stash  (destructive)\\n\\nAlso bound without the second CTRL: CTRL-G s'
+  $'fzf-git\tkey\tCTRL-G CTRL-L\tReflogs\ttxt:Pick from the reflog.\\n\\n  ALT-R  toggle raw view\\n\\nAlso bound without the second CTRL: CTRL-G l'
+  $'fzf-git\tkey\tCTRL-G CTRL-W\tWorktrees\ttxt:Pick from linked worktrees.\\n\\n  CTRL-X  remove the selected worktree  (destructive)\\n\\nSee also the gswt function, which cds into the choice.\\n\\nAlso bound without the second CTRL: CTRL-G w'
+  $'fzf-git\tkey\tCTRL-G CTRL-E\tEach ref - git for-each-ref\ttxt:Pick from every ref: branches, tags, remotes, HEAD.\\n\\n  CTRL-O     open in browser    ALT-E  examine in editor\\n  ALT-A      show all refs\\n  ALT-ENTER  accept without the remote prefix\\n\\nAlso bound without the second CTRL: CTRL-G e'
+
+  $'picker\tkey\tCTRL-O\tOpen the selection in your browser\ttxt:Available in every fzf-git picker. Opens the file, branch,\\ncommit, tag, or remote on its hosting site.'
+  $'picker\tkey\tALT-E\tOpen or examine the selection in $EDITOR\ttxt:Available in the files, tree, and each-ref pickers.'
+  $'picker\tkey\tCTRL-D\tShow the diff for the selection\ttxt:Available in the commit hashes picker.'
+  $'picker\tkey\tCTRL-S\tToggle sort\ttxt:Available in the commit hashes picker.'
+  $'picker\tkey\tALT-A\tShow all branches or all refs\ttxt:Widens branches to include remotes, and each-ref to include\\nevery ref rather than the common subset.'
+  $'picker\tkey\tALT-R\tToggle raw view\ttxt:Available in the tags, hashes, and reflog pickers. Swaps the\\nformatted columns for the underlying git output.'
+  $'picker\tkey\tALT-F\tList the files in the selected commit\ttxt:Available in the commit hashes picker.'
+  $'picker\tkey\tALT-ENTER\tAccept without the remote prefix\ttxt:In branches and each-ref, yields "main" rather than\\n"origin/main".'
+  $'picker\tkey\tCTRL-X\tDrop stash or remove worktree\ttxt:⚠ Destructive, and takes effect immediately without a\\nconfirmation prompt.'
+  $'picker\tkey\tCTRL-/\tCycle the preview window layout\ttxt:Rotates through down / hidden / default. Set for the fzf-git\\npickers by the _fzf_git_fzf override in fzf/fzf.zsh.'
+  $'picker\tkey\tTAB\tMulti-select\ttxt:fzf-git pickers run with --multi, so TAB marks several\\nentries and they are all inserted, space separated.'
+
+  $'tmux\tkey\tALT-←/→/↑/↓\tMove between panes, no prefix\ttxt:Bound in tmux/tmux.conf with `bind -n`, so no CTRL-B first.\\n\\nThe prefixed equivalents are CTRL-B h/j/k/l and CTRL-B arrows.'
+  $'tmux\tkey\tSHIFT-←/→\tPrevious / next window, no prefix\ttxt:Bound in tmux/tmux.conf with `bind -n`, so no CTRL-B first.\\n\\nThe prefixed equivalents are CTRL-B p and CTRL-B n.'
+
+  $'tmux-pane\tkey\tCTRL-B |\tSplit into left and right panes\ttxt:Keeps the current working directory.\\n\\nCTRL-B \\\\ does the same but spans the full window width.'
+  $'tmux-pane\tkey\tCTRL-B -\tSplit into top and bottom panes\ttxt:Keeps the current working directory.\\n\\nCTRL-B _ does the same but spans the full window height.'
+  $'tmux-pane\tkey\tCTRL-B +\tSplit into left and right panes\ttxt:A personal alias for CTRL-B |, bound in tmux/tmux.conf.\\nBoth keep the current working directory.'
+  $'tmux-pane\tkey\tCTRL-B h j k l\tMove between panes\ttxt:From tmux-pain-control. CTRL-B and an arrow key works too.'
+  $'tmux-pane\tkey\tCTRL-B H J K L\tResize the pane by 5 cells\ttxt:Repeatable: hold the shifted letter after one CTRL-B.\\n\\nCTRL-B ALT-arrow resizes as well.'
+  $'tmux-pane\tkey\tCTRL-B z\tZoom the pane full screen, toggle\ttxt:The single most useful tmux binding. Press again to restore\\nthe pane to its normal size.'
+  $'tmux-pane\tkey\tCTRL-B q\tShow pane numbers\ttxt:Type a number while they are displayed to jump to that pane.'
+  $'tmux-pane\tkey\tCTRL-B o\tCycle to the next pane\ttxt:Order follows pane index, not screen position.'
+  $'tmux-pane\tkey\tCTRL-B E\tSpread panes out evenly\ttxt:CTRL-B ALT-1 through ALT-7 pick a specific preset layout:\\n\\n  ALT-1 even-horizontal   ALT-5 tiled\\n  ALT-2 even-vertical     ALT-6 main-horizontal-mirrored\\n  ALT-3 main-horizontal   ALT-7 main-vertical-mirrored\\n  ALT-4 main-vertical'
+  $'tmux-pane\tkey\tCTRL-B < >\tMove this window left or right\ttxt:From tmux-pain-control. Repeatable.'
+  $'tmux-pane\tkey\tCTRL-B s\tPick a session from a tree\ttxt:CTRL-B w does the same for windows. Both open zoomed.'
+  $'tmux-pane\tkey\tCTRL-B f\tFind a window by name\ttxt:Searches window names and pane contents, then zooms to it.'
+  $'tmux-pane\tkey\tCTRL-B x\tKill this pane, with confirmation\ttxt:CTRL-B & kills the whole window, also with confirmation.'
+
+  $'tmux-tools\tkey\tCTRL-B X\tToggle synchronize-panes\ttxt:⚠ While on, every keystroke goes to EVERY pane in the window.\\nIntended for running the same command across several hosts.\\n\\nThe status line reports the new state when you toggle it.\\nTurn it off before typing anything destructive.'
+  $'tmux-tools\tkey\tCTRL-B F\tJump to any text on screen\ttxt:tmux-fingers. Overlays a short hint on every path, hash, URL,\\nIP, and number visible in the pane; type the hint to copy it.\\n\\nFaster than entering copy mode and selecting by hand.'
+  $'tmux-tools\tkey\tCTRL-B G\tJump the cursor to on-screen text\ttxt:tmux-fingers in jump mode. Same hints as CTRL-B F, but moves\\nthe cursor there instead of copying.'
+  $'tmux-tools\tkey\tCTRL-B y\tCopy the current command line\ttxt:tmux-yank. Copies what is typed at the prompt to the system\\nclipboard through wl-copy.'
+  $'tmux-tools\tkey\tCTRL-B Y\tCopy the pane working directory\ttxt:tmux-yank. Puts the pane cwd on the system clipboard.'
+  $'tmux-tools\tkey\tCTRL-B P\tToggle logging this pane to a file\ttxt:tmux-logging. Writes everything the pane prints to a file in\\nthe current directory until you press it again.'
+  $'tmux-tools\tkey\tCTRL-B ALT-p\tScreen capture the pane to a file\ttxt:tmux-logging. CTRL-B ALT-SHIFT-P instead saves the complete\\nscrollback history, not just the visible screen.'
+  $'tmux-tools\tkey\tCTRL-B ALT-c\tClear this pane\047s history\ttxt:tmux-logging. Drops the scrollback buffer for the pane.'
+  $'tmux-tools\tkey\tCTRL-B CTRL-S\tSave the whole tmux environment\ttxt:tmux-resurrect. Records every session, window, pane, layout,\\nand working directory.\\n\\nCTRL-B CTRL-R restores it, including after a reboot.'
+  $'tmux-tools\tkey\tCTRL-B I\tInstall plugins listed in tmux.conf\ttxt:tpm. CTRL-B U updates them, CTRL-B ALT-u removes any that are\\nno longer listed.'
+  $'tmux-tools\tkey\tCTRL-B ?\tList every tmux binding\ttxt:tmux\047s own binding list. Exhaustive but unsorted and unsearchable,\\nwhich is why the useful ones are curated here.'
+
+  $'tmux-copy\tkey\tCTRL-B [\tEnter copy mode\ttxt:Scroll back through pane history. Bindings are emacs style,\\nset by mode-keys in tmux/tmux.conf.\\n\\nCTRL-B ] pastes the buffer back.'
+  $'tmux-copy\tkey\ty\tCopy the selection, in copy mode\ttxt:tmux-yank, straight to the system clipboard via wl-copy.\\n\\nSelecting with the mouse copies automatically too.'
+  $'tmux-copy\tkey\tSHIFT-Y\tCopy and paste to the prompt\ttxt:In copy mode. Copies the selection and immediately pastes it\\nonto the command line.'
+  $'tmux-copy\tkey\t!\tCopy as a single line\ttxt:In copy mode. Strips newlines from the selection first, which\\nis what you want for a wrapped path or URL.'
+)
+printf '%s\n' "${curated[@]}"
+
+# ---------------------------------------------------------------------------
+# 2. Functions, from the "# <name> - <description>" docstring header line.
+# ---------------------------------------------------------------------------
+local f base name summary cat header
+for f in "$functions_dir"/*(.N); do
+  base="${f:t}"
+  [[ "$base" == _* ]] && continue
+
+  header="$(sed -n '2p' -- "$f")"
+  [[ "$header" == '# '*' - '* ]] || continue
+  name="${${header#\# }%% - *}"
+  summary="${header#*" - "}"
+
+  case "$name" in
+    get_k8s_images)                  cat=k8s ;;
+    fp|fp[a-z]*)                     cat=podman ;;
+    decode_*)                        cat=crypto ;;
+    install_*)                       cat=install ;;
+    copipe|ccm)                      cat=ai ;;
+    update_omz_all)                  cat=zsh ;;
+    cdr|ff|rgf)                      cat=files ;;
+    g*|czbnt|update_git_mirrors_in_subdirs) cat=git ;;
+    *)                               cat=misc ;;
+  esac
+
+  printf '%s\tfn\t%s\t%s\tfn:%s\n' "$cat" "$name" "$summary" "$name"
+done
+
+# ---------------------------------------------------------------------------
+# 3. Aliases, from the "# description" comment above each "alias name=" line.
+#
+# Section headers of the form "# <topic> stuff" set the category. Multi-line
+# aliases are safe: each still begins with "alias <name>=" on its own line, and
+# no continuation line starts with "# " or "alias ".
+# ---------------------------------------------------------------------------
+local -A owned
+if [[ -r "$aliases_file" ]]; then
+  local row
+  while IFS= read -r row; do
+    owned[${${row#*$'\t'*$'\t'}%%$'\t'*}]=1
+    print -r -- "$row"
+  done < <(
+    awk '
+      /^# [A-Za-z0-9]+ stuff$/ {
+        cat = $0; sub(/^# /, "", cat); sub(/ stuff$/, "", cat)
+        if (cat == "kubernetes") cat = "k8s"
+        desc = ""; next
+      }
+      /^# / { desc = $0; sub(/^# /, "", desc); next }
+      /^alias / {
+        name = $0; sub(/^alias /, "", name); sub(/=.*/, "", name)
+        if (desc != "")
+          printf "%s\tali\t%s\t%s\tali:%s\n", (cat == "" ? "misc" : cat), name, desc, name
+        desc = ""; next
+      }
+      { desc = "" }
+    ' "$aliases_file"
+  )
+fi
+
+# ---------------------------------------------------------------------------
+# 4. Optional: aliases contributed by oh-my-zsh plugins. There is no
+#    description to be had for these, so the expansion stands in as the
+#    summary. Excluded from the static screen, which must stay glanceable.
+# ---------------------------------------------------------------------------
+if (( all )); then
+  local line n v
+  while IFS= read -r line; do
+    [[ "$line" == 'alias '* ]] || continue
+    line="${line#alias }"
+    # Skip the -g / -s / -- forms; only plain command aliases are useful here.
+    [[ "$line" == -* ]] && continue
+    n="${line%%=*}"
+    [[ "$n" =~ '^[A-Za-z_][A-Za-z0-9_.-]*$' ]] || continue
+    [[ -n "${owned[$n]}" ]] && continue
+    v="${line#*=}"
+    # alias -L quotes the body; unwrap it for a readable one-line summary.
+    [[ "$v" == \'*\' ]] && v="${${v#\'}%\'}"
+    v="${v//$'\t'/ }"
+    local vs="$v"
+    (( ${#vs} > 100 )) && vs="${vs[1,97]}..."
+    printf '%s\tali\t%s\t%s\ttxt:alias %s=%s\n' omz "$n" "$vs" "$n" "$v"
+  done < <(alias -L 2>/dev/null)
+fi

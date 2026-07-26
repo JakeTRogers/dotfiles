@@ -1,5 +1,5 @@
 #######################################
-# joincsv
+# joincsv - Add data from the second csv as a new column in the first csv
 #######################################
 if [[ $# -eq 0 || $1 == "--help" || $1 == "-h" ]]; then
   fold -w "$(tput cols)" -s <<'EOF'

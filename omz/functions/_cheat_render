@@ -1,0 +1,105 @@
+#######################################
+# _cheat_render - Format cheatsheet TSV rows as a grouped static screen
+#
+# Reads the output of _cheat_data on stdin and prints it grouped by category,
+# in a fixed display order, with the name column right-sized per group. A
+# summary beginning with "⚠" is highlighted as a sharp edge.
+#
+# Arguments:
+#   --no-color   emit plain text, for pipes and redirects
+# Inputs:
+#   Cheatsheet TSV rows on stdin
+# Outputs:
+#   Formatted screen on stdout
+# Returns:
+#   0 always
+#######################################
+emulate -L zsh
+setopt local_options no_nomatch
+
+local color=1
+[[ "$1" == "--no-color" ]] && color=0
+
+local c_head c_name c_warn c_dim c_off
+if (( color )); then
+  c_head="${txBold}${fgCyan}"
+  c_name="${fgGreen}"
+  c_warn="${fgRed}"
+  c_dim="${fgGrey}"
+  c_off="${txReset}"
+fi
+
+# Display order and human labels. Categories not listed here still render,
+# appended in the order first seen, so a new one is never silently dropped.
+local -a order
+order=(
+  keys fzf-git picker
+  tmux tmux-pane tmux-tools tmux-copy
+  git k8s podman files crypto ai install date general zsh bat misc omz
+)
+local -A label
+label=(
+  keys       'Key bindings'
+  fzf-git    'fzf-git — CTRL-G prefix'
+  picker     'Inside an fzf-git picker'
+  tmux       'tmux — no prefix needed'
+  tmux-pane  'tmux panes & windows — CTRL-B prefix'
+  tmux-tools 'tmux tools — CTRL-B prefix'
+  tmux-copy  'tmux copy mode'
+  git      'Git'
+  k8s      'Kubernetes'
+  podman   'Podman — fp helpers'
+  files    'Files'
+  crypto   'Certificates & tokens'
+  ai       'Copilot'
+  install  'Install'
+  date     'Dates'
+  general  'General'
+  zsh      'Zsh'
+  bat      'bat'
+  misc     'Misc'
+  omz      'oh-my-zsh plugin aliases'
+)
+
+local -A rows
+local -a seen
+local cat kind name summary src
+while IFS=$'\t' read -r cat kind name summary src; do
+  [[ -n "$cat" ]] || continue
+  (( ${+rows[$cat]} )) || seen+=("$cat")
+  rows[$cat]+="${name}"$'\t'"${summary}"$'\n'
+done
+
+# Anything unexpected goes at the end rather than vanishing.
+local -a display
+display=(${(@)order:*seen} ${(@)seen:|order})
+
+local width=${COLUMNS:-80}
+(( width > 0 )) || width=80
+
+local entry n s pad first=1
+for cat in $display; do
+  (( ${+rows[$cat]} )) || continue
+
+  # Right-size the name column for this group only.
+  pad=0
+  for entry in ${(f)rows[$cat]}; do
+    n="${entry%%$'\t'*}"
+    (( ${#n} > pad )) && pad=${#n}
+  done
+  (( pad > 30 )) && pad=30
+
+  (( first )) || print
+  first=0
+  print -r -- "${c_head}${label[$cat]:-$cat}${c_off}"
+
+  for entry in ${(f)rows[$cat]}; do
+    n="${entry%%$'\t'*}"
+    s="${entry#*$'\t'}"
+    if [[ "$s" == '⚠'* ]]; then
+      printf '  %s%-*s%s  %s%s%s\n' "$c_name" "$pad" "$n" "$c_off" "$c_warn" "$s" "$c_off"
+    else
+      printf '  %s%-*s%s  %s\n' "$c_name" "$pad" "$n" "$c_off" "$s"
+    fi
+  done
+done

@@ -1,5 +1,5 @@
 #######################################
-# git rebase interactive autosquash
+# grias - git rebase interactive autosquash
 # Arguments:
 #   Commit ref to rebase from (optional, defaults to branch base)
 # Outputs:

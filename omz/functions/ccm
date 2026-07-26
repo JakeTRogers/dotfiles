@@ -1,5 +1,5 @@
 #######################################
-# ccm
+# ccm - Generate a Conventional Commit message from staged changes via Copilot
 #######################################
 setopt localoptions localtraps
 

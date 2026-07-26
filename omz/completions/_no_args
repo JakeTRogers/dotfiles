@@ -1,0 +1,14 @@
+#compdef cdr ff gaf gcof gswt gundo update_git_mirrors_in_subdirs
+
+# Completion for the functions that take no arguments at all.
+#
+# Without this, zsh falls back to completing filenames for them, which is
+# always wrong: each of these either picks its own target through fzf or
+# operates on the current repo. Follows the _fp_simple precedent of covering
+# several commands from one file.
+_no_args() {
+  _message -r 'no arguments'
+  return 1
+}
+
+_no_args "$@"

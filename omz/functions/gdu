@@ -1,5 +1,5 @@
 #######################################
-# git diff with 0 lines of context
+# gdu - git diff with 0 lines of context
 # Arguments:
 #   Files to diff (optional, defaults to all)
 # Outputs:

@@ -34,17 +34,7 @@ log_args=(logs --color)
 
 local query="$1"
 
-containers=("${(@f)$(podman ps -a --format "$_FP_CONTAINER_FORMAT" | fzf -m -q "$query" \
-  --delimiter $'\t' \
-  --border-label '🐳 All Containers' \
-  --header 'TAB (select multiple) ╱ CTRL-R (reload) ╱ ALT-I (inspect) ╱ CTRL-S (stats) ╱ CTRL-D (force remove)' \
-  --preview-window 'down,60%' \
-  --preview 'podman inspect {1} | jq -C '\''.[0] | {Status: .State.Status, Image: .ImageName, Name: .Name, Created: .Created, Command: .Config.Cmd, Ports: .NetworkSettings.Ports, Mounts: [.Mounts[].Destination]}'\''' \
-  --bind "ctrl-r:reload(podman ps -a --format '$_FP_CONTAINER_FORMAT')" \
-  --bind 'alt-i:execute(podman inspect {1} | jq -C . | ${=PAGER:-less} -R > /dev/tty)' \
-  --bind 'ctrl-s:execute(podman stats --no-stream {1} > /dev/tty; read -k 1)' \
-  --bind "ctrl-d:reload(podman rm -f {1} >/dev/null 2>&1; podman ps -a --format '$_FP_CONTAINER_FORMAT')" \
-  | cut -f1)}")
+containers=("${(@f)$(_fp_pick --source ps-a --binds reload,inspect,stats,rm --multi --query "$query")}")
 # A cancelled picker yields one empty element, not an empty array; drop it so
 # the guard below does not hand podman an empty container argument.
 containers=("${(@)containers:#}")

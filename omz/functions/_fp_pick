@@ -1,0 +1,122 @@
+#######################################
+# _fp_pick - Run the shared podman fzf picker and print the selected IDs
+#
+# All ten fp* helpers show the same picker over one of three podman listings.
+# Only the listing, the selection flags, and which key bindings are offered
+# differ, so those are the parameters; the border label, the preview pane, and
+# the header text are derived from them. Previously each helper carried its own
+# copy of the whole fzf invocation, so the preview expression existed ten times.
+#
+# Arguments:
+#   --source ps|ps-a|images  Which podman listing to show (required)
+#   --binds <list>           Comma-separated subset, in header order, of:
+#                              reload  CTRL-R  re-run the listing
+#                              logs    CTRL-L  page the container's logs
+#                              inspect ALT-I   page podman inspect
+#                              stats   CTRL-S  one-shot podman stats
+#                              rm      CTRL-D  force-remove, then re-list
+#   --multi                  Allow multi-select (adds TAB to the header)
+#   --select-1               Auto-accept when exactly one row matches
+#   --tac                    Reverse the listing and disable fzf's sorting
+#   --query <text>           Initial fzf query
+# Outputs:
+#   The ID (first tab-separated field) of each selected row, one per line
+# Returns:
+#   fzf's exit status; non-zero when the picker is cancelled
+#######################################
+
+emulate -L zsh
+# The listing is piped through fzf into cut, so without pipe_fail the function
+# would report cut's status and a cancelled picker would look like success.
+setopt local_options pipe_fail
+
+local -a opt_source opt_binds opt_query opt_multi opt_select1 opt_tac
+zparseopts -D -E -source:=opt_source -binds:=opt_binds -query:=opt_query \
+                 -multi=opt_multi -select-1=opt_select1 -tac=opt_tac
+
+local source="${opt_source[2]}"
+local binds="${opt_binds[2]}"
+local query="${opt_query[2]}"
+
+# The listing is needed twice: as an array to run, and as a string to embed in
+# the reload() bindings, where fzf re-executes it through a shell.
+local -a list_args
+local list_str label
+case "$source" in
+  ps)
+    list_args=(podman ps --format "$_FP_CONTAINER_FORMAT")
+    list_str="podman ps --format '$_FP_CONTAINER_FORMAT'"
+    label='🐳 Running Containers'
+    ;;
+  ps-a)
+    list_args=(podman ps -a --format "$_FP_CONTAINER_FORMAT")
+    list_str="podman ps -a --format '$_FP_CONTAINER_FORMAT'"
+    label='🐳 All Containers'
+    ;;
+  images)
+    list_args=(podman images --format "$_FP_IMAGE_FORMAT")
+    list_str="podman images --format '$_FP_IMAGE_FORMAT'"
+    label='🐳 Images'
+    ;;
+  *)
+    pprint "🔴 _fp_pick: unknown --source: ${source:-(missing)}" "$fgRed" >&2
+    return 1
+    ;;
+esac
+
+local preview
+if [[ "$source" == images ]]; then
+  preview="podman inspect {1} | jq -C '.[0] | {Id: .Id, RepoTags: .RepoTags, Created: .Created, Size: .Size, Architecture: .Architecture, Os: .Os}'"
+else
+  preview="podman inspect {1} | jq -C '.[0] | {Status: .State.Status, Image: .ImageName, Name: .Name, Created: .Created, Command: .Config.Cmd, Ports: .NetworkSettings.Ports, Mounts: [.Mounts[].Destination]}'"
+fi
+
+# Bindings and the header that documents them are built together, so a helper
+# can never advertise a key it did not enable.
+local -a bind_args header_parts
+(( ${#opt_multi} )) && header_parts+=('TAB (select multiple)')
+
+local bind
+for bind in ${(s:,:)binds}; do
+  case "$bind" in
+    reload)
+      bind_args+=(--bind "ctrl-r:reload($list_str)")
+      header_parts+=('CTRL-R (reload)')
+      ;;
+    logs)
+      bind_args+=(--bind 'ctrl-l:execute(podman logs --tail 50 --color {1} | ${=PAGER:-less} -R > /dev/tty)')
+      header_parts+=('CTRL-L (logs)')
+      ;;
+    inspect)
+      bind_args+=(--bind 'alt-i:execute(podman inspect {1} | jq -C . | ${=PAGER:-less} -R > /dev/tty)')
+      header_parts+=('ALT-I (inspect)')
+      ;;
+    stats)
+      bind_args+=(--bind 'ctrl-s:execute(podman stats --no-stream {1} > /dev/tty; read -k 1)')
+      header_parts+=('CTRL-S (stats)')
+      ;;
+    rm)
+      bind_args+=(--bind "ctrl-d:reload(podman rm -f {1} >/dev/null 2>&1; $list_str)")
+      header_parts+=('CTRL-D (force remove)')
+      ;;
+    *)
+      pprint "🔴 _fp_pick: unknown bind: $bind" "$fgRed" >&2
+      return 1
+      ;;
+  esac
+done
+
+local -a fzf_args
+(( ${#opt_select1} )) && fzf_args+=(-1)
+(( ${#opt_multi} ))   && fzf_args+=(-m)
+(( ${#opt_tac} ))     && fzf_args+=(--no-sort --tac)
+fzf_args+=(
+  -q "$query"
+  --delimiter $'\t'
+  --border-label "$label"
+  --header "${(j: ╱ :)header_parts}"
+  --preview-window 'down,60%'
+  --preview "$preview"
+)
+
+"${list_args[@]}" | fzf "${fzf_args[@]}" "${bind_args[@]}" | cut -f1

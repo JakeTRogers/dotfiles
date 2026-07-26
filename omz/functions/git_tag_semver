@@ -1,5 +1,5 @@
 #######################################
-# git_tag_semver
+# git_tag_semver - Semantically tag a git repository
 #######################################
 if [[ $# -eq 0 || $1 == "--help" || $1 == "-h" ]]; then
   fold -w "$(tput cols)" -s <<'EOF'

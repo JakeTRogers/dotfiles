@@ -1,5 +1,5 @@
 #######################################
-# git_delete_head_semver_tags
+# git_delete_head_semver_tags - Delete local semver tags that point at HEAD
 #######################################
 if [[ $1 == "--help" || $1 == "-h" ]]; then
   fold -w "$(tput cols)" -s <<'EOF'

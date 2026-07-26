@@ -1,5 +1,5 @@
 #######################################
-# install_kubectl
+# install_kubectl - Install the specified version of kubectl, or the latest
 #######################################
 if [[ $1 == "--help" || $1 == "-h" ]]; then
   fold -w "$(tput cols)" -s <<'EOF'

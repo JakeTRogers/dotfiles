@@ -1,5 +1,5 @@
 #######################################
-# decode_cert
+# decode_cert - Decode certificates in various levels of detail and formats
 #######################################
 if [[ $# -eq 0 || $1 == "--help" || $1 == "-h" ]]; then
   fold -w "$(tput cols)" -s <<'EOF'

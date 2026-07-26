@@ -1,5 +1,5 @@
 #######################################
-# git commit all fixup
+# gciaf - git commit all fixup
 # Arguments:
 #   Commit hash to fixup
 # Outputs:

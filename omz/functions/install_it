@@ -1,5 +1,5 @@
 #######################################
-# install_it
+# install_it - Install an executable from ~/install to /usr/local/bin
 #######################################
 if [[ $# -eq 0 || $1 == "--help" || $1 == "-h" ]]; then
   fold -w "$(tput cols)" -s <<'EOF'

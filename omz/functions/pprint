@@ -1,5 +1,5 @@
 #######################################
-# pprint
+# pprint - Pretty print a string with color or text decorations
 #######################################
 if [[ $# -eq 0 || $1 == "--help" || $1 == "-h" ]]; then
   fold -w "$(tput cols)" -s <<'EOF'

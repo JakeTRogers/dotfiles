@@ -1,5 +1,5 @@
 #######################################
-# log_cmd
+# log_cmd - Log a shell command, its stdout, and stderr to a file
 #######################################
 if [[ $# -eq 0 || $1 == "--help" || $1 == "-h" ]]; then
   fold -w "$(tput cols)" -s <<'EOF'

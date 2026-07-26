@@ -12,6 +12,8 @@
 # Outputs:
 #   Interactive fzf selection, then displays container logs
 #######################################
+
+emulate -L zsh
 if _fp_wants_help "$@"; then
   _fp_command_help fpl
   return 0

@@ -1,6 +1,12 @@
 #######################################
 # decode_jwt - Decode a JWT and format EPOCH timestamps to ISO 8601
 #######################################
+
+emulate -L zsh
+
+# [[ =~ ]] writes its capture variables into the enclosing scope unless
+# they are declared local first.
+local MATCH MBEGIN MEND
 if [[ $# -eq 0 || $1 == "--help" || $1 == "-h" ]]; then
   fold -w "$(tput cols)" -s <<'EOF'
 Usage: decode_jwt [--json | --yaml | --raw] <JWT_FILE | JWT_STRING>
@@ -26,6 +32,7 @@ EOF
 fi
 
 # Dependency Checks
+local tool
 local tools=("jq" "base64" "yq")
 for tool in "${tools[@]}"; do
   if ! command -v "$tool" >/dev/null 2>&1; then
@@ -89,6 +96,9 @@ if [[ ! "$jwt_content" =~ ^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$ ]]; t
 fi
 
 # Split JWT
+# Kept local: a decoded token's payload would otherwise persist in the
+# interactive shell for the rest of the session.
+local header payload signature
 IFS='.' read -r header payload signature <<< "$jwt_content"
 
 # JQ filter for date conversion

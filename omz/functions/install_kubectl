@@ -1,6 +1,12 @@
 #######################################
 # install_kubectl - Install the specified version of kubectl, or the latest
 #######################################
+
+emulate -L zsh
+
+# [[ =~ ]] writes its capture variables into the enclosing scope unless
+# they are declared local first.
+local MATCH MBEGIN MEND
 if [[ $1 == "--help" || $1 == "-h" ]]; then
   fold -w "$(tput cols)" -s <<'EOF'
 Usage: install_kubectl [version]

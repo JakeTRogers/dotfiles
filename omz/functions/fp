@@ -9,6 +9,8 @@
 # Returns:
 #   0 on success, 1 for unknown commands
 #######################################
+
+emulate -L zsh
 local command="${1:-help}"
 
 if [[ $# -gt 0 ]]; then

@@ -16,8 +16,11 @@
 #   0 on success, 1 if any update failed (fail-fast)
 #######################################
 
+emulate -L zsh
+
 # Parse arguments
 local dry_run=0
+local arg dir
 
 for arg in "$@"; do
   case "$arg" in

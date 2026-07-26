@@ -24,6 +24,10 @@
 #   0 always
 #######################################
 emulate -L zsh
+
+# [[ =~ ]] writes its capture variables into the enclosing scope unless
+# they are declared local first.
+local MATCH MBEGIN MEND
 setopt local_options no_nomatch
 
 local all=0

@@ -10,6 +10,8 @@
 # Outputs:
 #   Decoded bytes on stdout (empty on decode failure)
 #######################################
+
+emulate -L zsh
 local len=$(( ${#1} % 4 ))
 local result="$1"
 [[ $len -eq 2 ]] && result="$1=="

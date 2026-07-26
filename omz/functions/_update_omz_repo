@@ -11,6 +11,8 @@
 # Returns:
 #   0 on success or skip, 1 on update failure
 #######################################
+
+emulate -L zsh
 local dir=$1
 local name=$2
 

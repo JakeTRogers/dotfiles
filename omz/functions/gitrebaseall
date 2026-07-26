@@ -9,6 +9,12 @@
 # Returns:
 #   0 on success, 1 on failure or if the user declined
 #######################################
+
+emulate -L zsh
+
+# [[ =~ ]] writes its capture variables into the enclosing scope unless
+# they are declared local first.
+local MATCH MBEGIN MEND
 if [[ $1 == "--help" || $1 == "-h" ]]; then
   fold -w "$(tput cols)" -s <<'EOF'
 Usage: gitrebaseall [--dry-run] [--yes]

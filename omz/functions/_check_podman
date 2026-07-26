@@ -9,6 +9,8 @@
 # Returns:
 #   0 if podman is available, 1 if not found
 #######################################
+
+emulate -L zsh
 if ! command -v podman &> /dev/null; then
   pprint "🔴 podman: command not found" "$fgRed" >&2
   return 1

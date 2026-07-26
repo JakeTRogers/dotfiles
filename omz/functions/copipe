@@ -1,6 +1,12 @@
 #######################################
 # copipe - pipe terminal input to GitHub Copilot
 #######################################
+
+emulate -L zsh
+
+# [[ =~ ]] writes its capture variables into the enclosing scope unless
+# they are declared local first.
+local MATCH MBEGIN MEND
 if [[ $1 == "--help" || $1 == "-h" ]]; then
   fold -w "$(tput cols)" -s <<'EOF'
 Usage: copipe [OPTIONS] [--preset PRESET] [--prompt TEXT]
@@ -246,6 +252,7 @@ if [[ -n "$model" ]]; then
   cmd_args+=(--model "$model")
 fi
 
+local tool
 for tool in "${allow_tools[@]}"; do
   cmd_args+=(--allow-tool="$tool")
 done

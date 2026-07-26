@@ -10,6 +10,8 @@
 # Outputs:
 #   Interactive fzf selection, starts container, then attaches to it
 #######################################
+
+emulate -L zsh
 if _fp_wants_help "$@"; then
   _fp_command_help fpsa
   return 0

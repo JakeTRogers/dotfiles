@@ -6,6 +6,8 @@
 # Returns:
 #   0 on success, 1 for unknown command
 #######################################
+
+emulate -L zsh
 case "$1" in
   fpe)
     printf '%s\n' \

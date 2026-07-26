@@ -1,6 +1,8 @@
 #######################################
 # ccm - Generate a Conventional Commit message from staged changes via Copilot
 #######################################
+
+emulate -L zsh
 setopt localoptions localtraps
 
 local model="gpt-5.4-mini"

@@ -10,6 +10,8 @@
 # Returns:
 #   podman exec exit status
 #######################################
+
+emulate -L zsh
 local cid="$1"
 local user="$2"
 local shell="$3"

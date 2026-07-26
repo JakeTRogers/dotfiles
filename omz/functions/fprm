@@ -10,6 +10,8 @@
 # Outputs:
 #   Interactive fzf selection, then removes selected containers
 #######################################
+
+emulate -L zsh
 if _fp_wants_help "$@"; then
   _fp_command_help fprm
   return 0

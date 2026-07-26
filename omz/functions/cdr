@@ -7,6 +7,8 @@
 # Returns:
 #   0 on success, 1 if no selection made
 #######################################
+
+emulate -L zsh
 local repo fd_cmd
 # debian/ubuntu package fd as fdfind
 fd_cmd=$(command -v fd || command -v fdfind) || {

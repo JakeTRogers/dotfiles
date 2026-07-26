@@ -18,6 +18,8 @@
 # Returns:
 #   Merge base commit hash (default) or branch name, or empty string if not found
 #######################################
+
+emulate -L zsh
 local return_name=0
 local merge_base base_branch branch
 

@@ -1,6 +1,8 @@
 #######################################
 # get_k8s_images - Get container images used by pods in a Kubernetes cluster
 #######################################
+
+emulate -L zsh
 if [[ $1 == "--help" || $1 == "-h" ]]; then
   fold -w "$(tput cols)" -s <<'EOF'
 Usage: get_k8s_images [OPTIONS] [NAMESPACE|-] [CONTEXT]
@@ -102,6 +104,8 @@ if $running_only; then
 fi
 
 local kind_filter=""
+local k
+local -a kind_list
 IFS=',' read -rA kind_list <<< "$kinds"
 for k in "${kind_list[@]}"; do
   case "$k" in

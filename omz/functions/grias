@@ -5,6 +5,8 @@
 # Outputs:
 #   Interactive rebase
 #######################################
+
+emulate -L zsh
 local target=$1
 local base_branch=$target
 

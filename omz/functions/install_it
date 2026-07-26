@@ -1,6 +1,8 @@
 #######################################
 # install_it - Install an executable from ~/install to /usr/local/bin
 #######################################
+
+emulate -L zsh
 if [[ $# -eq 0 || $1 == "--help" || $1 == "-h" ]]; then
   fold -w "$(tput cols)" -s <<'EOF'
 Usage: install_it <source_file> [target_file]

@@ -7,6 +7,8 @@
 # Returns:
 #   0 on success, 1 if no selection made
 ################################
+
+emulate -L zsh
 local file
 file=$(fzf) || return
 [[ -n "$file" ]] || return 1

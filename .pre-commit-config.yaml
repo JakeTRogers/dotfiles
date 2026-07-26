@@ -33,3 +33,12 @@ repos:
         language: system
         entry: bin/zsh_syntax_check
         files: ^(omz/(functions|completions)/[^/]+|omz/zshrc|omz/(install|configure)\.sh|.*\.zsh)$
+      - id: cheatsheet-audit
+        name: cheatsheet drift check
+        # `cheat` builds itself from function docstrings and alias comments, so
+        # a missing one silently drops the entry; README.md restates the same
+        # data by hand. This fails the commit instead of letting either rot.
+        language: system
+        entry: bin/cheatsheet_audit
+        pass_filenames: false
+        files: ^(omz/(aliases\.zsh|README\.md|functions/[^/]+)|fzf/[^/]+\.zsh)$

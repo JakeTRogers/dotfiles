@@ -49,6 +49,10 @@ fi
 
 # Reset to zsh defaults locally so option changes don't leak into the shell
 emulate -L zsh
+
+# [[ =~ ]] writes its capture variables into the enclosing scope unless
+# they are declared local first.
+local MATCH MBEGIN MEND
 setopt typeset_silent
 
 # Ensure we're in a git repository
@@ -103,11 +107,15 @@ while IFS= read -r _entry; do
   rename_src_set[${_rest##*$'\t'}]=1
 done < <(git status --porcelain=v2 2>/dev/null)
 
-# Unstage everything to start fresh (now that we know there is work to do)
-git restore --staged . 2>/dev/null
+# Unstage everything to start fresh (now that we know there is work to do).
+# ":/" is the whole-repo pathspec: a bare "." would only reach the current
+# directory's subtree, so running gcfuh from a subdirectory would leave changes
+# elsewhere staged and sweep them into the fixup commit.
+git restore --staged -- :/ 2>/dev/null
 
 # Track how many fixups we create so we can offer an autosquash rebase at the end
 local fixups_created=0
+local line f subject
 
 # ─── Files-passed mode ──────────────────────────────────────────────
 if [[ $# -gt 0 ]]; then

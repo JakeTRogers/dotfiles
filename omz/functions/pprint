@@ -1,6 +1,8 @@
 #######################################
 # pprint - Pretty print a string with color or text decorations
 #######################################
+
+emulate -L zsh
 if [[ $# -eq 0 || $1 == "--help" || $1 == "-h" ]]; then
   fold -w "$(tput cols)" -s <<'EOF'
 Usage: pprint [-n] <text> [styles]
@@ -18,17 +20,16 @@ EOF
   return 0
 fi
 
-# handle options
+# handle options. -n is the only option, so anything else is text: a message
+# like "-3 replicas remaining" must print rather than be consumed as a flag.
+# "--" ends option parsing for text that really does start with "-n".
 local newline="\n"
-while [[ "$1" == -* ]]; do
+while (( $# )); do
   case "$1" in
-    -n)
-      newline=""
-      ;;
-    *)
-      ;;
+    -n) newline=""; shift ;;
+    --) shift; break ;;
+    *)  break ;;
   esac
-  shift
 done
 
 # handle arguments

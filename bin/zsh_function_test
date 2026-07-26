@@ -1,0 +1,289 @@
+#!/usr/bin/env zsh
+# Correctness checks for omz/functions that `zsh -n` cannot reach.
+#
+# bin/zsh_syntax_check only parses; every bug this catches parses fine. Three
+# checks, cheapest first:
+#
+#   1. leaks  — autoloaded functions run in the caller's scope, so any name they
+#               forget to declare becomes a global that outlives the command.
+#               Snapshot the namespace, run the function, diff.
+#   2. lint   — source patterns that are always wrong, e.g. splitting a command
+#               substitution with (@f) and then testing the array for emptiness:
+#               empty output yields one empty element, not an empty array.
+#   3. units  — behaviour of the pieces with logic worth pinning down, driven
+#               through stubbed kubectl/git rather than a live cluster.
+#
+# Usage: zsh_function_test [FILE...]
+#
+# With no arguments every function is checked. With arguments — which is how
+# pre-commit calls it — the per-function checks are limited to the files named,
+# because spawning a fresh shell per function to diff its namespace costs a few
+# seconds each and a full sweep is too slow for a commit hook. The unit checks
+# always run; they are cheap and cover the shared helpers.
+
+emulate -L zsh
+setopt no_nomatch pipe_fail
+
+local repo
+repo="$(git rev-parse --show-toplevel 2>/dev/null)" || repo="$PWD"
+
+local functions_dir="$repo/omz/functions"
+if [[ ! -d "$functions_dir" ]]; then
+  print -u2 -- "🔴 zsh_function_test: not a dotfiles checkout: missing $functions_dir"
+  exit 2
+fi
+
+# Restrict the per-function checks to the files named on the command line.
+local -a targets
+local arg
+for arg in "$@"; do
+  [[ "${arg:A:h}" == "${functions_dir:A}" && -f "$arg" ]] && targets+=("${arg:A}")
+done
+if (( $# == 0 )); then
+  targets=("$functions_dir"/*(.N))
+elif (( ${#targets} == 0 )); then
+  # Called with files, none of which are functions: nothing per-function to do.
+  targets=()
+fi
+
+# These ignore their arguments and act immediately, so "$fn --help" RUNS them.
+# gundo is `git reset --soft HEAD~1`; grias starts a rebase. Never invoke them.
+local -a never_invoke=(gundo czbnt gciaf gcif gdu gdus grias)
+
+integer failures=0
+fail() { print -r -- "  🔴 $*"; (( failures++ )) }
+pass() { print -r -- "  ✅ $*" }
+
+# Functions are run from a scratch directory, never the checkout. Several of
+# them reach for git, and running those against the real repository is both
+# slow (signing, hooks) and a hazard — an earlier version of this harness ran
+# `gundo --help`, which is `git reset --soft HEAD~1` and ignores its arguments.
+# Cleaned up explicitly at the end rather than with an EXIT trap: zsh runs an
+# EXIT trap when a *subshell* exits too, and every check below runs in one.
+local scratch="$(mktemp -d)"
+trap 'rm -rf -- "$scratch"; exit 130' INT TERM
+
+# Run a snippet in a pristine zsh with the functions autoloadable and the
+# colour variables from variables.zsh stubbed empty, so output stays plain.
+# Set TESTCWD to run somewhere other than the scratch directory.
+#
+# stdin comes from /dev/null: the filter functions (_cheat_render, _cheat_fzf)
+# read their input from stdin, so invoking them with an inherited terminal makes
+# them block forever rather than fail.
+_isolated() {
+  local snippet="$1"; shift
+  ( cd -- "${TESTCWD:-$scratch}" || return 1
+  zsh -f -c '
+    fdir=$1; snippet=$2; shift 2
+    fpath=($fdir $fpath)
+    for v in fgBlack fgRed fgGreen fgYellow fgBlue fgMagenta fgCyan fgWhite \
+             fgPurple fgPink fgOrange fgDkGrey fgGrey fgLtGrey \
+             bgRed bgGreen bgYellow bgBlue \
+             txBold txHalf txUnderline txReverse txStandout txReset; do
+      typeset -g $v=""
+    done
+    typeset -g _FP_CONTAINER_FORMAT=$'"'"'{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'"'"'
+    typeset -g _FP_IMAGE_FORMAT=$'"'"'{{.ID}}\t{{.Repository}}:{{.Tag}}\t{{.CreatedSince}}\t{{.Size}}'"'"'
+    local fn
+    for fn in $(ls -- "$fdir"); do autoload -Uz -- "$fn"; done
+    eval "$snippet"
+  ' zsh "$functions_dir" "$snippet" "$@" < /dev/null )
+}
+
+# --- 1. Leaked globals -------------------------------------------------------
+print "── leaked globals ──"
+
+# name:snippet pairs that reach past the --help guard into the real code path.
+# Anything not listed here is exercised with --help, which is enough for the
+# functions whose locals are declared before the guard.
+local -a leak_cases
+leak_cases=(
+  'decode_jwt|h=$(printf %s "{\"alg\":\"none\"}" | base64 -w0 | tr "+/" "-_" | tr -d "=");
+              p=$(printf %s "{\"sub\":\"x\"}" | base64 -w0 | tr "+/" "-_" | tr -d "=");
+              decode_jwt --raw "$h.$p.AAAA"'
+  'get_k8s_images|get_k8s_images --kind app,init a-namespace a-context'
+  'decode_cert|decode_cert /nonexistent.pem'
+  'copipe|print x | copipe --preset explain --allow-tool shell --show-prompt'
+  'k8|k8 flapping -n somewhere'
+  '_fp_pick|_fp_pick --source ps --binds reload,logs --query x'
+)
+
+# Names the shell itself updates on any command, plus the harness's own.
+local ignore_re='^(__before|__after|fdir|snippet|fn|v|h|p|RANDOM|SECONDS|LINENO|EPOCHSECONDS|EPOCHREALTIME|HISTCMD|OLDPWD|COLUMNS|LINES|status|pipestatus|_|\?|argv|ZSH_SUBSHELL|TTYIDLE|zle_bracketed_paste)$'
+
+# _update_omz_repo is deliberately dynamically scoped: its docstring states that
+# it increments update_omz_all's total/updated/skipped counters, which is what
+# makes it a helper for that function rather than a standalone command.
+local -a leak_exempt=(_update_omz_repo)
+
+_leak_diff() {  # $1 = snippet
+  _isolated '
+    __before=$(typeset +g | sort)
+    { '"$1"' } >/dev/null 2>&1
+    __after=$(typeset +g | sort)
+    comm -13 <(print -r -- "$__before") <(print -r -- "$__after") |
+      sed "s/=.*//; s/'"'"'//g" | awk "{print \$NF}" | sort -u
+  ' 2>/dev/null | grep -vE "$ignore_re"
+}
+
+local entry name snippet out fn
+for entry in "${leak_cases[@]}"; do
+  name="${entry%%|*}"
+  snippet="${entry#*|}"
+  [[ -f "$functions_dir/$name" ]] || continue
+  (( ${targets[(I)$functions_dir/$name]} )) || continue
+  out="$(_leak_diff "$snippet")"
+  [[ -n "$out" ]] && fail "$name leaks: ${(j:, :)${(f)out}}"
+done
+
+for fn in "${targets[@]}"; do
+  name="${fn:t}"
+  [[ " ${never_invoke[*]} " == *" $name "* ]] && continue
+  [[ " ${leak_exempt[*]} " == *" $name "* ]] && continue
+  out="$(_leak_diff "$name --help")"
+  [[ -n "$out" ]] && fail "$name --help leaks: ${(j:, :)${(f)out}}"
+done
+(( failures == 0 )) && pass "no function leaves globals behind"
+
+# --- 2. Source lint ----------------------------------------------------------
+print "── source lint ──"
+integer lint_failures=$failures
+
+# ${(@f)$(cmd)} on empty output yields ONE empty element, so a following
+# ${#arr} test passes and the caller runs with an empty argument. Every use
+# must be followed by an ":#" strip. This is the fpl/fpst bug.
+local file line_no
+for fn in "${targets[@]}"; do
+  grep -n '(@f)\$(' -- "$fn" 2>/dev/null | while IFS=: read -r line_no _; do
+    # the strip may be on the same line or within the next few
+    if ! sed -n "${line_no},$((line_no + 6))p" -- "$fn" | grep -q ':#}'; then
+      fail "${fn:t}:${line_no} splits with (@f) but never strips the empty element"
+    fi
+  done
+done
+
+# emulate -L zsh keeps interactive options (nullglob, extendedglob, ksharrays,
+# shwordsplit) from changing how a function behaves. The one-line passthroughs
+# have no shell logic to protect and are exempt.
+for fn in "${targets[@]}"; do
+  name="${fn:t}"
+  [[ " ${never_invoke[*]} " == *" $name "* ]] && continue
+  grep -q 'emulate -L zsh' -- "$fn" || fail "${name} has no 'emulate -L zsh'"
+done
+
+# [[ =~ ]] writes MATCH/MBEGIN/MEND into the enclosing scope unless declared local
+for fn in "${targets[@]}"; do
+  name="${fn:t}"
+  grep -q '=~' -- "$fn" || continue
+  grep -q 'local.*\bMATCH\b' -- "$fn" || fail "${name} uses =~ without 'local MATCH MBEGIN MEND'"
+done
+(( failures == lint_failures )) && pass "no lint violations"
+
+# --- 3. Unit checks ----------------------------------------------------------
+print "── units ──"
+integer unit_failures=$failures
+
+expect() {  # expect <label> <expected> <actual>
+  if [[ "$2" == "$3" ]]; then
+    pass "$1"
+  else
+    fail "$1"
+    print -r -- "       expected: $2"
+    print -r -- "       actual:   $3"
+  fi
+}
+
+# _decode_base64_url: base64url alphabet and stripped padding
+local encoded decoded
+encoded="$(printf '%s' '{"a":"?~>"}' | base64 -w0 | tr '+/' '-_' | tr -d '=')"
+decoded="$(_isolated "_decode_base64_url ${(q)encoded}")"
+expect "_decode_base64_url round-trips base64url" '{"a":"?~>"}' "$decoded"
+
+# get_k8s_images: a registry port must not be mistaken for a tag separator
+local stub_bin="$(mktemp -d)" fixture="$(mktemp -d)"
+{
+  print -r -- '#!/bin/sh'
+  print -r -- "cat $fixture/pods.json"
+} > "$stub_bin/kubectl"
+chmod +x "$stub_bin/kubectl"
+cat > "$fixture/pods.json" <<'JSON'
+{"items":[{"metadata":{"namespace":"ns"},"spec":{"containers":[
+  {"image":"registry.io:5000/team/app"},
+  {"image":"registry.io:5000/team/app:v3"},
+  {"image":"nginx:1.2"},
+  {"image":"nginx"}
+]}}]}
+JSON
+local images
+images="$(PATH="$stub_bin:$PATH" _isolated 'get_k8s_images --kind app ns ctx' | tail -n +2 | awk '{print $2"|"$3}' | sort | tr '\n' ' ')"
+expect "get_k8s_images splits image and tag" \
+  'nginx|(none) nginx|1.2 registry.io:5000/team/app|(none) registry.io:5000/team/app|v3 ' \
+  "$images"
+rm -rf "$stub_bin" "$fixture"
+
+# git_find_branch_base: origin/HEAD wins, and the remote-tracking ref is
+# preferred over a stale local trunk
+local sandbox="$(mktemp -d)" setup_log="$(mktemp)"
+(
+  # The ambient global config is bypassed so commit signing cannot block this,
+  # which also means init.defaultBranch is unset: name every branch explicitly.
+  export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null
+  set -e
+  git init -q --bare -b main "$sandbox/up.git"
+  git clone -q "$sandbox/up.git" "$sandbox/w"
+  cd "$sandbox/w"
+  git config user.email t@t; git config user.name t; git config commit.gpgsign false
+  git checkout -q -b main
+  print 1 > f; git add -A; git commit -qm C1
+  print 2 >> f; git add -A; git commit -qm C2
+  git push -q -u origin main
+  git remote set-head origin main
+  git checkout -qb feat
+  print 3 >> f; git add -A; git commit -qm C3
+  git branch -f main HEAD~2        # leave the local trunk behind at C1
+) >"$setup_log" 2>&1 || {
+  fail "git_find_branch_base fixture setup failed"
+  sed 's/^/       /' "$setup_log"
+}
+local base_name base_hash expected_hash
+base_name="$(TESTCWD="$sandbox/w" _isolated 'git_find_branch_base -n')"
+base_hash="$(TESTCWD="$sandbox/w" _isolated 'git_find_branch_base')"
+expected_hash="$(git -C "$sandbox/w" rev-parse origin/main)"
+expect "git_find_branch_base prefers origin/HEAD's branch" 'origin/main' "$base_name"
+expect "git_find_branch_base ignores a stale local trunk" "$expected_hash" "$base_hash"
+
+# _gcfuh_blame_target: blame only the lines the diff actually removes, and
+# return the newest on-branch commit among them
+(
+  cd "$sandbox/w" || exit 1
+  printf 'a\nb\nc\n' > blame.txt
+  git add -A; git commit -qm "add blame.txt"
+  printf 'a\nB\nc\n' > blame.txt          # modify line 2, committed by the above
+) >/dev/null 2>&1
+local blame_out expected_blame
+expected_blame="$(git -C "$sandbox/w" log -1 --format='%h %s' -- blame.txt)"
+blame_out="$(TESTCWD="$sandbox/w" _isolated 'boundary=$(git_find_branch_base); _gcfuh_blame_target blame.txt "$boundary"')"
+expect "_gcfuh_blame_target picks the commit that owns the changed line" \
+  "$expected_blame" "$blame_out"
+
+# pure additions have no committed lines to blame, so nothing is suggested
+(
+  cd "$sandbox/w" || exit 1
+  git checkout -q -- blame.txt
+  printf 'a\nb\nc\nd\n' > blame.txt       # append only
+) >/dev/null 2>&1
+blame_out="$(TESTCWD="$sandbox/w" _isolated 'boundary=$(git_find_branch_base); _gcfuh_blame_target blame.txt "$boundary"')"
+expect "_gcfuh_blame_target suggests nothing for a pure addition" '' "$blame_out"
+rm -rf "$sandbox" "$setup_log"
+
+(( failures == unit_failures )) && pass "all unit checks passed"
+
+rm -rf -- "$scratch"
+
+# --- verdict -----------------------------------------------------------------
+print ""
+if (( failures )); then
+  print -r -- "🔴 zsh_function_test: $failures failure(s)"
+  exit 1
+fi
+print -r -- "✅ zsh_function_test: all checks passed"

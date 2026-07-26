@@ -10,18 +10,34 @@
 # Returns:
 #   podman exec exit status
 #######################################
+
+emulate -L zsh
 local cid="$1"
 local user="$2"
 local shell="$3"
 local workdir="$4"
 local cmd="$5"
-local -a exec_args
+local -a exec_args probe_args
 
 # When no user is specified, inherit the container's configured user.
 # podman exec defaults to root (UID 0), which fails in rootless containers
 # that lack a root entry in /etc/passwd.
 if [[ -z "$user" ]]; then
   user=$(podman inspect --format '{{.Config.User}}' "$cid" 2>/dev/null)
+fi
+
+# Pick a shell when the caller did not name one. bash is the friendliest
+# default, but alpine, busybox, and distroless images do not ship it, so ask
+# the container what it has instead of failing with "no such file or
+# directory". Probes as the same user, since that is who has to run it.
+if [[ -z "$shell" ]]; then
+  probe_args=(exec)
+  [[ -n "$user" ]] && probe_args+=(-u "$user")
+  probe_args+=("$cid")
+  shell=$(podman "${probe_args[@]}" sh -c \
+    'for s in /bin/bash /bin/sh; do [ -x "$s" ] && { printf %s "$s"; break; }; done' 2>/dev/null)
+  # No sh at all (a scratch or static distroless image): let podman report it
+  shell="${shell:-/bin/bash}"
 fi
 
 exec_args=(exec -it)

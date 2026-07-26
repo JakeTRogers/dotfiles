@@ -16,8 +16,11 @@
 #   0 on success, 1 if any update failed (fail-fast)
 #######################################
 
+emulate -L zsh
+
 # Parse arguments
 local dry_run=0
+local arg dir
 
 for arg in "$@"; do
   case "$arg" in
@@ -46,6 +49,13 @@ EOF
       ;;
     --dry-run)
       dry_run=1
+      ;;
+    *)
+      # Never treat an unrecognized flag as "no flag": a typo like --dryrun
+      # would otherwise skip the dry run and update everything for real.
+      pprint "🔴 update_omz_all: unknown argument: $arg" "$fgRed" >&2
+      pprint "Run 'update_omz_all --help' for usage." "$fgYellow" >&2
+      return 1
       ;;
   esac
 done

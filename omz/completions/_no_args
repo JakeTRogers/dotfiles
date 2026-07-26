@@ -1,4 +1,4 @@
-#compdef cdr ff gaf gcof gswt gundo update_git_mirrors_in_subdirs
+#compdef cdr ff gaf gcof gswt gundo
 
 # Completion for the functions that take no arguments at all.
 #

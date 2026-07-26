@@ -1,0 +1,68 @@
+#compdef k8
+
+# Completion for "k8" - cluster triage queries.
+#
+# Namespaces and contexts are completed from the cluster itself, which is the
+# main thing the previous k8* aliases could not do. Namespace lookup is a live
+# API call, so it is cached for a minute; context lookup is local and cheap.
+
+(( $+functions[__k8_contexts] )) || __k8_contexts() {
+  local -a ctxs
+  ctxs=(${(f)"$(kubectl config get-contexts -o name 2>/dev/null)"})
+  _describe -t contexts 'context' ctxs
+}
+
+(( $+functions[__k8_namespaces] )) || __k8_namespaces() {
+  local -a nss
+  local cache_policy
+  zstyle -s ":completion:${curcontext}:" cache-policy cache_policy
+  [[ -z "$cache_policy" ]] && zstyle ":completion:${curcontext}:" cache-policy __k8_ns_cache_policy
+
+  if _cache_invalid k8-namespaces || ! _retrieve_cache k8-namespaces; then
+    nss=(${${(f)"$(kubectl get namespaces -o name 2>/dev/null)"}#namespace/})
+    (( ${#nss} )) && _store_cache k8-namespaces nss
+  fi
+  (( ${#nss} )) && _describe -t namespaces 'namespace' nss
+}
+
+(( $+functions[__k8_ns_cache_policy] )) || __k8_ns_cache_policy() {
+  # Namespaces come and go; a minute is fresh enough for completion.
+  local -a oldp
+  oldp=( "$1"(Nm+1) )
+  (( $#oldp ))
+}
+
+_k8() {
+  local -a subcommands
+  subcommands=(
+    'bad:Pods that are neither Running nor Succeeded'
+    'events:FailedScheduling events, oldest first'
+    'exposed:Services published as LoadBalancer or NodePort'
+    'flapping:Containers with a restart count above zero'
+    'ingress:Ingress hosts, plus Traefik IngressRoute when present'
+    'nodes:Nodes that are not Ready, with the reason'
+    'finalizers:Resources carrying finalizers, which can block deletion'
+    'top:Pods by CPU or memory usage'
+  )
+
+  _arguments -s -S -C \
+    '(-n --namespace)'{-n,--namespace}'[Limit to one namespace]:namespace:__k8_namespaces' \
+    '--context[kubectl context to use]:context:__k8_contexts' \
+    '(-h --help)'{-h,--help}'[Show help]' \
+    '1: :->subcommand' \
+    '*:: :->args'
+
+  case $state in
+    subcommand)
+      _describe -t subcommands 'k8 subcommand' subcommands
+      ;;
+    args)
+      # Only "top" takes a positional of its own
+      if [[ ${words[1]} == top ]]; then
+        _describe -t metrics 'metric' '(cpu:Sort pods by CPU mem:Sort pods by memory)'
+      fi
+      ;;
+  esac
+}
+
+_k8 "$@"

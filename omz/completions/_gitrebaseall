@@ -1,0 +1,10 @@
+#compdef gitrebaseall
+
+# Completion for "gitrebaseall" - rebase every local branch onto the default
+# branch and force-push each one.
+function _gitrebaseall() {
+  _arguments -s -S \
+    '(-n --dry-run)'{-n,--dry-run}'[List the branches that would be rebased and force-pushed, then stop]' \
+    '(-y --yes)'{-y,--yes}'[Skip the confirmation prompt]' \
+    '(-h --help)'{-h,--help}'[Show help]'
+}

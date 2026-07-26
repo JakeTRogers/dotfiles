@@ -1,3 +1,20 @@
+## v3.10.0 (2026-07-26)
+
+### Feature
+
+- **omz**: replace the ten k8* aliases with a k8 function
+
+### Fix
+
+- **omz**: resolve the branch base from origin/HEAD instead of guessing
+- **omz**: stop functions leaking variables into the interactive shell
+- **omz**: harden interactive commands and guard the destructive ones
+- **omz**: correct eight bugs that lose data or hide failures
+
+### Refactor
+
+- **omz**: extract the shared podman picker into _fp_pick
+
 ## v3.9.0 (2026-07-26)
 
 ### Feature

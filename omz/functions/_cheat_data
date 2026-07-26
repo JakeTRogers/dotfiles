@@ -24,6 +24,10 @@
 #   0 always
 #######################################
 emulate -L zsh
+
+# [[ =~ ]] writes its capture variables into the enclosing scope unless
+# they are declared local first.
+local MATCH MBEGIN MEND
 setopt local_options no_nomatch
 
 local all=0
@@ -119,7 +123,7 @@ for f in "$functions_dir"/*(.N); do
   summary="${header#*" - "}"
 
   case "$name" in
-    get_k8s_images)                  cat=k8s ;;
+    k8|get_k8s_images)               cat=k8s ;;
     fp|fp[a-z]*)                     cat=podman ;;
     decode_*)                        cat=crypto ;;
     install_*)                       cat=install ;;

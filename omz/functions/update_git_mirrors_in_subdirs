@@ -1,26 +1,101 @@
 #######################################
 # update_git_mirrors_in_subdirs - ⚠ Update all git mirrors in subdirectories of the current directory
 # Arguments:
-#   None
+#   -n, --dry-run  Show what would be pushed, then stop
+#   -y, --yes      Skip the confirmation prompt
+#   -h, --help     Show help
 # Outputs:
 #   Writes the git fetch and push status to stdout
 # Returns:
-#   0 on success, 1 if any operations failed
+#   0 on success, 1 if any operations failed or the user declined
 #######################################
-local dir
+
+emulate -L zsh
+
+# [[ =~ ]] writes its capture variables into the enclosing scope unless
+# they are declared local first.
+local MATCH MBEGIN MEND
+if [[ $1 == "--help" || $1 == "-h" ]]; then
+  fold -w "$(tput cols)" -s <<'EOF'
+Usage: update_git_mirrors_in_subdirs [--dry-run] [--yes]
+Fetch every git repository in the current directory's subdirectories, then push each one to its origin with --mirror.
+
+⚠ push --mirror makes the remote match your local refs exactly. Branches and tags that exist on the remote but not in your local copy are DELETED from the remote. That is the point of a mirror and destructive anywhere else, so the repositories are listed for confirmation before anything is pushed.
+
+Options:
+  -n, --dry-run  List the repositories that would be pushed, then stop
+  -y, --yes      Skip the confirmation prompt
+  -h, --help     Show this help
+
+Examples:
+  See what would be mirrored, without touching any remote
+    update_git_mirrors_in_subdirs --dry-run
+  Mirror everything without being asked
+    update_git_mirrors_in_subdirs --yes
+EOF
+  return 0
+fi
+
+local dir arg remote response
 local failed=0
+local dry_run=0
+local assume_yes=0
 
-# (N) nullglob so an empty directory loops zero times; (/) restricts to
-# directories and yields names without a trailing slash
+for arg in "$@"; do
+  case "$arg" in
+    -n|--dry-run) dry_run=1 ;;
+    -y|--yes)     assume_yes=1 ;;
+    # The guard above only sees $1, so catch --help in any other position too
+    -h|--help)    update_git_mirrors_in_subdirs --help; return 0 ;;
+    *)
+      pprint "🔴 update_git_mirrors_in_subdirs: unknown argument: $arg" "$fgRed" >&2
+      pprint "Run 'update_git_mirrors_in_subdirs --help' for usage." "$fgYellow" >&2
+      return 1
+      ;;
+  esac
+done
+
+# Collect the repositories first so the whole list can be shown before anything
+# is pushed. (N) nullglob so an empty directory loops zero times; (/) restricts
+# to directories and yields names without a trailing slash.
+local -a repos
 for dir in *(N/); do
-  pprint "🔄 Processing: $dir" "$fgBlue"
+  git -C "$dir" rev-parse --git-dir &>/dev/null && repos+=("$dir")
+done
 
-  # Check if it's a git repository
-  if ! git -C "$dir" rev-parse --git-dir &>/dev/null; then
-    pprint "  ⚠️  Skipping: not a git repository" "$fgYellow"
-    echo
-    continue
+if (( ${#repos} == 0 )); then
+  pprint "⚠️  No git repositories found in subdirectories of $PWD" "$fgYellow"
+  return 0
+fi
+
+# Show what is about to be rewritten, and which remote each push would rewrite
+pprint "These repositories will be mirrored to their origin:" "$fgCyan" "$txBold"
+echo
+for dir in "${repos[@]}"; do
+  remote=$(git -C "$dir" remote get-url --push origin 2>/dev/null)
+  printf '  %-30s %s\n' "$dir" "${remote:-⚠ no origin remote}"
+done
+echo
+pprint "⚠ push --mirror deletes remote branches and tags you do not have locally." "$fgYellow"
+echo
+
+if (( dry_run )); then
+  pprint "🔵 Dry run: nothing was fetched or pushed." "$fgBlue"
+  return 0
+fi
+
+if (( ! assume_yes )); then
+  printf '%b' "${fgYellow}Proceed? [y/N]:${txReset} "
+  read -r response
+  if [[ ! "$response" =~ ^[Yy]([Ee][Ss])?$ ]]; then
+    pprint "⚠️  Aborted." "$fgYellow"
+    return 1
   fi
+  echo
+fi
+
+for dir in "${repos[@]}"; do
+  pprint "🔄 Processing: $dir" "$fgBlue"
 
   # Fetch with prune
   if git -C "$dir" fetch -p origin; then

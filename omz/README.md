@@ -54,23 +54,6 @@ as a shell function in `omz/*.zsh` or `fzf/*.zsh` instead of `functions/`.
 - **`variables.zsh`** - Shell variables, symlinked to `$ZSH_CUSTOM/variables.zsh`
 - **`aliases.zsh`** - Shell aliases, symlinked to `$ZSH_CUSTOM/aliases.zsh`
 
-### Notable Aliases
-
-#### Kubernetes Aliases
-
-| Alias | Description |
-| ----- | ----------- |
-| `k8b` | Pods not in Running or Succeeded state |
-| `k8ef` | Events for FailedScheduling (unschedulable pods) |
-| `k8ext` | Externally exposed services (LoadBalancer/NodePort) |
-| `k8flap` | Pods with restarts > 0 (flapping containers) |
-| `k8ing` | Ingress inventory |
-| `k8ingr` | IngressRoute inventory (Traefik) |
-| `k8nr` | Nodes not in Ready state |
-| `k8sf` | Resources with stuck finalizers |
-| `k8tc` | Pods sorted by CPU usage |
-| `k8tm` | Pods sorted by memory usage |
-
 ### Directories
 
 #### `functions/`
@@ -100,29 +83,31 @@ Individual function files that are autoloaded on-demand. Each file contains a si
 - **`git_find_branch_base`** - Find the base branch name or merge-base commit (main/master/develop/...)
 - **`git_pr_check`** - Check subdirectories for GitHub pull requests
 - **`git_tag_semver`** - Semantically tag a git repository with major/minor/patch versions
+- **`gitrebaseall`** - ⚠ Rebase every local branch onto the default branch and force-push each (`--dry-run` supported)
 - **`grias`** - `git rebase --interactive --autosquash` from the branch base
 - **`gswt`** - Fuzzy-select a linked worktree and `cd` into it
 - **`gundo`** - Undo the last commit (soft reset, keeps changes staged)
 - **`install_it`** - Use Linux `install` to install binaries in `/usr/local/bin`
 - **`install_kubectl`** - Install or upgrade kubectl to a specific version (checksum-verified)
 - **`joincsv`** - Join two CSV files by their first column
+- **`k8`** - Cluster triage queries: broken pods, nodes, ingress, finalizers (`k8 --help` for subcommands)
 - **`log_cmd`** - Command logging utility (default log: `~/command.log`, override with `CMD_LOG_FILE`)
 - **`log_cmd_d`** - Command logging utility to a unique timestamped file under `$TMPDIR`
 - **`pprint`** - Pretty print utility
 - **`rgf`** - Fuzzy-find a file containing a pattern and open it at the match in `$EDITOR`
-- **`update_git_mirrors_in_subdirs`** - Fetch and mirror-push every git repo in the current directory's subdirectories
+- **`update_git_mirrors_in_subdirs`** - ⚠ Fetch and mirror-push every git repo in the current directory's subdirectories (`--dry-run` supported)
 - **`update_omz_all`** - Update oh-my-zsh itself plus all custom themes/plugins (`--dry-run` supported)
 
 #### `completions/`
 
 Zsh completion functions (prefixed with `_`) symlinked to `$ZSH_CUSTOM/completions/`.
 
-Functions that take no arguments (`cdr`, `ff`, `gaf`, `gcof`, `gswt`, `gundo`,
-`update_git_mirrors_in_subdirs`) share a single `_no_args` file, which suppresses the filename
-completion zsh would otherwise offer. `countdown` (an integer) and `rgf` (a free-form regex)
-have nothing worth completing and deliberately have no file.
+Functions that take no arguments (`cdr`, `ff`, `gaf`, `gcof`, `gswt`, `gundo`) share a single
+`_no_args` file, which suppresses the filename completion zsh would otherwise offer.
+`countdown` (an integer) and `rgf` (a free-form regex) have nothing worth completing and
+deliberately have no file.
 
-Hand-written completions for the custom functions above: `_ccm`, `_cheat`, `_copipe`, `_czbnt`, `_decode_cert`, `_decode_jwt`, `_fp` (dispatcher), `_fpe` (also covers `fpse`), `_fpl`, `_fp_simple` (covers `fpa`, `fpsa`, `fps`, `fprm`, `fprmi`, `fpst`, `fprestart`), `_gcfuh`, `_gciaf`, `_gcif`, `_gdu`, `_gdus`, `_get_k8s_images`, `_ghist`, `_git_delete_head_semver_tags`, `_git_find_branch_base`, `_git_pr_check`, `_git_tag_semver`, `_grias`, `_install_it`, `_install_kubectl`, `_joincsv`, `_log_cmd` (also covers `log_cmd_d`), `_pprint`, `_update_omz_all`, plus the shared helpers `_commits_since_merge` and `_no_args`.
+Hand-written completions for the custom functions above: `_ccm`, `_cheat`, `_copipe`, `_czbnt`, `_decode_cert`, `_decode_jwt`, `_fp` (dispatcher), `_fpe` (also covers `fpse`), `_fpl`, `_fp_simple` (covers `fpa`, `fpsa`, `fps`, `fprm`, `fprmi`, `fpst`, `fprestart`), `_gcfuh`, `_gciaf`, `_gcif`, `_gdu`, `_gdus`, `_get_k8s_images`, `_ghist`, `_git_delete_head_semver_tags`, `_git_find_branch_base`, `_git_pr_check`, `_git_tag_semver`, `_gitrebaseall`, `_grias`, `_install_it`, `_install_kubectl`, `_joincsv`, `_k8` (completes namespaces and contexts from the live cluster), `_log_cmd` (also covers `log_cmd_d`), `_pprint`, `_update_git_mirrors_in_subdirs`, `_update_omz_all`, plus the shared helpers `_commits_since_merge` and `_no_args`.
 
 Generated/vendored completions: `_bat`, `_fd`, `_rg` (shipped by the upstream tools) and `_getRelease`, `_depflow`, `_dyff`, `_goDiffIt`, `_kustomize`, `_subnetCalc`, `_timeBuddy` (Cobra-generated for external CLIs).
 
@@ -136,10 +121,13 @@ Standalone scripts for specific tasks:
 
 A few commands are deliberately powerful — know what they do before running them:
 
-- **`gitrebaseall`** (alias) - rebases every local branch onto the default branch and **force-pushes each one** to origin
+- **`gitrebaseall`** - rebases every local branch onto the default branch and **force-pushes each one** to origin
 - **`update_git_mirrors_in_subdirs`** - runs `git push --mirror` in every subdirectory repo, which **deletes remote refs that don't exist locally**
 - **`sssh` / `sscp`** (aliases) - ssh/scp with host-key checking disabled (`StrictHostKeyChecking=no`, throwaway known_hosts); convenient for ephemeral hosts, but offers no MITM protection
 - **`ccm` / `copipe`** - send staged diffs / arbitrary input to GitHub Copilot, i.e. off the machine
+
+The first two list what they are about to do and ask before touching a remote; `--dry-run`
+shows the plan and stops, `--yes` skips the prompt for scripted use.
 
 ## Adding New Functions
 
@@ -152,3 +140,21 @@ A few commands are deliberately powerful — know what they do before running th
 5. The function will be automatically available after reloading Zsh
 
 Run `bin/cheatsheet_audit` to confirm steps 2 and 4 are satisfied; pre-commit runs it for you.
+
+## Function Conventions
+
+`bin/zsh_function_test` enforces these on every commit, and `zsh -n` cannot: it runs the
+functions rather than just parsing them. Run it with no arguments to check everything, or
+with paths to check only those.
+
+- **Declare every variable `local`.** Autoloaded functions run in the caller's scope, so an
+  undeclared name becomes a global that outlives the command. The check snapshots the shell's
+  namespace, runs the function, and diffs.
+- **Start with `emulate -L zsh`.** Otherwise options set in the interactive shell
+  (`nullglob`, `extendedglob`, `shwordsplit`, `ksharrays`) change how the function behaves.
+  The one-line passthroughs (`gdu`, `gdus`, `gciaf`, `gcif`, `gundo`, `czbnt`) are exempt.
+- **`local MATCH MBEGIN MEND` before any `[[ =~ ]]`.** The match variables are written into
+  the enclosing scope; declaring them local is the only way to contain them.
+- **Strip the empty element after `${(@f)$(...)}`.** Splitting empty output yields an array
+  of one empty string, not an empty array, so a later `${#arr}` test passes and the command
+  runs with an empty argument. Follow every such split with `arr=("${(@)arr:#}")`.

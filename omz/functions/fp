@@ -9,6 +9,8 @@
 # Returns:
 #   0 on success, 1 for unknown commands
 #######################################
+
+emulate -L zsh
 local command="${1:-help}"
 
 if [[ $# -gt 0 ]]; then
@@ -49,7 +51,6 @@ case "$command" in
     ;;
   *)
     pprint "🔴 fp: unknown command: $command" "$fgRed" >&2
-    _fp_command_help "$command" >/dev/null 2>&1
     fp help >&2
     return 1
     ;;

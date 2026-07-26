@@ -126,20 +126,9 @@ mapfile -t stray_functions < <(
 )
 report "shell functions defined outside omz/functions/:" "${stray_functions[@]}"
 
-# --- 5. README kubernetes alias table vs reality -----------------------------
-readme_table="$(sed -n '/^#### Kubernetes Aliases/,/^### /p' "$readme")"
-# shellcheck disable=SC2016  # backticks here are literal markdown, not a subshell
-mapfile -t table_aliases < <(
-  grep -oE '^\| `[a-z0-9]+`' <<<"$readme_table" | tr -d '| `' | sort -u
-)
-mapfile -t actual_k8s < <(
-  grep -oE '^alias k8[a-z]*' "$aliases_file" | sed 's/^alias //' | sort -u
-)
-mapfile -t k8s_drift < <(
-  comm -3 <(printf '%s\n' "${actual_k8s[@]}") <(printf '%s\n' "${table_aliases[@]}") |
-    sed -e 's/^\t/README table only: /' -e 's/^\([^ ]\)/defined but not in README table: \1/'
-)
-report "kubernetes alias table drift:" "${k8s_drift[@]}"
+# The kubernetes alias table this used to check is gone: those ten k8* aliases
+# were replaced by the k8 function, which rule 3 already covers via the
+# functions/ list in README.md.
 
 # --- verdict -----------------------------------------------------------------
 if (( issues )); then

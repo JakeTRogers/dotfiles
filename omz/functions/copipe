@@ -1,6 +1,12 @@
 #######################################
 # copipe - pipe terminal input to GitHub Copilot
 #######################################
+
+emulate -L zsh
+
+# [[ =~ ]] writes its capture variables into the enclosing scope unless
+# they are declared local first.
+local MATCH MBEGIN MEND
 if [[ $1 == "--help" || $1 == "-h" ]]; then
   fold -w "$(tput cols)" -s <<'EOF'
 Usage: copipe [OPTIONS] [--preset PRESET] [--prompt TEXT]
@@ -163,6 +169,12 @@ if [[ -n "$file_path" ]]; then
   fi
   input=$(<"$file_path")
 else
+  # Without this, forgetting the pipe leaves copipe blocked on the terminal
+  # with no output, looking like a hang.
+  if [[ -t 0 ]]; then
+    pprint "🔴 copipe: no input on stdin. Pipe a command into it, or use -f FILE." "$fgRed" >&2
+    return 1
+  fi
   input=$(cat)
 fi
 
@@ -240,6 +252,7 @@ if [[ -n "$model" ]]; then
   cmd_args+=(--model "$model")
 fi
 
+local tool
 for tool in "${allow_tools[@]}"; do
   cmd_args+=(--allow-tool="$tool")
 done

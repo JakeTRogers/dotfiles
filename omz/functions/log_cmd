@@ -1,6 +1,8 @@
 #######################################
 # log_cmd - Log a shell command, its stdout, and stderr to a file
 #######################################
+
+emulate -L zsh
 if [[ $# -eq 0 || $1 == "--help" || $1 == "-h" ]]; then
   fold -w "$(tput cols)" -s <<'EOF'
 Usage: log_cmd <command>
@@ -28,5 +30,14 @@ fi
   printf "\`%s\` executed at $(date '+%Y-%m-%d %H:%M:%S')\n" "$*"
   printf '%b' "${header}"
   "$@"
+  cmd_status=$?
   printf "\n"
+  # The group is the left side of a pipeline, so zsh already runs it in a
+  # subshell: exit sets the group's status without touching the caller's shell.
+  # Without this the group would exit with the printf above, always 0.
+  exit $cmd_status
 } 2>&1 | tee -a "${CMD_LOG_FILE}"
+
+# Report the logged command's status rather than tee's, so `log_cmd foo && ...`
+# and `log_cmd foo || ...` behave the way an unlogged command would.
+return ${pipestatus[1]}

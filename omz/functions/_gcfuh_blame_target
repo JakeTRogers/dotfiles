@@ -17,6 +17,11 @@
 #   "<short-hash> <subject>" of the suggested commit, or empty string
 #######################################
 emulate -L zsh
+
+# [[ =~ ]] writes its capture variables into the enclosing scope unless
+# they are declared local first. This function reads $match.
+local MATCH MBEGIN MEND
+local -a match mbegin mend
 local file=$1 merge_boundary=$2
 [[ -n "$file" && -n "$merge_boundary" ]] || return 0
 

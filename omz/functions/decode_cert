@@ -1,6 +1,12 @@
 #######################################
 # decode_cert - Decode certificates in various levels of detail and formats
 #######################################
+
+emulate -L zsh
+
+# [[ =~ ]] writes its capture variables into the enclosing scope unless
+# they are declared local first.
+local MATCH MBEGIN MEND
 if [[ $# -eq 0 || $1 == "--help" || $1 == "-h" ]]; then
   fold -w "$(tput cols)" -s <<'EOF'
 Usage: decode_cert [--raw | --json | --yaml | --full | --short] <CERT_FILE | URL | DOMAIN>
@@ -32,6 +38,7 @@ EOF
 fi
 
 # Dependency Checks
+local tool
 local tools=("certigo" "jq" "yq")
 for tool in "${tools[@]}"; do
   if ! command -v "$tool" >/dev/null 2>&1; then

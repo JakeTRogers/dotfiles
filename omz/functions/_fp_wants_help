@@ -6,6 +6,8 @@
 # Returns:
 #   0 if -h or --help is present, 1 otherwise
 #######################################
+
+emulate -L zsh
 local arg
 
 for arg in "$@"; do

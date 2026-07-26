@@ -1,6 +1,8 @@
 #######################################
 # countdown - Countdown timer that prints the remaining seconds
 #######################################
+
+emulate -L zsh
 if [[ $# -eq 0 || $1 == "--help" || $1 == "-h" ]]; then
   fold -w "$(tput cols)" -s <<'EOF'
 Usage: countdown <seconds>
@@ -13,8 +15,18 @@ EOF
 fi
 
 local seconds=${1}
-while [ "$seconds" -gt 0 ]; do
-  echo -ne "waiting: ${seconds}\r"
+if [[ ! "$seconds" == <-> ]]; then
+  pprint "🔴 countdown: seconds must be a non-negative integer, got: ${seconds}" "$fgRed" >&2
+  return 1
+fi
+
+while (( seconds > 0 )); do
+  # \e[K clears to end of line. Without it, counting down past a digit boundary
+  # (100 -> 99) leaves the stale trailing character on screen, showing "990".
+  printf '\rwaiting: %d\e[K' "$seconds"
   sleep 1
-  : $((seconds--))
+  (( seconds-- ))
 done
+
+# Clear the countdown so the next prompt starts on a clean line
+printf '\r\e[K'

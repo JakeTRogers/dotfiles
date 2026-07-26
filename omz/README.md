@@ -54,23 +54,6 @@ as a shell function in `omz/*.zsh` or `fzf/*.zsh` instead of `functions/`.
 - **`variables.zsh`** - Shell variables, symlinked to `$ZSH_CUSTOM/variables.zsh`
 - **`aliases.zsh`** - Shell aliases, symlinked to `$ZSH_CUSTOM/aliases.zsh`
 
-### Notable Aliases
-
-#### Kubernetes Aliases
-
-| Alias | Description |
-| ----- | ----------- |
-| `k8b` | Pods not in Running or Succeeded state |
-| `k8ef` | Events for FailedScheduling (unschedulable pods) |
-| `k8ext` | Externally exposed services (LoadBalancer/NodePort) |
-| `k8flap` | Pods with restarts > 0 (flapping containers) |
-| `k8ing` | Ingress inventory |
-| `k8ingr` | IngressRoute inventory (Traefik) |
-| `k8nr` | Nodes not in Ready state |
-| `k8sf` | Resources with stuck finalizers |
-| `k8tc` | Pods sorted by CPU usage |
-| `k8tm` | Pods sorted by memory usage |
-
 ### Directories
 
 #### `functions/`
@@ -107,6 +90,7 @@ Individual function files that are autoloaded on-demand. Each file contains a si
 - **`install_it`** - Use Linux `install` to install binaries in `/usr/local/bin`
 - **`install_kubectl`** - Install or upgrade kubectl to a specific version (checksum-verified)
 - **`joincsv`** - Join two CSV files by their first column
+- **`k8`** - Cluster triage queries: broken pods, nodes, ingress, finalizers (`k8 --help` for subcommands)
 - **`log_cmd`** - Command logging utility (default log: `~/command.log`, override with `CMD_LOG_FILE`)
 - **`log_cmd_d`** - Command logging utility to a unique timestamped file under `$TMPDIR`
 - **`pprint`** - Pretty print utility
@@ -123,7 +107,7 @@ Functions that take no arguments (`cdr`, `ff`, `gaf`, `gcof`, `gswt`, `gundo`) s
 `countdown` (an integer) and `rgf` (a free-form regex) have nothing worth completing and
 deliberately have no file.
 
-Hand-written completions for the custom functions above: `_ccm`, `_cheat`, `_copipe`, `_czbnt`, `_decode_cert`, `_decode_jwt`, `_fp` (dispatcher), `_fpe` (also covers `fpse`), `_fpl`, `_fp_simple` (covers `fpa`, `fpsa`, `fps`, `fprm`, `fprmi`, `fpst`, `fprestart`), `_gcfuh`, `_gciaf`, `_gcif`, `_gdu`, `_gdus`, `_get_k8s_images`, `_ghist`, `_git_delete_head_semver_tags`, `_git_find_branch_base`, `_git_pr_check`, `_git_tag_semver`, `_gitrebaseall`, `_grias`, `_install_it`, `_install_kubectl`, `_joincsv`, `_log_cmd` (also covers `log_cmd_d`), `_pprint`, `_update_git_mirrors_in_subdirs`, `_update_omz_all`, plus the shared helpers `_commits_since_merge` and `_no_args`.
+Hand-written completions for the custom functions above: `_ccm`, `_cheat`, `_copipe`, `_czbnt`, `_decode_cert`, `_decode_jwt`, `_fp` (dispatcher), `_fpe` (also covers `fpse`), `_fpl`, `_fp_simple` (covers `fpa`, `fpsa`, `fps`, `fprm`, `fprmi`, `fpst`, `fprestart`), `_gcfuh`, `_gciaf`, `_gcif`, `_gdu`, `_gdus`, `_get_k8s_images`, `_ghist`, `_git_delete_head_semver_tags`, `_git_find_branch_base`, `_git_pr_check`, `_git_tag_semver`, `_gitrebaseall`, `_grias`, `_install_it`, `_install_kubectl`, `_joincsv`, `_k8` (completes namespaces and contexts from the live cluster), `_log_cmd` (also covers `log_cmd_d`), `_pprint`, `_update_git_mirrors_in_subdirs`, `_update_omz_all`, plus the shared helpers `_commits_since_merge` and `_no_args`.
 
 Generated/vendored completions: `_bat`, `_fd`, `_rg` (shipped by the upstream tools) and `_getRelease`, `_depflow`, `_dyff`, `_goDiffIt`, `_kustomize`, `_subnetCalc`, `_timeBuddy` (Cobra-generated for external CLIs).
 

@@ -1,7 +1,7 @@
 # if fzf is installed configure it
 if command -v fzf &> /dev/null; then
-  export FZF_DEFAULT_OPTS='--height 80% --tmux 95%,80% --layout reverse --border rounded'
-  export FZF_CTRL_T_OPTS='--preview-window="right,60%,border-left" --preview "bat --color=always --style=header,grid --line-range :500 {}"'
+  export FZF_DEFAULT_OPTS='--height 80% --tmux 100%,100% --layout reverse --border rounded'
+  export FZF_CTRL_T_OPTS='--preview-window="bottom,70%,border-top" --preview "bat --color=always --style=header,grid --line-range :500 {}"'
   export FZF_ALT_C_OPTS="--preview 'tree -C {} | head -200'"
   export FZF_CTRL_R_OPTS="--preview 'bat {}' --preview-window down:3:hidden:wrap --bind '?:toggle-preview'"
 
@@ -13,11 +13,11 @@ if command -v fzf &> /dev/null; then
 
   # override fzf git integration defaults
   _fzf_git_fzf() {
-    fzf --height=50% --tmux 95%,80% \
+    fzf --height=80% --tmux 100%,100% \
         --layout=reverse --multi --min-height=20 --border \
         --border-label-pos=2 \
         --color='header:italic:underline,label:blue' \
-        --preview-window='right,65%,border-left' \
+        --preview-window='bottom,70%,border-top' \
         --bind='ctrl-/:change-preview-window(down,50%,border-top|hidden|)' "$@"
   }
 

@@ -21,15 +21,6 @@ if command -v fzf &> /dev/null; then
         --bind='ctrl-/:change-preview-window(down,50%,border-top|hidden|)' "$@"
   }
 
-  # git functions/aliases
-  gcof() {
-    _fzf_git_each_ref --no-multi | xargs git checkout
-  }
-
-  gaf() {
-    _fzf_git_each_files | xargs git add
-  }
-  gswt() {
-    cd "$(_fzf_git_worktrees --no-multi)" || return
-  }
+  # gcof, gaf, and gswt live in omz/functions/ alongside every other user
+  # command, so they are autoloaded, completed, and covered by `cheat`.
 fi

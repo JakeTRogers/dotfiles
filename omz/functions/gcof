@@ -1,0 +1,19 @@
+#######################################
+# gcof - Check out a git ref picked with fzf
+# Arguments:
+#   None
+# Outputs:
+#   Interactive fzf selection of refs, then git checkout
+# Returns:
+#   0 on success, 1 if fzf-git is unavailable or no selection made
+#######################################
+if ! command -v _fzf_git_each_ref >/dev/null 2>&1; then
+  pprint "🔴 fzf-git is required, but not loaded." "$fgRed" >&2
+  return 1
+fi
+
+local ref
+ref=$(_fzf_git_each_ref --no-multi) || return 1
+[[ -n "$ref" ]] || return 1
+
+git checkout "$ref"

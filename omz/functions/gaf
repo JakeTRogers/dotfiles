@@ -1,0 +1,20 @@
+#######################################
+# gaf - Stage git files picked with fzf
+# Arguments:
+#   None
+# Outputs:
+#   Interactive fzf selection of changed files, then git add
+# Returns:
+#   0 on success, 1 if fzf-git is unavailable or no selection made
+#######################################
+if ! command -v _fzf_git_files >/dev/null 2>&1; then
+  pprint "🔴 fzf-git is required, but not loaded." "$fgRed" >&2
+  return 1
+fi
+
+local -a files
+files=("${(@f)$(_fzf_git_files)}") || return 1
+files=("${(@)files:#}")
+(( ${#files} )) || return 1
+
+git add -- "${files[@]}"

@@ -1,0 +1,19 @@
+#######################################
+# gswt - Switch to a git worktree picked with fzf
+# Arguments:
+#   None
+# Outputs:
+#   Interactive fzf selection of worktrees, then cd into it
+# Returns:
+#   0 on success, 1 if fzf-git is unavailable or no selection made
+#######################################
+if ! command -v _fzf_git_worktrees >/dev/null 2>&1; then
+  pprint "🔴 fzf-git is required, but not loaded." "$fgRed" >&2
+  return 1
+fi
+
+local worktree
+worktree=$(_fzf_git_worktrees --no-multi) || return 1
+[[ -n "$worktree" ]] || return 1
+
+cd "$worktree"

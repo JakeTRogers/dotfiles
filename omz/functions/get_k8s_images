@@ -127,8 +127,8 @@ kubectl --context "$context" get pods "${ns_args[@]}" -o json \
   | (
       if \$img | test(\"@sha256:\") then
         [\$ns, (\$img | split(\"@sha256:\")[0]), (\"sha256:\" + (\$img | split(\"@sha256:\")[1]))]
-      elif \$img | test(\":\") then
-        [\$ns, (\$img | sub(\":[^/]+$\"; \"\")), (\$img | sub(\"^.*:\"; \"\"))]
+      elif (\$img | split(\"/\") | last | test(\":\")) then
+        [\$ns, (\$img | sub(\":[^:/]+$\"; \"\")), (\$img | sub(\"^.*:\"; \"\"))]
       else
         [\$ns, \$img, \"(none)\"]
       end

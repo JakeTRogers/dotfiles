@@ -9,6 +9,10 @@ Uses the install command to install an executable from ~/install to /usr/local/b
 Arguments:
   source_file  Executable to install. The script assumes it is in ~/install if a path is not provided.
   target_file  Target filename. If not provided, the source filename is used. If a path is not provided, the executable is installed in /usr/local/bin.
+
+Note:
+  On a successful install the source file is deleted, since ~/install is
+  treated as a staging area for freshly downloaded binaries.
 EOF
   return 0
 fi
@@ -35,10 +39,10 @@ else
   local target_file="/usr/local/bin/$(basename ${source_file})"
 fi
 
-sudo install -v -m 755 -o root -g root "${source_file}" "${target_file}"
-if [ $? -eq 0 ]; then
+if sudo install -v -m 755 -o root -g root "${source_file}" "${target_file}"; then
   rm -vf "${source_file}"
   pprint "📦 Successfully installed: ${target_file}" "$fgGreen"
 else
   pprint "🔴 failed to install: ${source_file}" "$fgRed" "$txBold" >&2
+  return 1
 fi

@@ -31,5 +31,8 @@ containers=("${(@f)$(podman ps --format "$_FP_CONTAINER_FORMAT" | fzf -m -q "$qu
   --bind 'alt-i:execute(podman inspect {1} | jq -C . | ${=PAGER:-less} -R > /dev/tty)' \
   --bind "ctrl-d:reload(podman rm -f {1} >/dev/null 2>&1; podman ps --format '$_FP_CONTAINER_FORMAT')" \
   | cut -f1)}")
+# A cancelled picker yields one empty element, not an empty array; drop it so
+# the guard below does not hand podman an empty container argument.
+containers=("${(@)containers:#}")
 
 (( ${#containers[@]} > 0 )) && podman stats "${containers[@]}"

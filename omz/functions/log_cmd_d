@@ -24,5 +24,14 @@ pprint "🔵 logging to ${log_file}" "$fgBlue"
   printf "Command executed: %s\n\n" "$*"
   printf '%b' "${header}"
   "$@"
+  cmd_status=$?
   printf "\n"
+  # The group is the left side of a pipeline, so zsh already runs it in a
+  # subshell: exit sets the group's status without touching the caller's shell.
+  # Without this the group would exit with the printf above, always 0.
+  exit $cmd_status
 } 2>&1 | tee "${log_file}"
+
+# Report the logged command's status rather than tee's, so `log_cmd_d foo && ...`
+# and `log_cmd_d foo || ...` behave the way an unlogged command would.
+return ${pipestatus[1]}

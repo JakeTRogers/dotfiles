@@ -25,7 +25,18 @@ fi
 kubeconfig=$(IFS=:; echo "${config_files[*]}")
 echo "Merging kubeconfigs: $kubeconfig"
 
-# Merge and write output
-KUBECONFIG="$kubeconfig" kubectl config view --flatten > "$output_file"
-chmod 600 "$output_file"
+# Merge into a temp file first. Redirecting straight at $output_file truncates
+# it before kubectl runs, so any kubectl failure would leave the live config
+# empty; set -e cannot help, because the truncation is the shell's, not kubectl's.
+tmp_file="$(mktemp "${output_file}.XXXXXX")"
+trap 'rm -f -- "$tmp_file"' EXIT INT TERM
+
+if ! KUBECONFIG="$kubeconfig" kubectl config view --flatten > "$tmp_file"; then
+  echo "Failed to merge kubeconfigs; $output_file left unchanged" >&2
+  exit 1
+fi
+
+# Written before the move so the file is never briefly world-readable in place
+chmod 600 "$tmp_file"
+mv -- "$tmp_file" "$output_file"
 echo "Merged kubeconfig written to $output_file"

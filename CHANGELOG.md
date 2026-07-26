@@ -1,3 +1,20 @@
+## v3.9.0 (2026-07-26)
+
+### Feature
+
+- **omz**: add cheat, a searchable shortcut reference
+
+### Fix
+
+- **omz**: add completions for functions that lacked them
+- **fzf**: move git helpers into functions and repair gaf
+- **tmux**: preserve working directory when splitting panes
+- **fzf**: improve git picker bindings and layout
+
+### Refactor
+
+- **omz**: normalize docstring headers and document every alias
+
 ## v3.8.1 (2026-07-05)
 
 ### Fix

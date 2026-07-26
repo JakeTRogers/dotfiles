@@ -159,5 +159,22 @@ for file in "$ZSH_CUSTOM"/functions/*(.N); do
   autoload -Uz "${file:t}"
 done
 
+# CTRL-G ? opens the cheatsheet picker. This deliberately replaces the binding
+# fzf-git installs, which listed only the CTRL-G chords through `zle -M`; the
+# cheatsheet is a superset and is searchable. Must come after oh-my-zsh sources
+# $ZSH_CUSTOM/fzf.zsh, which is what runs __fzf_git_init.
+cheat-widget() {
+  local selected
+  selected="$(cheat --fzf)"
+  zle reset-prompt
+  [[ -n "$selected" ]] && LBUFFER+="$selected"
+}
+zle -N cheat-widget
+for keymap in emacs viins vicmd; do
+  bindkey -M "$keymap" '^g?' cheat-widget
+  bindkey -M "$keymap" '^g^?' cheat-widget
+done
+unset keymap
+
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [ ! -f ~/.p10k.zsh ] || source ~/.p10k.zsh

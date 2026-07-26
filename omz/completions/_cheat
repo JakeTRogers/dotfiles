@@ -1,0 +1,45 @@
+#compdef cheat
+
+# Completion for "cheat" - searchable reference for keys, aliases, and functions.
+_cheat() {
+  local state line
+  typeset -A opt_args
+  local -a cats
+  cats=(
+    'keys:zsh and fzf key bindings'
+    'fzf-git:CTRL-G chords'
+    'picker:bindings inside an fzf-git picker'
+    'tmux:all tmux bindings (pane, tools, copy mode)'
+    'tmux-pane:tmux pane and window management'
+    'tmux-tools:tmux plugin features'
+    'tmux-copy:tmux copy mode'
+    'git:git functions and aliases'
+    'k8s:kubernetes aliases and helpers'
+    'podman:fp podman helpers'
+    'files:file finders and navigation'
+    'crypto:certificate and token decoders'
+    'ai:Copilot helpers'
+    'install:installers'
+    'date:date formats'
+    'general:general shell aliases'
+    'zsh:zsh and oh-my-zsh maintenance'
+    'bat:bat aliases'
+    'misc:everything else'
+  )
+
+  _arguments -s -S \
+    '(--fzf --keys --list --audit)--fzf[Open the interactive picker]' \
+    '(--fzf --keys --list --audit)--keys[Show key bindings only]' \
+    '(--fzf --keys --list --audit)--list[Emit the raw TSV dataset]' \
+    '(--fzf --keys --list --audit)--audit[Report drift against omz/README.md]' \
+    '(-h --help)'{-h,--help}'[Show help]' \
+    '1:category or search term:->term'
+
+  case "$state" in
+    term)
+      _describe -t categories 'category' cats
+      ;;
+  esac
+}
+
+_cheat "$@"

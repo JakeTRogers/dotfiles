@@ -1,3 +1,9 @@
+## v3.10.1 (2026-09-19)
+
+### Fix
+
+- **neovim**: disable mouse input
+
 ## v3.10.0 (2026-07-26)
 
 ### Feature

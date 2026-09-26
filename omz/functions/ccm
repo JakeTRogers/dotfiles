@@ -117,7 +117,9 @@ local repo_root=""
 local context=""
 local prompt=""
 local message=""
+local reason=""
 local msg_file=""
+local edited_msg_file=""
 local commit_status=0
 local -a copilot_args=()
 
@@ -135,8 +137,17 @@ if ! context="$(
   git status
   printf '\n'
 
+  printf '=== STAGED STAT ===\n'
+  git diff --cached --stat
+  printf '\n'
+
   printf '=== STAGED FILES ===\n'
   git diff --cached --name-status
+  printf '\n'
+
+  # fails in a repository without commits; continue without history
+  printf '=== RECENT SUBJECTS ===\n'
+  git log --no-merges --format=%s -30 --author="$(git config user.name)" --invert-grep --grep='^bump:' 2>/dev/null || true
   printf '\n'
 
   printf '=== STAGED DIFF ===\n'
@@ -149,22 +160,11 @@ fi
 prompt=$(cat <<EOF
 You **MUST** use the conventional-commit skill.
 
-Create a Conventional Commit message for the staged Git context below.
+Create a Conventional Commit message for the staged changes.
 
-Primarily use the provided Git context.
-If the staged diff is ambiguous, you may read files in the current repository to clarify intent.
-Do not execute commands.
+Use the skill's raw mode: output only the complete commit message as plain text, with no markdown fences, labels, notes, or commentary. If you cannot draft a message, output exactly one line: NO_COMMIT_MESSAGE: <short reason>.
+The Git context is provided below. Do not run commands. You may read repository files to clarify intent, but describe only changes that appear in the staged diff.
 Do not modify files.
-
-Output requirements:
-- Output only the complete commit message as plain text
-- No markdown fences
-- No labels
-- No explanations
-- Keep the subject under 72 characters
-- Use imperative mood
-- NEVER use 'chore' as a commit type
-- do not use multiple scopes in a single commit
 
 $context
 EOF
@@ -192,7 +192,26 @@ fi
 message="${message#"${message%%[![:space:]]*}"}"
 message="${message%"${message##*[![:space:]]}"}"
 
-if [[ -z "$message" || "$message" == "NO_STAGED_CHANGES" ]]; then
+# the prompt asks for raw mode, but strip a fenced block in case the model
+# answers in chat mode anyway
+if [[ $message == *\`\`\`*$'\n'*$'\n'\`\`\`* ]]; then
+  message="${message#*\`\`\`}"       # drop any preface and the opening fence marker
+  message="${message#*$'\n'}"        # drop the rest of the opening fence line, e.g. "text"
+  message="${message%$'\n'\`\`\`*}"  # drop the closing fence and anything after it
+fi
+
+message="${message#"${message%%[![:space:]]*}"}"
+message="${message%"${message##*[![:space:]]}"}"
+
+if [[ "$message" == NO_COMMIT_MESSAGE* ]]; then
+  reason="${${message%%$'\n'*}#NO_COMMIT_MESSAGE}"
+  reason="${reason#:}"
+  reason="${reason#"${reason%%[![:space:]]*}"}"
+  pprint "🔴 Copilot did not draft a commit message: ${reason:-no reason given}" "$fgRed" >&2
+  return 1
+fi
+
+if [[ -z "$message" || "$message" == \`\`\`* ]]; then
   pprint "🔴 Copilot did not return a usable commit message." "$fgRed" >&2
   return 1
 fi
@@ -210,6 +229,16 @@ pprint "🔵 Opening git commit editor..." "$fgBlue"
 git commit -S -e -F "$msg_file"
 commit_status=$?
 
+# a failed hook or signature aborts the commit; keep the generated message so
+# a retry does not need a new, different one from Copilot
+if (( commit_status != 0 )); then
+  edited_msg_file="$(git rev-parse --path-format=absolute --git-path COMMIT_EDITMSG 2>/dev/null)"
+  pprint "🔴 git commit failed; the generated message is kept in $msg_file" "$fgRed" >&2
+  pprint "Run 'git commit -S -e -F $msg_file' to retry." "$fgYellow" >&2
+  pprint "If the editor opened, your edits are in ${edited_msg_file:-.git/COMMIT_EDITMSG}" "$fgYellow" >&2
+  return $commit_status
+fi
+
 rm -f -- "$msg_file"
 
-return $commit_status
+return 0

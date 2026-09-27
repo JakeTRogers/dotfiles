@@ -1,3 +1,10 @@
+## v3.10.2 (2026-09-26)
+
+### Fix
+
+- **omz**: make gcfuh scope-aware and support auto assignment
+- **omz**: align ccm with the conventional-commit skill's raw mode
+
 ## v3.10.1 (2026-09-19)
 
 ### Fix

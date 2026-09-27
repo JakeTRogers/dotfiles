@@ -274,6 +274,80 @@ expect "_gcfuh_blame_target picks the commit that owns the changed line" \
 ) >/dev/null 2>&1
 blame_out="$(TESTCWD="$sandbox/w" _isolated 'boundary=$(git_find_branch_base); _gcfuh_blame_target blame.txt "$boundary"')"
 expect "_gcfuh_blame_target suggests nothing for a pure addition" '' "$blame_out"
+
+# _gcfuh_base: on a feature branch the fixup scope is the branch base
+base_name="$(TESTCWD="$sandbox/w" _isolated '_gcfuh_base -n')"
+base_hash="$(TESTCWD="$sandbox/w" _isolated '_gcfuh_base')"
+expect "_gcfuh_base uses the branch base on a feature branch" \
+  "origin/main $expected_hash" "$base_name $base_hash"
+rm -rf "$sandbox" "$setup_log"
+
+# The default branch itself: the merge base is HEAD, so the scope falls back to
+# the whole history until the first tag, then to everything after the newest tag
+sandbox="$(mktemp -d)" setup_log="$(mktemp)"
+(
+  export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null
+  set -e
+  git init -q -b main "$sandbox/w"
+  cd "$sandbox/w"
+  git config user.email t@t; git config user.name t; git config commit.gpgsign false
+  printf 'a1\na2\na3\n' > a.txt; git add -A; git commit -qm "feat: add a"
+  printf 'b1\nb2\n' > b.txt;     git add -A; git commit -qm "feat: add b"
+  printf 'a1\na2\nA3\n' > a.txt; git add -A; git commit -qm "feat: extend a"
+  # a.txt: lines from the root commit and the newest one; b.txt: one owner
+  printf 'X1\na2\nX3\n' > a.txt
+  printf 'b1\nB2\n' > b.txt
+  print new > new.txt
+) >"$setup_log" 2>&1 || {
+  fail "gcfuh default-branch fixture setup failed"
+  sed 's/^/       /' "$setup_log"
+}
+local c1 c2 c3
+c1="$(git -C "$sandbox/w" rev-parse --short HEAD~2)"
+c2="$(git -C "$sandbox/w" rev-parse --short HEAD~1)"
+c3="$(git -C "$sandbox/w" rev-parse --short HEAD)"
+
+base_name="$(TESTCWD="$sandbox/w" _isolated '_gcfuh_base -n')"
+base_hash="$(TESTCWD="$sandbox/w" _isolated '_gcfuh_base')"
+expect "_gcfuh_base puts the whole history in scope on an untagged default branch" \
+  ' ' "$base_name $base_hash"
+
+blame_out="$(TESTCWD="$sandbox/w" _isolated '_gcfuh_blame_target a.txt ""' | cut -d' ' -f1 | tr '\n' ' ')"
+expect "_gcfuh_blame_target lists every blamed commit newest first, root included" \
+  "$c3 $c1 " "$blame_out"
+
+# gcfuh -a places only what is unambiguous; stdin is /dev/null, so the
+# confirmation reads nothing and no commit is made. Reduce the plan to
+# "section:file" pairs, where a section is a target hash, split or unassigned.
+local gcfuh_stubs='_fzf_git_check() { git rev-parse --git-dir >/dev/null 2>&1 }
+  _fzf_git_fzf() { cat >/dev/null }
+  fzf() { : }'
+local plan
+plan="$(TESTCWD="$sandbox/w" _isolated "$gcfuh_stubs; gcfuh -a" 2>&1 |
+  awk '/^  [0-9a-f]+: /{s=substr($1, 1, length($1) - 1)}
+       /^  Split:/{s="split"} /^  Unassigned:/{s="unassigned"}
+       /^    /{printf "%s:%s ", s, $1}')"
+expect "gcfuh -a assigns single-owner files and leaves split and new files" \
+  "$c2:b.txt split:a.txt unassigned:new.txt " "$plan"
+expect "gcfuh -a commits nothing without confirmation" \
+  "$c3" "$(git -C "$sandbox/w" rev-parse --short HEAD)"
+
+expect "gcfuh -a leaves no globals behind" '' \
+  "$(TESTCWD="$sandbox/w" _leak_diff "$gcfuh_stubs; gcfuh -a")"
+expect "gcfuh commit-first mode leaves no globals behind" '' \
+  "$(TESTCWD="$sandbox/w" _leak_diff "$gcfuh_stubs; gcfuh")"
+
+# once released, only the commits after the newest tag are in scope
+git -C "$sandbox/w" tag v0.1.0 HEAD~1
+base_name="$(TESTCWD="$sandbox/w" _isolated '_gcfuh_base -n')"
+base_hash="$(TESTCWD="$sandbox/w" _isolated '_gcfuh_base')"
+expect "_gcfuh_base stops at the newest tag on the default branch" \
+  "v0.1.0 $(git -C "$sandbox/w" rev-parse HEAD~1)" "$base_name $base_hash"
+git -C "$sandbox/w" branch -m topic
+base_name="$(TESTCWD="$sandbox/w" _isolated '_gcfuh_base -n')"
+base_hash="$(TESTCWD="$sandbox/w" _isolated '_gcfuh_base')"
+expect "_gcfuh_base includes the root when no default branch is discoverable" \
+  ' ' "$base_name $base_hash"
 rm -rf "$sandbox" "$setup_log"
 
 (( failures == unit_failures )) && pass "all unit checks passed"

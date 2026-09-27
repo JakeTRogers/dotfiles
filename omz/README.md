@@ -71,7 +71,7 @@ Individual function files that are autoloaded on-demand. Each file contains a si
 - **`ff`** - Fuzzy-find a file and open it in `$EDITOR`
 - **`fp`** - Podman fzf helpers dispatcher (`fpe`, `fpse`, `fpa`, `fpsa`, `fps`, `fprm`, `fprmi`, `fpl`, `fpst`, `fprestart`); run `fp help` for details
 - **`gaf`** - Fuzzy-select changed files and `git add` them
-- **`gcfuh`** - Interactively create fixup commits targeting the commits that last touched the changed lines
+- **`gcfuh`** - Interactively create fixup commits targeting the commits that last touched the changed lines (`-a` assigns every change at once; on the default branch, commits since the newest tag are in scope)
 - **`gciaf`** - `git commit -a --fixup` for a commit
 - **`gcif`** - `git commit --fixup` for a commit
 - **`gcof`** - Fuzzy-select a ref and `git checkout` it
@@ -84,7 +84,7 @@ Individual function files that are autoloaded on-demand. Each file contains a si
 - **`git_pr_check`** - Check subdirectories for GitHub pull requests
 - **`git_tag_semver`** - Semantically tag a git repository with major/minor/patch versions
 - **`gitrebaseall`** - ⚠ Rebase every local branch onto the default branch and force-push each (`--dry-run` supported)
-- **`grias`** - `git rebase --interactive --autosquash` from the branch base
+- **`grias`** - `git rebase --interactive --autosquash` from the branch base (on the default branch: the newest tag, or the root commit)
 - **`gswt`** - Fuzzy-select a linked worktree and `cd` into it
 - **`gundo`** - Undo the last commit (soft reset, keeps changes staged)
 - **`install_it`** - Use Linux `install` to install binaries in `/usr/local/bin`

@@ -1,19 +1,25 @@
 #######################################
 # grias - git rebase interactive autosquash
 # Arguments:
-#   Commit ref to rebase from (optional, defaults to branch base)
+#   Commit ref to rebase from (optional, defaults to the gcfuh scope boundary:
+#   the branch base on a feature branch, the newest tag on the default branch,
+#   or the root commit before the first tag)
 # Outputs:
-#   Interactive rebase
+#   Interactive rebase (uncommitted changes are autostashed around it)
 #######################################
 
 emulate -L zsh
 local target=$1
-local base_branch=$target
 
-# If no argument, find the base branch
-if [[ -z $base_branch ]]; then
-  base_branch=$(git_find_branch_base -n)
-  [[ -z $base_branch ]] && { pprint "🔴 grias: could not find main/master/develop/development/production" "$fgRed" >&2; return 1; }
+# Same boundary gcfuh offers fixup targets from, so every fixup it made is squashed
+if [[ -z $target ]]; then
+  target=$(_gcfuh_base -n) || return 1
 fi
 
-git rebase --interactive --autosquash "$base_branch"
+# --autostash: gcfuh -a leaves the changes it could not place in the working
+# tree, and git refuses to rebase over unstaged changes
+if [[ -z $target ]]; then
+  git rebase --interactive --autosquash --autostash --root
+else
+  git rebase --interactive --autosquash --autostash "$target"
+fi

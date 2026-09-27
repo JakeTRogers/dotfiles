@@ -1,20 +1,24 @@
 #######################################
-# _gcfuh_blame_target - suggest a fixup target by blaming changed lines
+# _gcfuh_blame_target - suggest fixup targets by blaming changed lines
 #
 # Blames the lines a file's unstaged changes actually touch (the old side of
-# each diff hunk) against HEAD, and returns the newest on-branch commit among
-# the results. This is more precise than "the file's last commit" when a file
-# spans several branch commits. Pure additions and new/untracked files yield
-# nothing (there are no committed lines to blame).
+# each diff hunk) against HEAD, and returns every in-scope commit among the
+# results, newest first. This is more precise than "the file's last commit"
+# when a file spans several branch commits, and more than one line means the
+# changes belong to more than one commit. Pure additions and new/untracked
+# files yield nothing (there are no committed lines to blame).
 #
 # Usage:
-#   suggestion=$(_gcfuh_blame_target path/to/file "$merge_boundary")
+#   targets=$(_gcfuh_blame_target path/to/file "$merge_boundary")
+#   suggestion=${targets%%$'\n'*}     # just the newest
 #
 # Arguments:
 #   $1  File path (must exist in HEAD)
-#   $2  Merge boundary commit (output of git_find_branch_base)
+#   $2  Scope boundary commit (output of _gcfuh_base); empty means the whole
+#       history is in scope, root commit included
 # Returns:
-#   "<short-hash> <subject>" of the suggested commit, or empty string
+#   One "<short-hash> <subject>" line per commit the changed lines blame to,
+#   newest first, or nothing
 #######################################
 emulate -L zsh
 
@@ -23,19 +27,23 @@ emulate -L zsh
 local MATCH MBEGIN MEND
 local -a match mbegin mend
 local file=$1 merge_boundary=$2
-[[ -n "$file" && -n "$merge_boundary" ]] || return 0
+[[ -n "$file" ]] || return 0
+
+local range=HEAD
+[[ -n "$merge_boundary" ]] && range="${merge_boundary}..HEAD"
 
 # Only tracked files have committed lines to blame
 git cat-file -e "HEAD:$file" 2>/dev/null || return 0
 
-# Map on-branch commit full-hash -> order index (0 = newest), excluding
-# autosquash commits, so we can both filter and rank blame results.
-local -A on_branch_idx=()
-local idx=0 full_hash
+# In-scope commits newest first, excluding autosquash commits, so blame
+# results can be both filtered to the scope and reported in order.
+local -a order=()
+local -A in_scope=() blamed=()
+local full_hash
 while IFS= read -r full_hash; do
-  [[ -n "$full_hash" ]] && on_branch_idx[$full_hash]=$idx && idx=$((idx + 1))
-done < <(git log --format='%H' --grep='^fixup! ' --grep='^squash! ' --grep='^amend! ' --invert-grep "${merge_boundary}..HEAD" 2>/dev/null)
-[[ ${#on_branch_idx[@]} -eq 0 ]] && return 0
+  [[ -n "$full_hash" ]] && order+=("$full_hash") && in_scope[$full_hash]=1
+done < <(git log --format='%H' --grep='^fixup! ' --grep='^squash! ' --grep='^amend! ' --invert-grep "$range" 2>/dev/null)
+[[ ${#order[@]} -eq 0 ]] && return 0
 
 # Walk the diff and record the HEAD line numbers that are actually removed or
 # modified (lines starting with '-'), tracking the old-side line counter.
@@ -70,19 +78,17 @@ for ln in "${removed[@]}"; do
 done
 (( run_start >= 0 )) && ranges+=("${run_start},${run_prev}")
 
-# Blame each range in HEAD; keep the newest on-branch commit touched.
-local best_idx=-1 best_hash="" r bline
+# Blame each range in HEAD; collect every in-scope commit touched.
+local r bline
 for r in "${ranges[@]}"; do
   while IFS= read -r bline; do
     [[ "$bline" =~ '^([0-9a-f]{40}) ' ]] || continue
-    full_hash=$match[1]
-    [[ -n "${on_branch_idx[$full_hash]}" ]] || continue
-    if (( best_idx < 0 || on_branch_idx[$full_hash] < best_idx )); then
-      best_idx=$on_branch_idx[$full_hash]
-      best_hash=$full_hash
-    fi
+    [[ -n "${in_scope[$match[1]]}" ]] && blamed[$match[1]]=1
   done < <(git blame -L "$r" --porcelain HEAD -- "$file" 2>/dev/null)
 done
+[[ ${#blamed[@]} -eq 0 ]] && return 0
 
-[[ -n "$best_hash" ]] && git log -1 --format='%h %s' "$best_hash" 2>/dev/null
+for full_hash in "${order[@]}"; do
+  [[ -n "${blamed[$full_hash]}" ]] && git log -1 --format='%h %s' "$full_hash" 2>/dev/null
+done
 return 0

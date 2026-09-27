@@ -1,6 +1,7 @@
 #autoload
 
-# Shared helper function to show commits since last merge (feature branch commits)
+# Shared helper function to show the commits gcfuh may fixup: feature branch
+# commits, or on the default branch the commits since the newest tag
 # Used by git fixup-related completions (gciaf, gcif)
 function _commits_since_merge() {
   if git rev-parse --git-dir >/dev/null 2>&1; then
@@ -9,10 +10,10 @@ function _commits_since_merge() {
     local log_output
     local line
 
-    # Find where current branch diverged from main branch
-    merge_base=$(git_find_branch_base)
+    # Same scope boundary as gcfuh; empty means the whole history is in scope
+    merge_base=$(_gcfuh_base)
 
-    # If merge base found, show commits since then; otherwise show recent commits
+    # If a boundary was found, show commits since then; otherwise show recent commits
     if [[ -n "$merge_base" ]]; then
       log_output=$(git log --oneline --no-decorate --grep='^fixup! ' --invert-grep "$merge_base"..HEAD 2>/dev/null)
     else

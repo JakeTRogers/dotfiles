@@ -1,0 +1,64 @@
+#######################################
+# _gcfuh_base - find the boundary of the commits gcfuh and grias may rewrite
+#
+# On a feature branch the scope is every commit since it left the default
+# branch (git_find_branch_base). On the default branch itself that merge base
+# is HEAD, which leaves nothing in scope, so the boundary moves to the newest
+# tag reachable from HEAD instead: released history stays put and everything
+# after it is fair game. With no tag yet, or no default branch to measure
+# against, the whole history is in scope, root commit included.
+#
+# Usage:
+#   boundary=$(_gcfuh_base)           # commit hash, or empty for "from root"
+#   boundary_ref=$(_gcfuh_base -n)    # e.g. "origin/main", "v1.2.0", or empty
+#   boundary=$(_gcfuh_base "$ref")    # explicit boundary, validated
+#
+# Arguments:
+#   -n, --name  Print the ref name instead of the commit hash
+#   $1          Explicit boundary ref, overriding the detection above
+# Returns:
+#   The boundary commit, which is itself out of scope, or an empty string when
+#   the root commit is in scope. Returns 1 if an explicit ref is not a commit
+#   that HEAD descends from.
+#######################################
+
+emulate -L zsh
+local return_name=0 ref hash base_name current
+
+if [[ "$1" == "-n" || "$1" == "--name" ]]; then
+  return_name=1
+  shift
+fi
+ref=$1
+
+if [[ -n "$ref" ]]; then
+  if ! hash=$(git rev-parse --verify --quiet "${ref}^{commit}" 2>/dev/null); then
+    pprint "🔴 not a commit: $ref" "$fgRed" >&2
+    return 1
+  fi
+  if ! git merge-base --is-ancestor "$hash" HEAD 2>/dev/null; then
+    pprint "🔴 $ref is not an ancestor of HEAD" "$fgRed" >&2
+    return 1
+  fi
+else
+  base_name=$(git_find_branch_base -n)
+  current=$(git symbolic-ref --quiet --short HEAD 2>/dev/null)
+  if [[ -n "$base_name" && "${base_name#origin/}" != "$current" ]]; then
+    # Feature branch: everything since it left the default branch
+    ref=$base_name
+    hash=$(git merge-base HEAD "$base_name" 2>/dev/null)
+  elif [[ -n "$base_name" ]] && ref=$(git describe --tags --abbrev=0 HEAD 2>/dev/null); then
+    # Default branch: everything after the newest release
+    hash=$(git rev-parse --verify --quiet "${ref}^{commit}" 2>/dev/null)
+  else
+    # No default branch or no release: the whole history
+    ref=""
+    hash=""
+  fi
+fi
+
+if (( return_name )); then
+  print -r -- "$ref"
+else
+  print -r -- "$hash"
+fi

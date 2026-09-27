@@ -29,9 +29,24 @@ function _gcfuh_changed_files() {
   fi
 }
 
+# Tags first: on the default branch the boundary is usually a release.
+function _gcfuh_refs() {
+  local -a refs
+
+  if git rev-parse --git-dir >/dev/null 2>&1; then
+    refs=(${(f)"$(git for-each-ref --sort=-creatordate --format='%(refname:short):tag' refs/tags 2>/dev/null)"})
+    refs+=(${(f)"$(git for-each-ref --format='%(refname:short):branch' refs/heads refs/remotes 2>/dev/null)"})
+  fi
+
+  _describe -V -t refs 'boundary ref' refs
+}
+
 function _gcfuh() {
   _arguments -s -S \
     '(-h --help)'{-h,--help}'[Show help message]' \
+    '(-a --auto)'{-a,--auto}'[Assign every change to a commit without prompting]' \
+    '(-b --base)-b[Scope boundary: only commits after it can be targets]:boundary ref:_gcfuh_refs' \
+    '(-b --base)--base=[Scope boundary: only commits after it can be targets]:boundary ref:_gcfuh_refs' \
     '*:file:_gcfuh_changed_files'
 }
 

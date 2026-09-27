@@ -1,34 +1,99 @@
 #######################################
 # gcfuh - git commit fixup helper
 #######################################
-if [[ $1 == "--help" || $1 == "-h" ]]; then
+
+# Reset to zsh defaults locally so option changes don't leak into the shell
+emulate -L zsh
+
+local auto=0 show_help=0 base_ref=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h|--help)
+      show_help=1
+      shift
+      ;;
+    -a|--auto)
+      auto=1
+      shift
+      ;;
+    -b|--base)
+      if [[ $# -lt 2 || -z "$2" ]]; then
+        pprint "🔴 $1 requires a ref argument." "$fgRed" >&2
+        return 1
+      fi
+      base_ref="$2"
+      shift 2
+      ;;
+    --base=)
+      pprint "🔴 --base requires a non-empty ref." "$fgRed" >&2
+      return 1
+      ;;
+    --base=?*)
+      base_ref="${1#*=}"
+      shift
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -?*)
+      pprint "🔴 unknown option: $1" "$fgRed" >&2
+      return 1
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
+if (( show_help )); then
   fold -w "$(tput cols)" -s <<'EOF'
-Usage: gcfuh [FILE...]
+Usage: gcfuh [-a] [-b REF] [FILE...]
 Interactive git commit --fixup helper using fzf.
 
 Modes:
   No arguments    Select a target commit first, then pick files to include.
-  With files      For each file, select which on-branch commit to fixup.
+  With files      For each file, select which in-scope commit to fixup.
                   Files sharing the same target are grouped into one fixup.
+  -a, --auto      Assign every changed file (or each FILE given) to a commit
+                  without prompting, then confirm the whole plan once.
 
-This function helps you organize uncommitted changes into fixup commits for previous commits on your current branch.
+Options:
+  -a, --auto      Automatic assignment, see "Auto mode" below
+  -b, --base REF  Use REF as the scope boundary instead of detecting it
+  -h, --help      Show this help
+
+This function helps you organize uncommitted changes into fixup commits for previous commits in scope.
+
+Scope (only commits after the boundary can be fixup targets):
+  - On a feature branch: every commit since it left the default branch
+  - On the default branch: every commit after the newest tag reachable from
+    HEAD, or the whole history (root commit included) before the first tag
+  - With --base REF: every commit after REF
 
 Without arguments it provides a two-stage interactive selection:
-  1. Select a target commit to fixup (from commits after the most recent merge)
+  1. Select a target commit to fixup
   2. Select files to include in the fixup (grouped by the commit that last
      touched their changed lines, via git blame)
 
 With file arguments it provides per-file commit selection:
-  - Each file is matched to the on-branch commits that touched it
+  - Each file is matched to the in-scope commits that touched it
   - If only one commit touched the file, it is auto-selected
   - Otherwise the commit that last touched the changed lines (determined by
     git blame) is suggested as the default (top) entry in the picker
-  - Files with no on-branch history can be assigned to any on-branch commit
+  - Files with no in-scope history can be assigned to any in-scope commit
   - Files are grouped by selected target and one fixup commit is created per target
+
+Auto mode (-a) places each file without prompting, only when the answer is unambiguous:
+  - If only one in-scope commit touched the file, that commit
+  - Otherwise, if its changed lines blame to exactly one in-scope commit, that one
+  Files it cannot place stay in the working tree and are listed after the plan:
+  - Split: the changed lines blame to several commits (use git add -p, or gcfuh FILE)
+  - Unassigned: new files, pure additions, or files untouched since the boundary
 
 Once it confirms there are commits to fixup, the function unstages all files to prevent accidental inclusion (your index is left untouched if there is nothing to do). Staged renames are re-paired so both the old and new path land in the same fixup. In no-args mode, it loops back if there are remaining changes.
 
-After creating one or more fixups, it offers to run an autosquash rebase (git rebase -i --autosquash) so you can squash them into their targets immediately.
+After creating one or more fixups, it offers to run an autosquash rebase (grias) so you can squash them into their targets immediately. It warns first when a target is already pushed, because the rebase then needs a force push.
 
 Keybindings in fzf:
   No-args mode, file selection:
@@ -43,12 +108,11 @@ Examples:
   gcfuh                     Interactive commit-first mode
   gcfuh path/to/file.sh     Per-file mode (auto-selects if one commit)
   gcfuh a.txt b.txt         Per-file mode (grouped fixup if same target)
+  gcfuh -a                  Assign every change automatically, confirm once
+  gcfuh -b v1.2.0           Only offer commits after v1.2.0
 EOF
   return 0
 fi
-
-# Reset to zsh defaults locally so option changes don't leak into the shell
-emulate -L zsh
 
 # [[ =~ ]] writes its capture variables into the enclosing scope unless
 # they are declared local first.
@@ -73,21 +137,24 @@ local YELLOW=$'\033[33m'
 local GREEN=$'\033[32m'
 local BLUE=$'\033[34m'
 
-# Find where current branch diverged from main branch
-local merge_boundary
-merge_boundary=$(git_find_branch_base)
+# Find the scope boundary: the merge base on a feature branch, the newest tag
+# on the default branch, or empty when the whole history is in scope
+local merge_boundary scope_name range=HEAD
+merge_boundary=$(_gcfuh_base "$base_ref") || return 1
+scope_name=$(_gcfuh_base -n "$base_ref")
+[[ -n "$merge_boundary" ]] && range="${merge_boundary}..HEAD"
 
-# Build list of ALL on-branch commits (not just those with current changes).
+# Build list of ALL in-scope commits (not just those with current changes).
 # Exclude autosquash commits (fixup!/squash!/amend!) so we never fixup a fixup.
 local -a unique_commits=()
 local commit_line
 while IFS= read -r commit_line; do
   [[ -n "$commit_line" ]] && unique_commits+=("$commit_line")
-done < <(git log --format='%h %s' --grep='^fixup! ' --grep='^squash! ' --grep='^amend! ' --invert-grep "${merge_boundary}..HEAD" 2>/dev/null)
+done < <(git log --format='%h %s' --grep='^fixup! ' --grep='^squash! ' --grep='^amend! ' --invert-grep "$range" 2>/dev/null)
 
-# If no on-branch commits to fixup, inform user
+# If no in-scope commits to fixup, inform user
 if [[ ${#unique_commits[@]} -eq 0 ]]; then
-  pprint "⚠️  No on-branch commits found to fixup." "$fgYellow"
+  pprint "⚠️  No commits to fixup${scope_name:+ after $scope_name}." "$fgYellow"
   return 0
 fi
 
@@ -113,13 +180,31 @@ done < <(git status --porcelain=v2 2>/dev/null)
 # elsewhere staged and sweep them into the fixup commit.
 git restore --staged -- :/ 2>/dev/null
 
-# Track how many fixups we create so we can offer an autosquash rebase at the end
-local fixups_created=0
-local line f subject
+# Track the fixups we create so we can offer an autosquash rebase at the end
+local -a fixup_targets=()
+local line f file subject
 
-# ─── Files-passed mode ──────────────────────────────────────────────
-if [[ $# -gt 0 ]]; then
+# ─── Files mode (FILE... and/or -a) ─────────────────────────────────
+local files_mode=0
+(( auto || $# > 0 )) && files_mode=1
+if (( files_mode )); then
   local -a passed_files=("$@")
+
+  # -a without files covers every change. The delete half of a staged rename
+  # is left out: it is staged together with its destination.
+  if (( auto && ${#passed_files[@]} == 0 )); then
+    while IFS= read -r line; do
+      [[ -z "$line" ]] && continue
+      f="${line:3}"
+      [[ "$f" == *" -> "* ]] && f="${f##* -> }"
+      [[ -n "${rename_src_set[$f]}" ]] && continue
+      passed_files+=("$f")
+    done < <(git status -s --untracked-files=all 2>/dev/null)
+    if [[ ${#passed_files[@]} -eq 0 ]]; then
+      pprint "⚠️  No uncommitted changes found." "$fgYellow"
+      return 0
+    fi
+  fi
 
   # Validate passed files: must have uncommitted changes according to git status
   local -a valid_files=()
@@ -140,38 +225,65 @@ if [[ $# -gt 0 ]]; then
   local -A fixup_file_map=()    # target_hash -> newline-separated file list
   local -A fixup_subject_map=() # target_hash -> subject
   local -a fixup_order=()       # ordered unique target hashes
+  local -A split_map=()         # auto mode: file -> the commits its lines blame to
+  local -a split_files=()       # auto mode: files whose lines span several commits
+  local -a unassigned_files=()  # auto mode: files with no in-scope commit to blame
 
   for file in "${valid_files[@]}"; do
     # For a renamed destination, history lives under the source path
     local hist_path="$file"
     [[ -n "${rename_map[$file]}" ]] && hist_path="${rename_map[$file]}"
 
-    # Find on-branch commits that touched this file (excluding autosquash commits)
+    # Find in-scope commits that touched this file (excluding autosquash commits)
     local -a file_candidates=()
     local candidate_line
     while IFS= read -r candidate_line; do
       [[ -n "$candidate_line" ]] && file_candidates+=("$candidate_line")
-    done < <(git log --format='%h %s' --grep='^fixup! ' --grep='^squash! ' --grep='^amend! ' --invert-grep "${merge_boundary}..HEAD" -- "$hist_path" 2>/dev/null)
+    done < <(git log --format='%h %s' --grep='^fixup! ' --grep='^squash! ' --grep='^amend! ' --invert-grep "$range" -- "$hist_path" 2>/dev/null)
 
-    # Fallback: if no on-branch commits touched this file, offer all on-branch commits
-    if [[ ${#file_candidates[@]} -eq 0 ]]; then
+    # Fallback: if no in-scope commits touched this file, offer all in-scope
+    # commits. Auto mode never guesses, so it leaves such files unassigned.
+    if (( ! auto )) && [[ ${#file_candidates[@]} -eq 0 ]]; then
       file_candidates=("${unique_commits[@]}")
     fi
 
     local target_hash target_subject
 
-    if [[ ${#file_candidates[@]} -eq 1 ]]; then
+    if (( auto )); then
+      # Place the file only when the answer is unambiguous: the one commit that
+      # touched it, or the one its changed lines blame to. Renames skip blame,
+      # since their changes live under a different path than their history.
+      local -a matches=()
+      if [[ ${#file_candidates[@]} -eq 1 ]]; then
+        matches=("${file_candidates[1]}")
+      elif [[ ${#file_candidates[@]} -gt 1 && "$hist_path" == "$file" ]]; then
+        matches=("${(@f)$(_gcfuh_blame_target "$file" "$merge_boundary")}")
+        matches=("${(@)matches:#}")
+      fi
+
+      if [[ ${#matches[@]} -gt 1 ]]; then
+        split_map[$file]="${(j:, :)${matches[@]%% *}}"
+        split_files+=("$file")
+        continue
+      elif [[ ${#matches[@]} -eq 0 ]]; then
+        unassigned_files+=("$file")
+        continue
+      fi
+      target_hash="${matches[1]%% *}"
+      target_subject="${matches[1]#* }"
+    elif [[ ${#file_candidates[@]} -eq 1 ]]; then
       # Auto-select the single candidate
       target_hash="${file_candidates[1]%% *}"
       target_subject="${file_candidates[1]#* }"
       pprint "✅ Auto-selected ${target_hash}: ${target_subject} for ${file}" "$fgGreen"
     else
-      # Suggest a target by blaming the changed lines, and float it to the top
-      # of the list (fzf highlights the first row by default). Skip for renames.
+      # Suggest a target by blaming the changed lines, and float the newest
+      # one to the top of the list (fzf highlights the first row by default).
+      # Skip for renames.
       local blame_hash="" candidate
       if [[ "$hist_path" == "$file" ]]; then
         blame_hash=$(_gcfuh_blame_target "$file" "$merge_boundary")
-        blame_hash="${blame_hash%% *}"
+        blame_hash="${${blame_hash%%$'\n'*}%% *}"
       fi
       if [[ -n "$blame_hash" ]]; then
         local -a ordered=()
@@ -220,16 +332,42 @@ if [[ $# -gt 0 ]]; then
 
   # Confirmation prompt
   echo
-  pprint "Fixup summary" "$fgCyan" "$txBold"
-  echo
-  for target_hash in "${fixup_order[@]}"; do
-    local subject="${fixup_subject_map[$target_hash]}"
-    pprint "  ${target_hash}: ${subject}" "$fgGreen"
-    while IFS= read -r file; do
-      echo "    $file"
-    done <<< "${fixup_file_map[$target_hash]}"
-  done
-  echo
+  if [[ ${#fixup_order[@]} -gt 0 ]]; then
+    pprint "Fixup summary" "$fgCyan" "$txBold"
+    echo
+    for target_hash in "${fixup_order[@]}"; do
+      subject="${fixup_subject_map[$target_hash]}"
+      pprint "  ${target_hash}: ${subject}" "$fgGreen"
+      while IFS= read -r file; do
+        echo "    $file"
+      done <<< "${fixup_file_map[$target_hash]}"
+    done
+    echo
+  fi
+
+  # Auto mode reports what it would not guess at; those files stay put
+  if [[ ${#split_files[@]} -gt 0 || ${#unassigned_files[@]} -gt 0 ]]; then
+    pprint "Left in the working tree" "$fgCyan" "$txBold"
+    echo
+    if [[ ${#split_files[@]} -gt 0 ]]; then
+      pprint "  Split: changed lines belong to several commits (git add -p, or gcfuh FILE)" "$fgYellow"
+      for file in "${split_files[@]}"; do
+        echo "    $file  (${split_map[$file]})"
+      done
+    fi
+    if [[ ${#unassigned_files[@]} -gt 0 ]]; then
+      pprint "  Unassigned: no in-scope commit owns these changes (commit them separately)" "$fgYellow"
+      for file in "${unassigned_files[@]}"; do
+        echo "    $file"
+      done
+    fi
+    echo
+  fi
+
+  if [[ ${#fixup_order[@]} -eq 0 ]]; then
+    pprint "⚠️  Nothing could be assigned automatically." "$fgYellow"
+    return 0
+  fi
 
   local response
   printf '%b' "${fgYellow}Proceed? [y/N]:${txReset} "
@@ -252,7 +390,7 @@ if [[ $# -gt 0 ]]; then
       if git commit --fixup "$target_hash"; then
         echo
         pprint "✅ Fixup commit created for ${target_hash}" "$fgGreen"
-        fixups_created=$((fixups_created + 1))
+        fixup_targets+=("$target_hash")
       else
         echo
         pprint "🔴 Fixup commit failed for ${target_hash}" "$fgRed"
@@ -262,22 +400,12 @@ if [[ $# -gt 0 ]]; then
   else
     pprint "⚠️  Aborted." "$fgYellow"
   fi
-
-  # Offer to autosquash the new fixups right away (reuses grias)
-  if [[ $fixups_created -gt 0 ]]; then
-    echo
-    local do_rebase
-    printf '%b' "${fgYellow}Run autosquash rebase now? [y/N]:${txReset} "
-    read -r do_rebase
-    [[ "$do_rebase" =~ ^[Yy]([Ee][Ss])?$ ]] && grias
-  fi
-
-  return 0
 fi
 
 # ─── Commit-first mode (no arguments) ──────────────────────────────
-# Main loop - continue while there are unstaged changes
-while true; do
+# Main loop - continue while there are unstaged changes. Files mode has
+# already done its work above and only shares the rebase offer at the end.
+while (( ! files_mode )); do
   # Check if there are any changes to work with
   local changes
   changes=$(git status -s 2>/dev/null)
@@ -316,19 +444,20 @@ while true; do
     if [[ -z "$file_last_commit" ]]; then
       # New file - no commit history
       new_files+=("$file")
-    elif [[ -n "$merge_boundary" && "$file_last_commit" != "$merge_boundary" ]] && git merge-base --is-ancestor "$merge_boundary" "$file_last_commit" 2>/dev/null; then
-      # File's last commit is after the merge boundary - on current branch.
+    elif [[ -z "$merge_boundary" ]] || { [[ "$file_last_commit" != "$merge_boundary" ]] && git merge-base --is-ancestor "$merge_boundary" "$file_last_commit" 2>/dev/null; }; then
+      # File's last commit is after the boundary (or there is none) - in scope.
       # Prefer the commit that last touched the changed lines (blame-based);
       # fall back to the file's last commit. Skip blame for renames, whose
       # working-tree changes live under a different path than their history.
       commit_info=""
       [[ "$hist_path" == "$file" ]] && commit_info=$(_gcfuh_blame_target "$file" "$merge_boundary")
+      commit_info="${commit_info%%$'\n'*}"   # newest of the blamed commits
       [[ -z "$commit_info" ]] && commit_info=$(git log -1 --format='%h %s' -- "$hist_path" 2>/dev/null)
       short_hash="${commit_info%% *}"
       file_commits[$file]="$commit_info"
       on_branch_files+=("$file")
     else
-      # File's last commit is before/at the merge boundary
+      # File's last commit is before/at the boundary
       pre_merge_files+=("$file")
     fi
   done <<< "$changes"
@@ -387,9 +516,9 @@ while true; do
     done
   fi
 
-  # Pre-merge files
+  # Out-of-scope files (last touched at or before the boundary)
   if [[ ${#pre_merge_files[@]} -gt 0 ]]; then
-    file_list+="${DIM}${ITALIC}${SEP} ${BLUE}Pre-merge${RESET}${DIM}${ITALIC} (not on current branch) ${SEP}${RESET}"$'\n'
+    file_list+="${DIM}${ITALIC}${SEP} ${BLUE}Out of scope${RESET}${DIM}${ITALIC} (before ${scope_name}) ${SEP}${RESET}"$'\n'
     for file in "${pre_merge_files[@]}"; do
       file_list+="  $file"$'\n'
     done
@@ -465,7 +594,7 @@ while true; do
     if git commit --fixup "$target_hash"; then
       echo
       pprint "✅ Fixup commit created" "$fgGreen"
-      fixups_created=$((fixups_created + 1))
+      fixup_targets+=("$target_hash")
     else
       echo
       pprint "🔴 Fixup commit failed" "$fgRed"
@@ -479,10 +608,24 @@ while true; do
 done
 
 # Offer to autosquash the new fixups right away (reuses grias)
-if [[ $fixups_created -gt 0 ]]; then
+if [[ ${#fixup_targets[@]} -gt 0 ]]; then
   echo
+
+  # Rewriting pushed commits needs a force push, which a ruleset protecting the
+  # default branch will refuse; say so before the rebase rather than after
+  local upstream target
+  local -i pushed=0
+  if upstream=$(git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null); then
+    for target in "${(@u)fixup_targets}"; do
+      git merge-base --is-ancestor "$target" "$upstream" 2>/dev/null && pushed+=1
+    done
+  fi
+  if (( pushed )); then
+    pprint "⚠️  Already on ${upstream}: ${pushed} of ${#${(@u)fixup_targets}} fixup targets. After the rebase, push with --force-with-lease." "$fgYellow"
+  fi
+
   local do_rebase
   printf '%b' "${fgYellow}Run autosquash rebase now? [y/N]:${txReset} "
   read -r do_rebase
-  [[ "$do_rebase" =~ ^[Yy]([Ee][Ss])?$ ]] && grias
+  [[ "$do_rebase" =~ ^[Yy]([Ee][Ss])?$ ]] && grias ${base_ref:+"$base_ref"}
 fi

@@ -1,3 +1,9 @@
+## v3.10.3 (2026-10-11)
+
+### Fix
+
+- **omz**: preserve newest-first Git history ordering
+
 ## v3.10.2 (2026-09-26)
 
 ### Fix

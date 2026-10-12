@@ -305,7 +305,7 @@ if (( files_mode )); then
       selected=$(
         for candidate in "${file_candidates[@]}"; do
           echo "$candidate"
-        done | _fzf_git_fzf --no-multi --ansi \
+        done | _fzf_git_fzf --no-multi --no-sort --ansi \
           --border-label "🔧 Select Fixup Target for ${file}" \
           --header $'Select which commit to fixup for this file (top = suggested)\nCTRL-/ (toggle preview)\n' \
           --preview "hash=\$(echo {} | cut -d' ' -f1); git show --color=always \$hash -- ${escaped_file} 2>/dev/null | head -120"
@@ -468,7 +468,7 @@ while (( ! files_mode )); do
   target_commit=$(
     for commit in "${unique_commits[@]}"; do
       echo "$commit"
-    done | _fzf_git_fzf --no-multi --ansi \
+    done | _fzf_git_fzf --no-multi --no-sort --ansi \
       --border-label '🔧 Select Fixup Target' \
       --header $'Select a commit to fixup\nCTRL-/ (toggle preview)\n' \
       --preview 'hash=$(echo {} | cut -d" " -f1); git show --color=always --stat $hash | head -50'

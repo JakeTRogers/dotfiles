@@ -109,6 +109,24 @@ deliberately have no file.
 
 Hand-written completions for the custom functions above: `_ccm`, `_cheat`, `_copipe`, `_czbnt`, `_decode_cert`, `_decode_jwt`, `_fp` (dispatcher), `_fpe` (also covers `fpse`), `_fpl`, `_fp_simple` (covers `fpa`, `fpsa`, `fps`, `fprm`, `fprmi`, `fpst`, `fprestart`), `_gcfuh`, `_gciaf`, `_gcif`, `_gdu`, `_gdus`, `_get_k8s_images`, `_ghist`, `_git_delete_head_semver_tags`, `_git_find_branch_base`, `_git_pr_check`, `_git_tag_semver`, `_gitrebaseall`, `_grias`, `_install_it`, `_install_kubectl`, `_joincsv`, `_k8` (completes namespaces and contexts from the live cluster), `_log_cmd` (also covers `log_cmd_d`), `_pprint`, `_update_git_mirrors_in_subdirs`, `_update_omz_all`, plus the shared helpers `_commits_since_merge` and `_no_args`.
 
+Dedicated commit completions for `gciaf`, `gcif`, `ghist`, and the third argument of
+`git_tag_semver` preserve `git log` order (newest first). This applies to native Zsh
+completion and fzf-tab, including when filtering: matches are not re-ranked by fuzzy
+score. `gciaf` and `gcif` exclude `fixup!` commits; `git_tag_semver` offers the `HEAD`
+shortcut first, followed by newest-first commit hashes.
+
+The `ghist` and `git hist` displays, Oh My Zsh's Git log aliases, and the fzf commit
+picker (`CTRL-G CTRL-H`) already show newest-first history. The stash picker
+(`CTRL-G CTRL-S`) and reflog picker (`CTRL-G CTRL-L`) also retain newest-first order
+when filtering.
+
+`gcfuh FILE` is the exception: its blame-suggested commit stays first, with the
+remaining candidates newest-first. Filtering preserves that suggestion-first
+order. Its commit-first picker (no file arguments) remains newest-first.
+
+Mixed standard Git Tab completions and branch/tag lists keep their existing
+behavior. Rebase execution order is unchanged.
+
 Generated/vendored completions: `_bat`, `_fd`, `_rg` (shipped by the upstream tools) and `_getRelease`, `_depflow`, `_dyff`, `_goDiffIt`, `_kustomize`, `_subnetCalc`, `_timeBuddy` (Cobra-generated for external CLIs).
 
 #### `scripts/`

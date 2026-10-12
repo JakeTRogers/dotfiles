@@ -97,6 +97,12 @@ plugins=(
   zsh-syntax-highlighting
 )
 
+# Keep dedicated commit-history completions newest-first when filtering.
+zstyle ':completion:*:(gciaf|gcif|ghist):*' sort false
+zstyle ':fzf-tab:complete:(gciaf|gcif|ghist):*' fzf-flags --no-sort
+zstyle ':completion:*:git_tag_semver:argument-3*' sort false
+zstyle ':fzf-tab:complete:git_tag_semver:argument-3' fzf-flags --no-sort
+
 # ssh-agent config
 zstyle :omz:plugins:ssh-agent agent-forwarding yes lifetime 12h
 

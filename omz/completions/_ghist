@@ -25,7 +25,7 @@ _ghist() {
     ((i++))
   done < <(git log --oneline --no-decorate "${base_branch:-HEAD~25}..HEAD" 2>/dev/null)
 
-  _describe -t commits 'commits' opts
+  _describe -V -t commits 'commits' opts
 }
 
 _ghist "$@"

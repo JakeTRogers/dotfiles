@@ -19,7 +19,7 @@
 # pre-commit calls it — the per-function checks are limited to the files named,
 # because spawning a fresh shell per function to diff its namespace costs a few
 # seconds each and a full sweep is too slow for a commit hook. The unit checks
-# always run; they are cheap and cover the shared helpers.
+# always run; they cover shared helpers, history completions and Git pickers.
 
 emulate -L zsh
 setopt no_nomatch pipe_fail
@@ -337,6 +337,29 @@ expect "gcfuh -a leaves no globals behind" '' \
 expect "gcfuh commit-first mode leaves no globals behind" '' \
   "$(TESTCWD="$sandbox/w" _leak_diff "$gcfuh_stubs; gcfuh")"
 
+local picker_probe='
+  _fzf_git_fzf() {
+    cat >/dev/null
+    if (( ${argv[(Ie)--no-sort]} )); then
+      print -r -- "picker-order=preserved" >&2
+    else
+      print -r -- "picker-order=sorted" >&2
+    fi
+  }'
+local picker_command
+for picker_command in 'gcfuh' 'gcfuh a.txt'; do
+  expect "$picker_command preserves target order while filtering" 'picker-order=preserved' \
+    "$(TESTCWD="$sandbox/w" _isolated "$gcfuh_stubs; $picker_probe; $picker_command" 2>&1 |
+       grep '^picker-order=')"
+done
+for picker_command in _fzf_git_stashes _fzf_git_lreflogs; do
+  expect "$picker_command preserves history order while filtering" 'picker-order=preserved' \
+    "$(TESTCWD="$sandbox/w" _isolated '
+       source "${fdir:h:h}/fzf/fzf-git.sh" --run
+       '"$picker_probe"'
+       '"$picker_command" 2>&1 | grep '^picker-order=')"
+done
+
 # once released, only the commits after the newest tag are in scope
 git -C "$sandbox/w" tag v0.1.0 HEAD~1
 base_name="$(TESTCWD="$sandbox/w" _isolated '_gcfuh_base -n')"
@@ -348,7 +371,54 @@ base_name="$(TESTCWD="$sandbox/w" _isolated '_gcfuh_base -n')"
 base_hash="$(TESTCWD="$sandbox/w" _isolated '_gcfuh_base')"
 expect "_gcfuh_base includes the root when no default branch is discoverable" \
   ' ' "$base_name $base_hash"
+
+# Exercise the real completion entry points without requiring a ZLE session.
+git -C "$sandbox/w" branch main HEAD~2
+local completion_probe='
+  fpath=("${fdir:h}/completions" $fpath)
+  autoload -Uz _ghist _git_tag_semver
+  _arguments() { __git_tag_semver_commits }
+  _describe() {
+    [[ "$1" == -V ]] || { print -r -- "sorted completion"; return 1; }
+    print -rl -- "${(@P)argv[-1]}"
+  }'
+local completion_out
+completion_out="$(TESTCWD="$sandbox/w" _isolated "$completion_probe; _ghist" |
+  grep '^HEAD' | cut -d: -f1)"
+expect "ghist completes revisions in history order" $'HEAD\nHEAD~1' "$completion_out"
+completion_out="$(TESTCWD="$sandbox/w" _isolated "$completion_probe; _git_tag_semver" |
+  cut -d: -f1)"
+expect "git_tag_semver completes HEAD and newest-first hashes on the first call" \
+  $'HEAD\n'"$c3"$'\n'"$c2"$'\n'"$c1" "$completion_out"
 rm -rf "$sandbox" "$setup_log"
+
+local history_styles history_context style_out
+history_styles="$(grep -E "^zstyle ':(completion|fzf-tab):" "$repo/omz/zshrc")"
+for history_context in gciaf:argument-1 gcif:argument-1 ghist:argument-1 git_tag_semver:argument-3; do
+  style_out="$(_isolated "$history_styles"'
+    local value
+    zstyle -s ":completion::complete:$1:commits" sort value
+    print -r -- "$value"
+  ' "$history_context")"
+  expect "$history_context disables completion sorting" 'false' "$style_out"
+  style_out="$(_isolated "$history_styles"'
+    local -a flags
+    zstyle -a ":fzf-tab:complete:$1" fzf-flags flags
+    print -rl -- "${flags[@]}"
+  ' "$history_context")"
+  expect "$history_context disables fuzzy-score sorting" '--no-sort' "$style_out"
+done
+for history_context in git-show:argument-1 git_tag_semver:argument-1; do
+  style_out="$(_isolated "$history_styles"'
+    if zstyle -s ":completion::complete:$1" sort value ||
+       zstyle -a ":fzf-tab:complete:$1" fzf-flags flags; then
+      print -r -- overridden
+    else
+      print -r -- unchanged
+    fi
+  ' "$history_context")"
+  expect "$history_context keeps non-history completion behavior" 'unchanged' "$style_out"
+done
 
 (( failures == unit_failures )) && pass "all unit checks passed"
 

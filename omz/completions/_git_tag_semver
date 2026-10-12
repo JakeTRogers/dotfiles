@@ -25,8 +25,10 @@ function _git_tag_semver() {
 function __git_tag_semver_commits() {
   local -a commits
   if git rev-parse --git-dir >/dev/null 2>&1; then
-    commits=(${(f)"$(git log --oneline --decorate -n 25 2>/dev/null | awk '{print $1":"substr($0, index($0,$2))}')"})
-    commits+=('HEAD:Current HEAD')
+    commits=('HEAD:Current HEAD')
+    commits+=(${(f)"$(git log --oneline --decorate -n 25 2>/dev/null | awk '{print $1":"substr($0, index($0,$2))}')"})
   fi
-  _describe 'commit' commits
+  _describe -V -t commits 'commit' commits
 }
+
+_git_tag_semver "$@"

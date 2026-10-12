@@ -314,7 +314,7 @@ _fzf_git_remotes() {
 
 _fzf_git_stashes() {
   _fzf_git_check || return
-  git stash list | _fzf_git_fzf \
+  git stash list | _fzf_git_fzf --no-sort \
     --border-label '🥡 Stashes ' \
     --header 'CTRL-X (drop stash)' \
     --bind 'ctrl-x:reload(git stash drop -q {1}; git stash list)' \
@@ -324,7 +324,7 @@ _fzf_git_stashes() {
 
 _fzf_git_lreflogs() {
   _fzf_git_check || return
-  git reflog --color=$(__fzf_git_color) --format="%C(blue)%gD %C(yellow)%h%C(auto)%d %gs" | _fzf_git_fzf --ansi \
+  git reflog --color=$(__fzf_git_color) --format="%C(blue)%gD %C(yellow)%h%C(auto)%d %gs" | _fzf_git_fzf --ansi --no-sort \
     --border-label '📒 Reflogs ' \
     --bind 'alt-r:toggle-raw' \
     --preview "git show --color=$(__fzf_git_color .) {1} | $(__fzf_git_pager)" "$@" |

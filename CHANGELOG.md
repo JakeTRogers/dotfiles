@@ -1,3 +1,9 @@
+## v3.10.4 (2026-10-20)
+
+### Fix
+
+- **omz**: use gpt-6-luna as the ccm default model
+
 ## v3.10.3 (2026-10-11)
 
 ### Fix

@@ -25,6 +25,8 @@
 [init]
   defaultBranch = main
   templateDir = ~/.git-template
+[worktree]
+  useRelativePaths = true
 [include]
   path = .gitconfig_personal
   path = .gitconfig_work

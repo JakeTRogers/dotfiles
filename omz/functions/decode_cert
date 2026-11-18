@@ -33,6 +33,8 @@ Examples:
     decode_cert --full cert.pem
   Decode cert from github.com in yaml formation with full details
     decode_cert --full github.com
+  Decode cert from a remote server over ssh (process substitution)
+    decode_cert <(ssh some_server 'sudo cat /path/to/cert.pem')
 EOF
   return 0
 fi
@@ -89,7 +91,7 @@ while [[ $# -gt 0 ]]; do
         return 1
       elif [[ "$1" =~ ftps://.* ]] || [[ "$1" =~ https://.* ]]; then
         target_type="url"
-      elif [ -f "$1" ] || [[ "$1" =~  .*/.* ]]; then
+      elif [ -e "$1" ] || [[ "$1" =~  .*/.* ]]; then
         target_type="file"
       else
         target_type="domain"
@@ -117,9 +119,9 @@ case "$target_type" in
     fi
     ;;
   file)
-    # Check if the certificate file exists
-    if [ ! -f "$target" ]; then
-      pprint "🔴 file not found: $target" "$fgRed" >&2
+    # -r instead of -f so process substitution pipes (/dev/fd/N) are accepted
+    if [ ! -r "$target" ]; then
+      pprint "🔴 file not found or not readable: $target" "$fgRed" >&2
       return 1
     fi
     ;;

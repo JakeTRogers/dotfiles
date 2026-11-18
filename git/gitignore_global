@@ -1,5 +1,6 @@
 .idea
 .copilot
+.worktrees/
 *.code-workspace
 *.swp
 .DS_Store

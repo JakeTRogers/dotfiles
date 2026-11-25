@@ -12,10 +12,9 @@
   hist = log --decorate --pretty=format:'%C(yellow)%h%C(reset) %C(green)%G?%C(reset) %C(blue)%an%C(reset) %C(cyan)%cr%C(reset) %s %C(auto)%d%C(reset)' --graph --date-order
   du = diff -U0
   dus = diff -U0 --staged
-[user]
-  name = Jake Rogers
 [core]
   excludesfile = ~/.gitignore_global
+  hooksPath = ~/.git-template/hooks
   pager = less -F -X
   commentChar = ";"
 [push]
@@ -27,6 +26,3 @@
   templateDir = ~/.git-template
 [worktree]
   useRelativePaths = true
-[include]
-  path = .gitconfig_personal
-  path = .gitconfig_work

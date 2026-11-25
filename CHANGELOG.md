@@ -1,3 +1,15 @@
+## v3.11.0 (2026-11-17)
+
+### Feature
+
+- **git**: enable relative worktree paths
+
+### Fix
+
+- **omz**: accept process substitution pipes in decode_cert
+- **git**: ignore local .worktrees directories
+- **git**: isolate repository hooks from the shared template
+
 ## v3.10.4 (2026-10-20)
 
 ### Fix

@@ -6,7 +6,7 @@ This repo manages my dotfiles and works nicely with the vscode dev container ext
 - [Git](https://git-scm.com/)
   - [.gitconfig](https://git-scm.com/book/en/v2/Customizing-Git-Git-Configuration)
   - [.gitignore_global](https://git-scm.com/docs/gitignore)
-  - [pre-commit hooks template](https://pre-commit.com/)
+  - [pre-commit hooks template](https://pre-commit.com/) - copied into new repositories so repo-local hook installs cannot modify the shared template
 - [GnuPG](https://gnupg.org/)
   - [gpg-agent.conf](https://gnupg.org/documentation/manuals/gnupg/Invoking-GPG_002dAGENT.html)
 - [Less](https://github.com/gwsw/less)

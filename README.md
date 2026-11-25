@@ -4,7 +4,7 @@ This repo manages my dotfiles and works nicely with the vscode dev container ext
 
 - [Curl](https://github.com/curl/curl)
 - [Git](https://git-scm.com/)
-  - [.gitconfig](https://git-scm.com/book/en/v2/Customizing-Git-Git-Configuration)
+  - [gitconfig](https://git-scm.com/book/en/v2/Customizing-Git-Git-Configuration) - shared settings, linked to `~/.config/git/config`; your identity lives in a per-machine `~/.gitconfig` (see [Git identity](#git-identity))
   - [.gitignore_global](https://git-scm.com/docs/gitignore)
   - [pre-commit hooks template](https://pre-commit.com/) - copied into new repositories so repo-local hook installs cannot modify the shared template
 - [GnuPG](https://gnupg.org/)
@@ -72,6 +72,21 @@ The installation process is handled by the `install.sh` script. It has 2 install
 
 > [!NOTE]
 > You should fork this repo and adjust it to your needs before running the script.
+
+## Git identity
+
+Shared Git settings live in [git/gitconfig](git/gitconfig), which is linked to `~/.config/git/config`. That file sets `commit.gpgsign = true`, so every commit is signed. It contains no identity. Each machine keeps its own identity in `~/.gitconfig`, which is not tracked in this repo:
+
+```ini
+[user]
+  name = Your Name
+  email = you@example.com
+  signingkey = <gpg key id>
+```
+
+Git reads both files, and `~/.gitconfig` takes precedence. In a dev container, the VS Code Dev Containers extension copies the host's `~/.gitconfig` into the container and forwards your GPG keys. This repo then links the shared settings. As a result, your identity and signing key reach the container without a bind mount and without changes to the project's `devcontainer.json`.
+
+The extension copies only `~/.gitconfig` itself and ignores `[include]` directives, so keep the identity directly in that file. Changes reach a container only when it is rebuilt.
 
 ## credit
 

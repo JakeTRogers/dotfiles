@@ -1,3 +1,15 @@
+## v4.0.0 (2026-11-25)
+
+### BREAKING CHANGE
+
+- ~/.gitconfig_personal and ~/.gitconfig_work are no
+longer included. Run ./install.sh full first, then create a regular
+~/.gitconfig with user.name plus the contents of the old include file.
+
+### Fix
+
+- **git**: carry the git identity into dev containers
+
 ## v3.11.0 (2026-11-17)
 
 ### Feature

@@ -97,10 +97,7 @@ EOF
 fi
 
 # Dependency and state checks
-if ! command -v copilot >/dev/null 2>&1; then
-  pprint "🔴 copilot CLI is not installed or not in PATH." "$fgRed" >&2
-  return 1
-fi
+_require copilot || return 1
 
 if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   pprint "🔴 not inside a Git repository." "$fgRed" >&2

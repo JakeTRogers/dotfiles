@@ -40,14 +40,7 @@ EOF
 fi
 
 # Dependency Checks
-local tool
-local tools=("certigo" "jq" "yq")
-for tool in "${tools[@]}"; do
-  if ! command -v "$tool" >/dev/null 2>&1; then
-    pprint "🔴 $tool is required, but not found." "$fgRed" >&2
-    return 1
-  fi
-done
+_require certigo jq yq || return 1
 
 # Local variables
 local certigo_cmd=""

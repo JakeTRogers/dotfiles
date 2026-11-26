@@ -19,13 +19,20 @@
 # pre-commit calls it — the per-function checks are limited to the files named,
 # because spawning a fresh shell per function to diff its namespace costs a few
 # seconds each and a full sweep is too slow for a commit hook. The unit checks
-# always run; they cover shared helpers, history completions and Git pickers.
+# always run; they cover shared helpers, history completions, Git pickers and
+# the editor zshrc chooses.
 
 emulate -L zsh
 setopt no_nomatch pipe_fail
 
 local repo
 repo="$(git rev-parse --show-toplevel 2>/dev/null)" || repo="$PWD"
+
+# A hook run in a linked worktree inherits GIT_DIR and GIT_INDEX_FILE, which
+# `git -C` does not override, so every fixture below would write its commits,
+# tags, branch renames and config into the repo being committed to. Only $repo
+# is needed from it, so drop git's repository-local variables now.
+unset ${(f)"$(git rev-parse --local-env-vars)"}
 
 local functions_dir="$repo/omz/functions"
 if [[ ! -d "$functions_dir" ]]; then
@@ -164,10 +171,12 @@ done
 
 # emulate -L zsh keeps interactive options (nullglob, extendedglob, ksharrays,
 # shwordsplit) from changing how a function behaves. The one-line passthroughs
-# have no shell logic to protect and are exempt.
+# have no shell logic to protect and are exempt; keep this list in step with
+# the one in omz/README.md.
+local -a passthroughs=(gdu gdus gciaf gcif gundo)
 for fn in "${targets[@]}"; do
   name="${fn:t}"
-  [[ " ${never_invoke[*]} " == *" $name "* ]] && continue
+  [[ " ${passthroughs[*]} " == *" $name "* ]] && continue
   grep -q 'emulate -L zsh' -- "$fn" || fail "${name} has no 'emulate -L zsh'"
 done
 
@@ -221,6 +230,17 @@ expect "get_k8s_images splits image and tag" \
   "$images"
 rm -rf "$stub_bin" "$fixture"
 
+# Minimal mode does not install gh or cz, so the functions that need them must
+# say so rather than fail with a bare command-not-found. An empty path leaves
+# every external program absent.
+local missing
+missing="$(_isolated 'path=(); git_pr_check; print -r -- "rc=$?"' 2>&1)"
+expect "git_pr_check reports a missing gh" \
+  $'🔴 gh is required, but not found.\nrc=1' "$missing"
+missing="$(_isolated 'path=(); czbnt; print -r -- "rc=$?"' 2>&1)"
+expect "czbnt reports a missing cz" \
+  $'🔴 cz is required, but not found.\nrc=1' "$missing"
+
 # git_find_branch_base: origin/HEAD wins, and the remote-tracking ref is
 # preferred over a stale local trunk
 local sandbox="$(mktemp -d)" setup_log="$(mktemp)"
@@ -231,7 +251,7 @@ local sandbox="$(mktemp -d)" setup_log="$(mktemp)"
   set -e
   git init -q --bare -b main "$sandbox/up.git"
   git clone -q "$sandbox/up.git" "$sandbox/w"
-  cd "$sandbox/w"
+  cd "$sandbox/w" || exit 1
   git config user.email t@t; git config user.name t; git config commit.gpgsign false
   git checkout -q -b main
   print 1 > f; git add -A; git commit -qm C1
@@ -280,6 +300,31 @@ base_name="$(TESTCWD="$sandbox/w" _isolated '_gcfuh_base -n')"
 base_hash="$(TESTCWD="$sandbox/w" _isolated '_gcfuh_base')"
 expect "_gcfuh_base uses the branch base on a feature branch" \
   "origin/main $expected_hash" "$base_name $base_hash"
+
+# gciaf and gcif complete the fixup scope through _commits_since_merge. No
+# message or description format style is set in this config, and without one
+# zsh's _message displays only a raw (-r) message, so the stub prints only those.
+local fixup_probe='
+  fpath=("${fdir:h}/completions" $fpath)
+  autoload -Uz _gciaf _gcif _commits_since_merge
+  _arguments() { _commits_since_merge }
+  _describe() {
+    [[ "$1" == -V ]] || { print -r -- "sorted completion"; return 1; }
+    print -rl -- "${(@P)argv[-1]}"
+  }
+  _message() { [[ "$1" == -r ]] && print -r -- "message: $2" }'
+local fixup_completion fixup_out expected_candidates
+_fixture_git() {  # git as in a fixture's setup: no ambient config, output to its log
+  GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null git "$@" >>"$setup_log" 2>&1
+}
+_fixture_git -C "$sandbox/w" commit -q --allow-empty -m "fixup! C3"
+expected_candidates="$(git -C "$sandbox/w" rev-parse --short HEAD~1):add blame.txt"$'\n'
+expected_candidates+="$(git -C "$sandbox/w" rev-parse --short HEAD~2):C3"
+for fixup_completion in _gciaf _gcif; do
+  fixup_out="$(TESTCWD="$sandbox/w" _isolated "$fixup_probe; $fixup_completion")"
+  expect "${fixup_completion#_} completes feature branch commits newest first, fixups excluded" \
+    "$expected_candidates" "$fixup_out"
+done
 rm -rf "$sandbox" "$setup_log"
 
 # The default branch itself: the merge base is HEAD, so the scope falls back to
@@ -289,7 +334,7 @@ sandbox="$(mktemp -d)" setup_log="$(mktemp)"
   export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null
   set -e
   git init -q -b main "$sandbox/w"
-  cd "$sandbox/w"
+  cd "$sandbox/w" || exit 1
   git config user.email t@t; git config user.name t; git config commit.gpgsign false
   printf 'a1\na2\na3\n' > a.txt; git add -A; git commit -qm "feat: add a"
   printf 'b1\nb2\n' > b.txt;     git add -A; git commit -qm "feat: add b"
@@ -366,6 +411,15 @@ base_name="$(TESTCWD="$sandbox/w" _isolated '_gcfuh_base -n')"
 base_hash="$(TESTCWD="$sandbox/w" _isolated '_gcfuh_base')"
 expect "_gcfuh_base stops at the newest tag on the default branch" \
   "v0.1.0 $(git -C "$sandbox/w" rev-parse HEAD~1)" "$base_name $base_hash"
+
+# with HEAD itself released the scope is empty, which must not look broken
+_fixture_git -C "$sandbox/w" tag v0.2.0 HEAD
+for fixup_completion in _gciaf _gcif; do
+  fixup_out="$(TESTCWD="$sandbox/w" _isolated "$fixup_probe; $fixup_completion")"
+  expect "${fixup_completion#_} explains an empty scope on a released HEAD" \
+    'message: no commits after v0.2.0 to fix up' "$fixup_out"
+done
+git -C "$sandbox/w" tag -d v0.2.0 >/dev/null
 git -C "$sandbox/w" branch -m topic
 base_name="$(TESTCWD="$sandbox/w" _isolated '_gcfuh_base -n')"
 base_hash="$(TESTCWD="$sandbox/w" _isolated '_gcfuh_base')"
@@ -390,6 +444,28 @@ completion_out="$(TESTCWD="$sandbox/w" _isolated "$completion_probe; _git_tag_se
   cut -d: -f1)"
 expect "git_tag_semver completes HEAD and newest-first hashes on the first call" \
   $'HEAD\n'"$c3"$'\n'"$c2"$'\n'"$c1" "$completion_out"
+rm -rf "$sandbox" "$setup_log"
+
+# gdu, gdus and gcfuh say so when there is nothing to complete. As in the fixup
+# probe, the stub prints only raw (-r) messages: without a message format
+# style, those are the only ones zsh shows.
+local changes_probe='
+  fpath=("${fdir:h}/completions" $fpath)
+  autoload -Uz _gdu _gdus _gcfuh
+  _arguments() { _gcfuh_changed_files }
+  _message() { [[ "$1" == -r ]] && print -r -- "message: $2" }'
+sandbox="$(mktemp -d)" setup_log="$(mktemp)"
+_fixture_git init -q -b main "$sandbox/w"
+_fixture_git -C "$sandbox/w" -c user.name=t -c user.email=t@t commit -q --allow-empty -m C1
+local changes_completion changes_message
+for changes_completion changes_message in \
+    _gdu 'no unstaged changes' \
+    _gdus 'no staged changes' \
+    _gcfuh 'no staged or unstaged changes'; do
+  expect "${changes_completion#_} says so when there are no changes" \
+    "message: $changes_message" \
+    "$(TESTCWD="$sandbox/w" _isolated "$changes_probe; $changes_completion")"
+done
 rm -rf "$sandbox" "$setup_log"
 
 local history_styles history_context style_out
@@ -419,6 +495,155 @@ for history_context in git-show:argument-1 git_tag_semver:argument-1; do
   ' "$history_context")"
   expect "$history_context keeps non-history completion behavior" 'unchanged' "$style_out"
 done
+
+# zshrc chooses the editor from what is installed: Minimal mode has no nvim,
+# and a Rebuild of a Dev container with a Home volume leaves only vi. Start an
+# interactive zsh on the real zshrc, in a scratch home whose oh-my-zsh is an
+# empty stub, with only stub editors on PATH, and ask Git which editor it opens.
+# Run outside the checkout and without global config, so neither can set one.
+local editor_home="$scratch/editor-home" editor_bin="$scratch/editor-bin" editor_stub
+mkdir -p "$editor_home/.oh-my-zsh" "$editor_bin"/{nvim-vim,vim,none}
+: > "$editor_home/.oh-my-zsh/oh-my-zsh.sh"
+ln -s "$repo/omz/zshrc" "$editor_home/.zshrc"
+for editor_stub in nvim-vim/nvim nvim-vim/vim vim/vim; do
+  print -r -- '#!/bin/sh' > "$editor_bin/$editor_stub"
+  chmod +x "$editor_bin/$editor_stub"
+done
+_zshrc_git_editor() {  # _zshrc_git_editor <editor-bin subdirectory> [NAME=value...]
+  ( cd -- "$scratch" &&
+    env -i HOME="$editor_home" USER=test TERM=xterm-256color PATH="$editor_bin/$1" \
+      GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null GIT_BIN="${commands[git]}" \
+      "${@:2}" "${commands[zsh]}" -d -i -c '"$GIT_BIN" var GIT_EDITOR' 2>/dev/null )
+}
+local ssh='SSH_CONNECTION=192.0.2.1 50000 192.0.2.2 22'
+expect "zshrc opens nvim when it is installed" 'nvim' "$(_zshrc_git_editor nvim-vim)"
+expect "zshrc opens vim over SSH even when nvim is installed" 'vim' "$(_zshrc_git_editor nvim-vim "$ssh")"
+expect "zshrc opens vim when nvim is not installed" 'vim' "$(_zshrc_git_editor vim)"
+expect "zshrc opens vi when neither nvim nor vim is installed" 'vi' "$(_zshrc_git_editor none)"
+
+# checkout_reminder.zsh: zshrc sources it at shell start. The fixture is a home
+# directory whose ~/.zshrc links into a Checkout cloned from a local upstream,
+# with the Installer's record of that Checkout's commit and Install mode.
+sandbox="$(mktemp -d)" setup_log="$(mktemp)"
+local reminder="$repo/omz/checkout_reminder.zsh"
+local home="$sandbox/home"
+local checkout="$home/dotfiles" state_dir="$home/.local/state/dotfiles"
+(
+  export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null
+  set -e
+  git init -q --bare -b main "$sandbox/up.git"
+  git init -q -b main "$sandbox/seed"
+  cd "$sandbox/seed" || exit 1
+  git config user.email t@t; git config user.name t; git config commit.gpgsign false
+  mkdir omz; print zshrc > omz/zshrc; git add -A; git commit -qm C1
+  git push -q "$sandbox/up.git" main
+  git clone -q "$sandbox/up.git" "$checkout"
+  ln -s "$checkout/omz/zshrc" "$home/.zshrc"
+  mkdir -p "$state_dir"
+  : > "$state_dir/last-fetch"     # fetched just now, so nothing fetches by default
+) >"$setup_log" 2>&1 || {
+  fail "checkout_reminder fixture setup failed"
+  sed 's/^/       /' "$setup_log"
+}
+
+_record_install() {  # _record_install <commit> <mode>
+  print -rl -- "commit=$1" "mode=$2" > "$state_dir/installed"
+}
+_in_fixture_home() {  # _in_fixture_home <command...>: run it with the fixture home as HOME
+  HOME="$home" XDG_STATE_HOME="$home/.local/state" "$@"
+}
+_start_shell() {  # stdout and stderr of sourcing the reminder in the fixture home
+  _in_fixture_home _isolated 'source "$1"' "$reminder" 2>&1
+}
+
+# origin's default branch moved on, and an earlier fetch brought it in
+_record_install "$(git -C "$checkout" rev-parse HEAD)" minimal
+_fixture_git -C "$sandbox/seed" commit -q --allow-empty -m C2
+_fixture_git -C "$sandbox/seed" push -q "$sandbox/up.git" main
+_fixture_git -C "$checkout" fetch -q origin
+expect "checkout_reminder: a Checkout behind origin prints the pull-and-install command" \
+  'dotfiles: ~/dotfiles is behind origin/main. Update with: cd ~/dotfiles && git pull && ./install.sh' \
+  "$(_start_shell)"
+
+# pulled, but the Installer has not run since
+_fixture_git -C "$checkout" merge -q --ff-only origin/main
+expect "checkout_reminder: a Checkout moved since the Installer ran prints the install command" \
+  'dotfiles: ~/dotfiles has changed since install.sh last ran. Apply with: cd ~/dotfiles && ./install.sh' \
+  "$(_start_shell)"
+_record_install "$(git -C "$checkout" rev-parse HEAD~1)" full
+expect "checkout_reminder: the install command keeps Full mode" \
+  'dotfiles: ~/dotfiles has changed since install.sh last ran. Apply with: cd ~/dotfiles && ./install.sh full' \
+  "$(_start_shell)"
+
+# behind origin and moved since the Installer ran, but on a topic branch
+_fixture_git -C "$sandbox/seed" commit -q --allow-empty -m C3
+_fixture_git -C "$sandbox/seed" push -q "$sandbox/up.git" main
+_fixture_git -C "$checkout" fetch -q origin
+_fixture_git -C "$checkout" checkout -q -b topic
+expect "checkout_reminder: a Checkout on another branch prints nothing" '' "$(_start_shell)"
+_fixture_git -C "$checkout" checkout -q --detach
+expect "checkout_reminder: a detached Checkout prints nothing" '' "$(_start_shell)"
+_fixture_git -C "$checkout" checkout -q main
+
+# pulled and installed: nothing to say, and nothing left behind in the shell
+_fixture_git -C "$checkout" merge -q --ff-only origin/main
+_record_install "$(git -C "$checkout" rev-parse HEAD)" full
+expect "checkout_reminder: a current Checkout writes nothing to stdout or stderr" '' "$(_start_shell)"
+expect "checkout_reminder: leaves no globals behind" '' \
+  "$(_in_fixture_home _leak_diff 'source "${fdir:h}/checkout_reminder.zsh"')"
+
+# a machine whose Installer predates the record
+_fixture_git -C "$sandbox/seed" commit -q --allow-empty -m C4
+_fixture_git -C "$sandbox/seed" push -q "$sandbox/up.git" main
+_fixture_git -C "$checkout" pull -q --ff-only
+rm -f "$state_dir/installed"
+expect "checkout_reminder: prints nothing when the Installer recorded nothing" '' "$(_start_shell)"
+
+# a shell started from a git hook or editor, which inherits git's GIT_DIR
+_record_install "$(git -C "$checkout" rev-parse HEAD~1)" full
+expect "checkout_reminder: looks at the Checkout, not an inherited GIT_DIR" \
+  'dotfiles: ~/dotfiles has changed since install.sh last ran. Apply with: cd ~/dotfiles && ./install.sh full' \
+  "$(GIT_DIR="$sandbox/seed/.git" _start_shell)"
+_record_install "$(git -C "$checkout" rev-parse HEAD)" full
+
+# The fetch: a stub git whose fetch fails loudly after a slow network round trip
+local stub_dir="$sandbox/stub" fetch_log="$sandbox/fetches"
+mkdir -p "$stub_dir"; : > "$fetch_log"
+cat > "$stub_dir/git" <<STUB
+#!/bin/sh
+case " \$* " in
+  *" fetch "*)
+    echo started >> "$fetch_log"
+    echo "fatal: unable to access origin" >&2
+    sleep 2
+    echo finished >> "$fetch_log"
+    exit 128 ;;
+esac
+exec "${commands[git]}" "\$@"
+STUB
+chmod +x "$stub_dir/git"
+_await_fetches() {  # _await_fetches <n>: give n fetches up to 3s to start
+  local -i tries
+  for (( tries = 0; tries < 30; tries++ )); do
+    (( $(grep -c started "$fetch_log") >= $1 )) && return
+    sleep 0.1
+  done
+}
+
+touch -d '25 hours ago' "$state_dir/last-fetch"
+out="$(PATH="$stub_dir:$PATH" _start_shell)"
+expect "checkout_reminder: startup does not wait for the fetch" 0 "$(grep -c finished "$fetch_log")"
+expect "checkout_reminder: a failed fetch prints nothing" '' "$out"
+_await_fetches 1
+expect "checkout_reminder: fetches when the last fetch was a day ago" 1 "$(grep -c started "$fetch_log")"
+PATH="$stub_dir:$PATH" _start_shell >/dev/null
+sleep 0.5
+expect "checkout_reminder: fetches at most once a day" 1 "$(grep -c started "$fetch_log")"
+touch -d '25 hours ago' "$state_dir/last-fetch"
+PATH="$stub_dir:$PATH" _start_shell >/dev/null
+_await_fetches 2
+expect "checkout_reminder: fetches again the next day" 2 "$(grep -c started "$fetch_log")"
+rm -rf "$sandbox" "$setup_log"
 
 (( failures == unit_failures )) && pass "all unit checks passed"
 

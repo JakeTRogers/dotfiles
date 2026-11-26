@@ -19,10 +19,7 @@
 emulate -L zsh
 setopt local_options no_nomatch
 
-if ! command -v fzf >/dev/null 2>&1; then
-  pprint "🔴 fzf is required, but not found." "$fgRed" >&2
-  return 1
-fi
+_require fzf || return 1
 
 local zc="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
 local functions_dir="$zc/functions"

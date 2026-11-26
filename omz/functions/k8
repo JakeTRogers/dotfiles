@@ -40,13 +40,7 @@ EOF
   return 0
 fi
 
-local tool
-for tool in kubectl jq; do
-  if ! command -v "$tool" >/dev/null 2>&1; then
-    pprint "🔴 k8: $tool is required, but not found." "$fgRed" >&2
-    return 1
-  fi
-done
+_require kubectl jq || return 1
 
 local subcommand="$1"
 shift

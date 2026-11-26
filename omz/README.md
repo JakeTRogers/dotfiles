@@ -51,6 +51,7 @@ as a shell function in `omz/*.zsh` or `fzf/*.zsh` instead of `functions/`.
 
 - **`zshrc`** - Main Zsh configuration file, symlinked to `~/.zshrc`
 - **`p10k.zsh`** - Powerlevel10k theme configuration, symlinked to `~/.p10k.zsh`
+- **`checkout_reminder.zsh`** - Sourced by `zshrc` at shell start. On the Checkout's default branch, it prints one line naming the command to run when the Checkout is behind origin or has changed since `install.sh` last ran. It never waits on the network: a background fetch runs at most once a day
 - **`variables.zsh`** - Shell variables, symlinked to `$ZSH_CUSTOM/variables.zsh`
 - **`aliases.zsh`** - Shell aliases, symlinked to `$ZSH_CUSTOM/aliases.zsh`
 
@@ -112,8 +113,10 @@ Hand-written completions for the custom functions above: `_ccm`, `_cheat`, `_cop
 Dedicated commit completions for `gciaf`, `gcif`, `ghist`, and the third argument of
 `git_tag_semver` preserve `git log` order (newest first). This applies to native Zsh
 completion and fzf-tab, including when filtering: matches are not re-ranked by fuzzy
-score. `gciaf` and `gcif` exclude `fixup!` commits; `git_tag_semver` offers the `HEAD`
-shortcut first, followed by newest-first commit hashes.
+score. `gciaf` and `gcif` exclude `fixup!` commits, and when nothing is in scope, as on
+the default branch with `HEAD` at a release tag, they say so (`no commits after v1.6.2 to
+fix up`) and insert nothing. `git_tag_semver` offers the `HEAD` shortcut first, followed by
+newest-first commit hashes.
 
 The `ghist` and `git hist` displays, Oh My Zsh's Git log aliases, and the fzf commit
 picker (`CTRL-G CTRL-H`) already show newest-first history. The stash picker
@@ -131,7 +134,7 @@ Generated/vendored completions: `_bat`, `_fd`, `_rg` (shipped by the upstream to
 
 #### `scripts/`
 
-Standalone scripts for specific tasks:
+Standalone scripts for specific tasks, symlinked into `~/bin`, which `zshrc` puts on `PATH`:
 
 - **`merge_kube_configs.zsh`** - Merge multiple kubeconfig files
 
@@ -159,6 +162,11 @@ shows the plan and stops, `--yes` skips the prompt for scripted use.
 
 Run `bin/cheatsheet_audit` to confirm steps 2 and 4 are satisfied; pre-commit runs it for you.
 
+A function that needs a program Minimal mode doesn't install checks for it first with
+`_require <command>... || return 1`. For the first command missing, `_require` prints
+`🔴 <command> is required, but not found.` and returns 1, so the function fails with that
+message rather than a bare command-not-found.
+
 ## Function Conventions
 
 `bin/zsh_function_test` enforces these on every commit, and `zsh -n` cannot: it runs the
@@ -170,7 +178,7 @@ with paths to check only those.
   namespace, runs the function, and diffs.
 - **Start with `emulate -L zsh`.** Otherwise options set in the interactive shell
   (`nullglob`, `extendedglob`, `shwordsplit`, `ksharrays`) change how the function behaves.
-  The one-line passthroughs (`gdu`, `gdus`, `gciaf`, `gcif`, `gundo`, `czbnt`) are exempt.
+  The one-line passthroughs (`gdu`, `gdus`, `gciaf`, `gcif`, `gundo`) are exempt.
 - **`local MATCH MBEGIN MEND` before any `[[ =~ ]]`.** The match variables are written into
   the enclosing scope; declaring them local is the only way to contain them.
 - **Strip the empty element after `${(@f)$(...)}`.** Splitting empty output yields an array

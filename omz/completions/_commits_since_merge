@@ -9,6 +9,7 @@ function _commits_since_merge() {
     local merge_base
     local log_output
     local line
+    local boundary_name
 
     # Same scope boundary as gcfuh; empty means the whole history is in scope
     merge_base=$(_gcfuh_base)
@@ -20,12 +21,23 @@ function _commits_since_merge() {
       log_output=$(git log --oneline --no-decorate --grep='^fixup! ' --invert-grep -n 25 2>/dev/null)
     fi
 
+    # NF skips the blank line an empty log leaves, which would otherwise
+    # become a bare ":" candidate
     commits=()
     while IFS= read -r line; do
       [[ -n "$line" ]] && commits+=("$line")
-    done < <(printf '%s\n' "$log_output" | awk '{print $1":"substr($0, index($0,$2))}')
+    done < <(printf '%s\n' "$log_output" | awk 'NF {print $1":"substr($0, index($0,$2))}')
 
-    [[ ${#commits[@]} -gt 0 ]] && _describe -V -t commits 'commits' commits
+    if [[ ${#commits[@]} -gt 0 ]]; then
+      _describe -V -t commits 'commits' commits
+    else
+      # An empty scope is deliberate (released history stays put), so name the
+      # boundary rather than offer nothing. -r shows the message even when no
+      # format style is set, which is the case in this config.
+      boundary_name=$(_gcfuh_base -n)
+      _message -r "no commits ${boundary_name:+after $boundary_name }to fix up"
+      return 1
+    fi
   fi
 }
 

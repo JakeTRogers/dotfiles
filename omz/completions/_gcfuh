@@ -21,7 +21,7 @@ function _gcfuh_changed_files() {
 
     typeset -U files
     if [[ ${#files[@]} -eq 0 ]]; then
-      _message 'no staged or unstaged changes'
+      _message -r 'no staged or unstaged changes'
       return 1
     fi
 

@@ -9,6 +9,9 @@ concurrency:
   group: smoke-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   install-smoke:
     runs-on: ubuntu-latest
@@ -17,11 +20,15 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - image: ubuntu:24.04        # dev container baseline — required
+          # Dev container; also covers apt for Debian-based Lab servers. Required.
+          - image: ubuntu:24.04
             experimental: false
-          - image: rockylinux:9        # Red Hat fleet proxy — advisory (getRelease API rate limits can flake)
+          # Lab server (RHEL 9). Advisory, because getRelease API rate limits can flake.
+          - image: rockylinux:9
             experimental: true
-          - image: opensuse/leap:15.6  # SUSE fleet proxy — advisory
+          # zypper coverage. No machine runs SUSE in Minimal mode; the Leap
+          # Workstation runs Full mode. Advisory.
+          - image: opensuse/leap:15.6
             experimental: true
     continue-on-error: ${{ matrix.experimental }}
     container: ${{ matrix.image }}
@@ -30,26 +37,40 @@ jobs:
     steps:
     - name: Bootstrap container prerequisites
       shell: sh
-      # sudo is required by getRelease's default installcommand; tar/gzip by getRelease/install.sh
+      # tar/gzip are required by getRelease/install.sh. No sudo: as root the
+      # Installer elevates nothing, and getRelease installs without sudo
       run: |
         if command -v apt-get > /dev/null; then
-          apt-get update -qq && apt-get install -y -qq sudo git ca-certificates tar gzip
+          apt-get update -qq && apt-get install -y -qq git ca-certificates tar gzip
         elif command -v dnf > /dev/null; then
-          dnf install -q -y sudo git ca-certificates tar gzip
+          dnf install -q -y git ca-certificates tar gzip
         elif command -v zypper > /dev/null; then
-          zypper -nq install sudo git ca-certificates tar gzip
+          zypper -nq install git ca-certificates tar gzip
         else
           echo "no supported package manager found" && exit 1
         fi
     - name: Checkout code
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
     - name: Run installer (minimal mode)
+      # getRelease calls the GitHub API, which allows only 60 unauthenticated
+      # requests per hour per IP, shared by every job on the runner's IP. The
+      # job's read-only token raises that. Only this step gets it, under a
+      # name that only getRelease reads.
+      env:
+        GETRELEASE_TOKEN: ${{ github.token }}
       run: ./install.sh
     - name: Verify install results
       run: |
         test -L "$HOME/.zshrc"
         test -d "$HOME/.oh-my-zsh"
-        for c in zsh getRelease bat fd fzf rg; do
-          command -v "$c" || { echo "missing: $c"; exit 1; }
+        command -v zsh || { echo "missing: zsh"; exit 1; }
+        # getRelease and the Tools it installs belong in ~/.local/bin
+        for c in getRelease bat fd fzf rg; do
+          test -x "$HOME/.local/bin/$c" || { echo "missing from ~/.local/bin: $c"; exit 1; }
         done
         TERM=xterm-256color zsh -ic 'echo SMOKE_OK' | grep -q SMOKE_OK
+        if command -v tmux; then echo "Minimal mode installed tmux"; exit 1; fi
+        zsh_stderr="$(TERM=xterm-256color zsh -ic exit 2>&1 > /dev/null)"
+        if printf '%s\n' "$zsh_stderr" | grep -i tmux; then echo "zsh startup warned about tmux"; exit 1; fi
+        # Minimal mode has no nvim, so Git must open vim rather than a missing editor
+        TERM=xterm-256color zsh -ic 'echo "GIT_EDITOR=$(git var GIT_EDITOR)"' | grep -x 'GIT_EDITOR=vim'

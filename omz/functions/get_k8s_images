@@ -30,15 +30,7 @@ EOF
 fi
 
 # Dependency check
-if ! command -v kubectl >/dev/null 2>&1; then
-  pprint "🔴 kubectl is required, but not found." "$fgRed" >&2
-  return 1
-fi
-
-if ! command -v jq >/dev/null 2>&1; then
-  pprint "🔴 jq is required, but not found." "$fgRed" >&2
-  return 1
-fi
+_require kubectl jq || return 1
 
 # Defaults
 local namespace=""

@@ -14,10 +14,7 @@ EOF
   return 0
 fi
 
-if ! command -v gh >/dev/null 2>&1; then
-  pprint "🔴 gh is required, but not found." "$fgRed" >&2
-  return 1
-fi
+_require gh || return 1
 
 local dir
 for dir in "${1:-.}"/*(/N); do

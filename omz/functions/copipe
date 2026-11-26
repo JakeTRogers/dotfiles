@@ -38,10 +38,7 @@ EOF
 fi
 
 # Dependency check
-if ! command -v copilot >/dev/null 2>&1; then
-  pprint "🔴 copipe: 'copilot' command not found. Install GitHub Copilot CLI first." "$fgRed" >&2
-  return 1
-fi
+_require copilot || return 1
 
 # Local variables
 local prompt_text=""

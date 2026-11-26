@@ -162,6 +162,11 @@ shows the plan and stops, `--yes` skips the prompt for scripted use.
 
 Run `bin/cheatsheet_audit` to confirm steps 2 and 4 are satisfied; pre-commit runs it for you.
 
+A function that needs a program Minimal mode doesn't install checks for it first with
+`_require <command>... || return 1`. For the first command missing, `_require` prints
+`🔴 <command> is required, but not found.` and returns 1, so the function fails with that
+message rather than a bare command-not-found.
+
 ## Function Conventions
 
 `bin/zsh_function_test` enforces these on every commit, and `zsh -n` cannot: it runs the

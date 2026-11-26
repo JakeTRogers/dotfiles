@@ -21,7 +21,7 @@ if _fp_wants_help "$@"; then
   return 0
 fi
 
-_check_podman || return 1
+_require podman || return 1
 
 local -a opt_u opt_s opt_w opt_c
 zparseopts -D -E u:=opt_u -user:=opt_u s:=opt_s -shell:=opt_s w:=opt_w -workdir:=opt_w c:=opt_c -cmd:=opt_c

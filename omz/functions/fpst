@@ -17,7 +17,7 @@ if _fp_wants_help "$@"; then
   return 0
 fi
 
-_check_podman || return 1
+_require podman || return 1
 
 local query="$1"
 

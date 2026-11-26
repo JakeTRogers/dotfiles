@@ -1,0 +1,23 @@
+#######################################
+# _require - Check that the commands a function needs are installed
+#
+# Minimal mode leaves out several programs that functions here depend on, so
+# each checks for them first rather than failing with a bare command-not-found.
+#
+# Arguments:
+#   The command names to check, in order
+# Outputs:
+#   "🔴 <command> is required, but not found." on stderr for the first one
+#   missing
+# Returns:
+#   0 if every command is found, 1 at the first one missing
+#######################################
+
+emulate -L zsh
+local cmd
+for cmd in "$@"; do
+  if ! command -v "$cmd" >/dev/null 2>&1; then
+    pprint "🔴 $cmd is required, but not found." "$fgRed" >&2
+    return 1
+  fi
+done

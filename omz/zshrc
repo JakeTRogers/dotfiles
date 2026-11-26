@@ -105,8 +105,9 @@ zstyle ':fzf-tab:complete:(gciaf|gcif|ghist):*' fzf-flags --no-sort
 zstyle ':completion:*:git_tag_semver:argument-3*' sort false
 zstyle ':fzf-tab:complete:git_tag_semver:argument-3' fzf-flags --no-sort
 
-# ssh-agent config
-zstyle :omz:plugins:ssh-agent agent-forwarding yes lifetime 12h
+# ssh-agent config. zstyle sets one style per call.
+zstyle :omz:plugins:ssh-agent agent-forwarding yes
+zstyle :omz:plugins:ssh-agent lifetime 12h
 # The plugin manages a forwarded agent or the keys in ~/.ssh. With neither, as
 # in a fresh container or a Dev container whose Host forwards no agent, it has
 # nothing to do and prints "ssh-agent plugin requires ~/.ssh directory" on

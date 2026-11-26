@@ -71,6 +71,8 @@ The installation process is handled by the `install.sh` script. It has 2 Install
 - `./install.sh full` - with the `full` argument, it runs Full mode, intended for Workstations (laptops, desktops and jump servers), adding:
   - neovim, tmux (tmux.conf, TPM, plugins), vim configuration (vimrc, pathogen, plugins)
 
+Changes to this repo reach a machine only when `install.sh` runs again. Each run records the commit it applied and its Install mode in `~/.local/state/dotfiles/installed`. While the Checkout is on its default branch, a new zsh prints one line with the command to run when the Checkout is behind origin, or has changed since `install.sh` last ran. It checks origin with a background fetch at most once a day.
+
 > [!NOTE]
 > You should fork this repo and adjust it to your needs before running the script.
 

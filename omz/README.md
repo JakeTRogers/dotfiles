@@ -51,6 +51,7 @@ as a shell function in `omz/*.zsh` or `fzf/*.zsh` instead of `functions/`.
 
 - **`zshrc`** - Main Zsh configuration file, symlinked to `~/.zshrc`
 - **`p10k.zsh`** - Powerlevel10k theme configuration, symlinked to `~/.p10k.zsh`
+- **`checkout_reminder.zsh`** - Sourced by `zshrc` at shell start. On the Checkout's default branch, it prints one line naming the command to run when the Checkout is behind origin or has changed since `install.sh` last ran. It never waits on the network: a background fetch runs at most once a day
 - **`variables.zsh`** - Shell variables, symlinked to `$ZSH_CUSTOM/variables.zsh`
 - **`aliases.zsh`** - Shell aliases, symlinked to `$ZSH_CUSTOM/aliases.zsh`
 

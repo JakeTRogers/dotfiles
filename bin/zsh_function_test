@@ -499,6 +499,130 @@ expect "zshrc opens vim over SSH even when nvim is installed" 'vim' "$(_zshrc_gi
 expect "zshrc opens vim when nvim is not installed" 'vim' "$(_zshrc_git_editor vim)"
 expect "zshrc opens vi when neither nvim nor vim is installed" 'vi' "$(_zshrc_git_editor none)"
 
+# checkout_reminder.zsh: zshrc sources it at shell start. The fixture is a home
+# directory whose ~/.zshrc links into a Checkout cloned from a local upstream,
+# with the Installer's record of that Checkout's commit and Install mode.
+sandbox="$(mktemp -d)" setup_log="$(mktemp)"
+local reminder="$repo/omz/checkout_reminder.zsh"
+local home="$sandbox/home"
+local checkout="$home/dotfiles" state_dir="$home/.local/state/dotfiles"
+(
+  export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null
+  set -e
+  git init -q --bare -b main "$sandbox/up.git"
+  git init -q -b main "$sandbox/seed"
+  cd "$sandbox/seed" || exit 1
+  git config user.email t@t; git config user.name t; git config commit.gpgsign false
+  mkdir omz; print zshrc > omz/zshrc; git add -A; git commit -qm C1
+  git push -q "$sandbox/up.git" main
+  git clone -q "$sandbox/up.git" "$checkout"
+  ln -s "$checkout/omz/zshrc" "$home/.zshrc"
+  mkdir -p "$state_dir"
+  : > "$state_dir/last-fetch"     # fetched just now, so nothing fetches by default
+) >"$setup_log" 2>&1 || {
+  fail "checkout_reminder fixture setup failed"
+  sed 's/^/       /' "$setup_log"
+}
+
+_record_install() {  # _record_install <commit> <mode>
+  print -rl -- "commit=$1" "mode=$2" > "$state_dir/installed"
+}
+_in_fixture_home() {  # _in_fixture_home <command...>: run it with the fixture home as HOME
+  HOME="$home" XDG_STATE_HOME="$home/.local/state" "$@"
+}
+_start_shell() {  # stdout and stderr of sourcing the reminder in the fixture home
+  _in_fixture_home _isolated 'source "$1"' "$reminder" 2>&1
+}
+
+# origin's default branch moved on, and an earlier fetch brought it in
+_record_install "$(git -C "$checkout" rev-parse HEAD)" minimal
+_fixture_git -C "$sandbox/seed" commit -q --allow-empty -m C2
+_fixture_git -C "$sandbox/seed" push -q "$sandbox/up.git" main
+_fixture_git -C "$checkout" fetch -q origin
+expect "checkout_reminder: a Checkout behind origin prints the pull-and-install command" \
+  'dotfiles: ~/dotfiles is behind origin/main. Update with: cd ~/dotfiles && git pull && ./install.sh' \
+  "$(_start_shell)"
+
+# pulled, but the Installer has not run since
+_fixture_git -C "$checkout" merge -q --ff-only origin/main
+expect "checkout_reminder: a Checkout moved since the Installer ran prints the install command" \
+  'dotfiles: ~/dotfiles has changed since install.sh last ran. Apply with: cd ~/dotfiles && ./install.sh' \
+  "$(_start_shell)"
+_record_install "$(git -C "$checkout" rev-parse HEAD~1)" full
+expect "checkout_reminder: the install command keeps Full mode" \
+  'dotfiles: ~/dotfiles has changed since install.sh last ran. Apply with: cd ~/dotfiles && ./install.sh full' \
+  "$(_start_shell)"
+
+# behind origin and moved since the Installer ran, but on a topic branch
+_fixture_git -C "$sandbox/seed" commit -q --allow-empty -m C3
+_fixture_git -C "$sandbox/seed" push -q "$sandbox/up.git" main
+_fixture_git -C "$checkout" fetch -q origin
+_fixture_git -C "$checkout" checkout -q -b topic
+expect "checkout_reminder: a Checkout on another branch prints nothing" '' "$(_start_shell)"
+_fixture_git -C "$checkout" checkout -q --detach
+expect "checkout_reminder: a detached Checkout prints nothing" '' "$(_start_shell)"
+_fixture_git -C "$checkout" checkout -q main
+
+# pulled and installed: nothing to say, and nothing left behind in the shell
+_fixture_git -C "$checkout" merge -q --ff-only origin/main
+_record_install "$(git -C "$checkout" rev-parse HEAD)" full
+expect "checkout_reminder: a current Checkout writes nothing to stdout or stderr" '' "$(_start_shell)"
+expect "checkout_reminder: leaves no globals behind" '' \
+  "$(_in_fixture_home _leak_diff 'source "${fdir:h}/checkout_reminder.zsh"')"
+
+# a machine whose Installer predates the record
+_fixture_git -C "$sandbox/seed" commit -q --allow-empty -m C4
+_fixture_git -C "$sandbox/seed" push -q "$sandbox/up.git" main
+_fixture_git -C "$checkout" pull -q --ff-only
+rm -f "$state_dir/installed"
+expect "checkout_reminder: prints nothing when the Installer recorded nothing" '' "$(_start_shell)"
+
+# a shell started from a git hook or editor, which inherits git's GIT_DIR
+_record_install "$(git -C "$checkout" rev-parse HEAD~1)" full
+expect "checkout_reminder: looks at the Checkout, not an inherited GIT_DIR" \
+  'dotfiles: ~/dotfiles has changed since install.sh last ran. Apply with: cd ~/dotfiles && ./install.sh full' \
+  "$(GIT_DIR="$sandbox/seed/.git" _start_shell)"
+_record_install "$(git -C "$checkout" rev-parse HEAD)" full
+
+# The fetch: a stub git whose fetch fails loudly after a slow network round trip
+local stub_dir="$sandbox/stub" fetch_log="$sandbox/fetches"
+mkdir -p "$stub_dir"; : > "$fetch_log"
+cat > "$stub_dir/git" <<STUB
+#!/bin/sh
+case " \$* " in
+  *" fetch "*)
+    echo started >> "$fetch_log"
+    echo "fatal: unable to access origin" >&2
+    sleep 2
+    echo finished >> "$fetch_log"
+    exit 128 ;;
+esac
+exec "${commands[git]}" "\$@"
+STUB
+chmod +x "$stub_dir/git"
+_await_fetches() {  # _await_fetches <n>: give n fetches up to 3s to start
+  local -i tries
+  for (( tries = 0; tries < 30; tries++ )); do
+    (( $(grep -c started "$fetch_log") >= $1 )) && return
+    sleep 0.1
+  done
+}
+
+touch -d '25 hours ago' "$state_dir/last-fetch"
+out="$(PATH="$stub_dir:$PATH" _start_shell)"
+expect "checkout_reminder: startup does not wait for the fetch" 0 "$(grep -c finished "$fetch_log")"
+expect "checkout_reminder: a failed fetch prints nothing" '' "$out"
+_await_fetches 1
+expect "checkout_reminder: fetches when the last fetch was a day ago" 1 "$(grep -c started "$fetch_log")"
+PATH="$stub_dir:$PATH" _start_shell >/dev/null
+sleep 0.5
+expect "checkout_reminder: fetches at most once a day" 1 "$(grep -c started "$fetch_log")"
+touch -d '25 hours ago' "$state_dir/last-fetch"
+PATH="$stub_dir:$PATH" _start_shell >/dev/null
+_await_fetches 2
+expect "checkout_reminder: fetches again the next day" 2 "$(grep -c started "$fetch_log")"
+rm -rf "$sandbox" "$setup_log"
+
 (( failures == unit_failures )) && pass "all unit checks passed"
 
 rm -rf -- "$scratch"

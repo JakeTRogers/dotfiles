@@ -41,7 +41,7 @@ repos:
         # Its unit checks also start a shell on zshrc, so zshrc triggers it too.
         language: system
         entry: bin/zsh_function_test
-        files: ^(omz/functions/[^/]+|omz/zshrc)$
+        files: ^(omz/functions/[^/]+|omz/zshrc|omz/checkout_reminder\.zsh)$
       - id: cheatsheet-audit
         name: cheatsheet drift check
         # `cheat` builds itself from function docstrings and alias comments, so

@@ -10,6 +10,10 @@ An installer and shared configuration that give every Linux machine and Dev cont
 The single entry point that sets up every Tool included in the chosen Install mode.
 _Avoid_: setup script, bootstrap
 
+**Checkout**:
+The copy of this repo on a machine, which the Installer runs from.
+_Avoid_: clone, dotfiles directory
+
 **Install mode**:
 How much the Installer sets up: Minimal mode or Full mode. It is chosen per machine, not inferred from where the Installer runs.
 _Avoid_: profile, environment, target
@@ -37,8 +41,16 @@ _Avoid_: setup, linking
 ### Environments
 
 **Dev container**:
-A development container that the VS Code Dev Containers extension builds and then runs the Installer in.
+A development container built by the VS Code Dev Containers extension, which runs the Installer in it only when its home directory is new.
 _Avoid_: devcontainer, container
+
+**Home volume**:
+Storage mounted over a Dev container's home directory so that it survives a Rebuild.
+_Avoid_: persistent home, home mount
+
+**Rebuild**:
+Replacing a Dev container with a new one built from its image, which discards everything outside its Home volume.
+_Avoid_: recreate, restart
 
 **Host**:
 The machine a Dev container runs on, whose Git identity is copied into the container.

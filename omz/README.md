@@ -112,8 +112,10 @@ Hand-written completions for the custom functions above: `_ccm`, `_cheat`, `_cop
 Dedicated commit completions for `gciaf`, `gcif`, `ghist`, and the third argument of
 `git_tag_semver` preserve `git log` order (newest first). This applies to native Zsh
 completion and fzf-tab, including when filtering: matches are not re-ranked by fuzzy
-score. `gciaf` and `gcif` exclude `fixup!` commits; `git_tag_semver` offers the `HEAD`
-shortcut first, followed by newest-first commit hashes.
+score. `gciaf` and `gcif` exclude `fixup!` commits, and when nothing is in scope, as on
+the default branch with `HEAD` at a release tag, they say so (`no commits after v1.6.2 to
+fix up`) and insert nothing. `git_tag_semver` offers the `HEAD` shortcut first, followed by
+newest-first commit hashes.
 
 The `ghist` and `git hist` displays, Oh My Zsh's Git log aliases, and the fzf commit
 picker (`CTRL-G CTRL-H`) already show newest-first history. The stash picker

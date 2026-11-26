@@ -280,6 +280,31 @@ base_name="$(TESTCWD="$sandbox/w" _isolated '_gcfuh_base -n')"
 base_hash="$(TESTCWD="$sandbox/w" _isolated '_gcfuh_base')"
 expect "_gcfuh_base uses the branch base on a feature branch" \
   "origin/main $expected_hash" "$base_name $base_hash"
+
+# gciaf and gcif complete the fixup scope through _commits_since_merge. No
+# message or description format style is set in this config, and without one
+# zsh's _message displays only a raw (-r) message, so the stub prints only those.
+local fixup_probe='
+  fpath=("${fdir:h}/completions" $fpath)
+  autoload -Uz _gciaf _gcif _commits_since_merge
+  _arguments() { _commits_since_merge }
+  _describe() {
+    [[ "$1" == -V ]] || { print -r -- "sorted completion"; return 1; }
+    print -rl -- "${(@P)argv[-1]}"
+  }
+  _message() { [[ "$1" == -r ]] && print -r -- "message: $2" }'
+local fixup_completion fixup_out expected_candidates
+_fixture_git() {  # git as in a fixture's setup: no ambient config, output to its log
+  GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null git "$@" >>"$setup_log" 2>&1
+}
+_fixture_git -C "$sandbox/w" commit -q --allow-empty -m "fixup! C3"
+expected_candidates="$(git -C "$sandbox/w" rev-parse --short HEAD~1):add blame.txt"$'\n'
+expected_candidates+="$(git -C "$sandbox/w" rev-parse --short HEAD~2):C3"
+for fixup_completion in _gciaf _gcif; do
+  fixup_out="$(TESTCWD="$sandbox/w" _isolated "$fixup_probe; $fixup_completion")"
+  expect "${fixup_completion#_} completes feature branch commits newest first, fixups excluded" \
+    "$expected_candidates" "$fixup_out"
+done
 rm -rf "$sandbox" "$setup_log"
 
 # The default branch itself: the merge base is HEAD, so the scope falls back to
@@ -366,6 +391,15 @@ base_name="$(TESTCWD="$sandbox/w" _isolated '_gcfuh_base -n')"
 base_hash="$(TESTCWD="$sandbox/w" _isolated '_gcfuh_base')"
 expect "_gcfuh_base stops at the newest tag on the default branch" \
   "v0.1.0 $(git -C "$sandbox/w" rev-parse HEAD~1)" "$base_name $base_hash"
+
+# with HEAD itself released the scope is empty, which must not look broken
+_fixture_git -C "$sandbox/w" tag v0.2.0 HEAD
+for fixup_completion in _gciaf _gcif; do
+  fixup_out="$(TESTCWD="$sandbox/w" _isolated "$fixup_probe; $fixup_completion")"
+  expect "${fixup_completion#_} explains an empty scope on a released HEAD" \
+    'message: no commits after v0.2.0 to fix up' "$fixup_out"
+done
+git -C "$sandbox/w" tag -d v0.2.0 >/dev/null
 git -C "$sandbox/w" branch -m topic
 base_name="$(TESTCWD="$sandbox/w" _isolated '_gcfuh_base -n')"
 base_hash="$(TESTCWD="$sandbox/w" _isolated '_gcfuh_base')"

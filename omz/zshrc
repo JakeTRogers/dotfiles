@@ -98,6 +98,9 @@ plugins=(
   zsh-autosuggestions
   zsh-syntax-highlighting
 )
+# The tmux plugin warns on every shell start when tmux is missing, and only
+# Full mode installs tmux.
+(( $+commands[tmux] )) || plugins=("${(@)plugins:#tmux}")
 
 # Keep dedicated commit-history completions newest-first when filtering.
 zstyle ':completion:*:(gciaf|gcif|ghist):*' sort false

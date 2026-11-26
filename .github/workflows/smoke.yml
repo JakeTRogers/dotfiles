@@ -57,3 +57,6 @@ jobs:
           command -v "$c" || { echo "missing: $c"; exit 1; }
         done
         TERM=xterm-256color zsh -ic 'echo SMOKE_OK' | grep -q SMOKE_OK
+        if command -v tmux; then echo "Minimal mode installed tmux"; exit 1; fi
+        zsh_stderr="$(TERM=xterm-256color zsh -ic exit 2>&1 > /dev/null)"
+        if printf '%s\n' "$zsh_stderr" | grep -i tmux; then echo "zsh startup warned about tmux"; exit 1; fi

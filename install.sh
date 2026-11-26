@@ -27,7 +27,6 @@ export elevate
 ###
 ./bin/dotfiles curl
 ./bin/dotfiles less
-./bin/dotfiles tmux
 ./bin/dotfiles git
 ./bin/dotfiles gpg
 ./bin/dotfiles vim
@@ -42,6 +41,7 @@ export elevate
 
 if [ "${INSTALL_MODE}" = 'full' ]; then
   ./bin/dotfiles neovim
+  ./bin/dotfiles tmux
 fi
 
 echo "🟢 dotfiles setup complete"

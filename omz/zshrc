@@ -107,6 +107,13 @@ zstyle ':fzf-tab:complete:git_tag_semver:argument-3' fzf-flags --no-sort
 
 # ssh-agent config
 zstyle :omz:plugins:ssh-agent agent-forwarding yes lifetime 12h
+# The plugin manages a forwarded agent or the keys in ~/.ssh. With neither, as
+# in a fresh container or a Dev container whose Host forwards no agent, it has
+# nothing to do and prints "ssh-agent plugin requires ~/.ssh directory" on
+# every start, so leave it out.
+if [[ -z "$SSH_AUTH_SOCK" && ! -d "$HOME/.ssh" ]]; then
+  plugins=("${(@)plugins:#ssh-agent}")
+fi
 
 
 source "$ZSH/oh-my-zsh.sh"

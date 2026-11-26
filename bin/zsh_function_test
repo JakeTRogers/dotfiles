@@ -19,7 +19,8 @@
 # pre-commit calls it — the per-function checks are limited to the files named,
 # because spawning a fresh shell per function to diff its namespace costs a few
 # seconds each and a full sweep is too slow for a commit hook. The unit checks
-# always run; they cover shared helpers, history completions and Git pickers.
+# always run; they cover shared helpers, history completions, Git pickers and
+# the editor zshrc chooses.
 
 emulate -L zsh
 setopt no_nomatch pipe_fail
@@ -472,6 +473,31 @@ for history_context in git-show:argument-1 git_tag_semver:argument-1; do
   ' "$history_context")"
   expect "$history_context keeps non-history completion behavior" 'unchanged' "$style_out"
 done
+
+# zshrc chooses the editor from what is installed: Minimal mode has no nvim,
+# and a Rebuild of a Dev container with a Home volume leaves only vi. Start an
+# interactive zsh on the real zshrc, in a scratch home whose oh-my-zsh is an
+# empty stub, with only stub editors on PATH, and ask Git which editor it opens.
+# Run outside the checkout and without global config, so neither can set one.
+local editor_home="$scratch/editor-home" editor_bin="$scratch/editor-bin" editor_stub
+mkdir -p "$editor_home/.oh-my-zsh" "$editor_bin"/{nvim-vim,vim,none}
+: > "$editor_home/.oh-my-zsh/oh-my-zsh.sh"
+ln -s "$repo/omz/zshrc" "$editor_home/.zshrc"
+for editor_stub in nvim-vim/nvim nvim-vim/vim vim/vim; do
+  print -r -- '#!/bin/sh' > "$editor_bin/$editor_stub"
+  chmod +x "$editor_bin/$editor_stub"
+done
+_zshrc_git_editor() {  # _zshrc_git_editor <editor-bin subdirectory> [NAME=value...]
+  ( cd -- "$scratch" &&
+    env -i HOME="$editor_home" USER=test TERM=xterm-256color PATH="$editor_bin/$1" \
+      GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null GIT_BIN="${commands[git]}" \
+      "${@:2}" "${commands[zsh]}" -d -i -c '"$GIT_BIN" var GIT_EDITOR' 2>/dev/null )
+}
+local ssh='SSH_CONNECTION=192.0.2.1 50000 192.0.2.2 22'
+expect "zshrc opens nvim when it is installed" 'nvim' "$(_zshrc_git_editor nvim-vim)"
+expect "zshrc opens vim over SSH even when nvim is installed" 'vim' "$(_zshrc_git_editor nvim-vim "$ssh")"
+expect "zshrc opens vim when nvim is not installed" 'vim' "$(_zshrc_git_editor vim)"
+expect "zshrc opens vi when neither nvim nor vim is installed" 'vi' "$(_zshrc_git_editor none)"
 
 (( failures == unit_failures )) && pass "all unit checks passed"
 

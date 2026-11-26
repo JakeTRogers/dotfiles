@@ -11,6 +11,7 @@ A Dev container whose home directory is a Home volume runs the Installer only on
 
 ## Consequences
 
-- Only new installs move. A machine switches when getRelease has no config file of its own and none of its recorded binaries still exists outside `~/.local/bin`. Workstations and Lab servers with live installs in `/usr/local/bin` keep them, installed with sudo, until getRelease can move recorded installs to a new install directory (JakeTRogers/getRelease#47).
+- Existing machines move too. Each Installer run moves every binary that getRelease recorded elsewhere, such as in `/usr/local/bin`, into `~/.local/bin` with `getRelease relocate` (getRelease 1.7.0 and later), removes the old copies with sudo, and then sets getRelease's `installDir` and `installCommand` to `~/.local/bin` without sudo. When relocate blocks a move, because a different file is already in `~/.local/bin` or a binary cannot be installed there, the Installer fails and both settings stay as they were, so the machine can still upgrade with sudo until a later run finishes the move.
+- Moved binaries are no longer on root's `PATH` or on other accounts' `PATH`, so `sudo <tool>` stops finding them.
 - Tools from the OS package manager, such as tmux and vim, are still lost on a Rebuild. The shell works without them instead of failing: the editor falls back from nvim to vim to vi, and the tmux plugin loads only when tmux is installed.
 - Configure step changes still reach a Dev container with a Home volume only when the Installer runs again. A reminder at shell start flags a Checkout that is behind origin, or that has moved since the Installer last ran.

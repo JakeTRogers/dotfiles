@@ -38,7 +38,7 @@ This repo manages my dotfiles and works nicely with the VS Code Dev Containers e
   - [fzf-git.sh](https://github.com/junegunn/fzf-git.sh) - Git integration for fzf
   - [fzf-tab](https://github.com/Aloxaf/fzf-tab) - fzf integration for zsh tab completion
 - [getRelease](https://github.com/JakeTRogers/getRelease) - A tool to download the latest release of a binary from GitHub
-  - getRelease, bat, fd, fzf and ripgrep install into `~/.local/bin` without sudo, so a Dev container whose home directory is a Home volume keeps them after a Rebuild. A machine whose getRelease already has a config file that sets another `installDir`, or binaries it installed outside `~/.local/bin`, keeps them where they are (see [ADR 0001](docs/adr/0001-getrelease-tools-install-in-home.md))
+  - getRelease, bat, fd, fzf and ripgrep install into `~/.local/bin` without sudo, so a Dev container whose home directory is a Home volume keeps them after a Rebuild. On a machine where getRelease installed binaries elsewhere, such as `/usr/local/bin`, each run moves them into `~/.local/bin` and removes the old copies with sudo, so `sudo <tool>` no longer finds them (see [ADR 0001](docs/adr/0001-getrelease-tools-install-in-home.md))
 - [ripgrep](https://github.com/BurntSushi/ripgrep) - A line-oriented search tool
 
 This repo also includes a [PowerShell profile for Linux](powershell/profile_linux.ps1), which is not installed by `install.sh`.

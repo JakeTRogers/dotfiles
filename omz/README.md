@@ -172,7 +172,7 @@ with paths to check only those.
   namespace, runs the function, and diffs.
 - **Start with `emulate -L zsh`.** Otherwise options set in the interactive shell
   (`nullglob`, `extendedglob`, `shwordsplit`, `ksharrays`) change how the function behaves.
-  The one-line passthroughs (`gdu`, `gdus`, `gciaf`, `gcif`, `gundo`, `czbnt`) are exempt.
+  The one-line passthroughs (`gdu`, `gdus`, `gciaf`, `gcif`, `gundo`) are exempt.
 - **`local MATCH MBEGIN MEND` before any `[[ =~ ]]`.** The match variables are written into
   the enclosing scope; declaring them local is the only way to contain them.
 - **Strip the empty element after `${(@f)$(...)}`.** Splitting empty output yields an array

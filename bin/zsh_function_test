@@ -170,10 +170,12 @@ done
 
 # emulate -L zsh keeps interactive options (nullglob, extendedglob, ksharrays,
 # shwordsplit) from changing how a function behaves. The one-line passthroughs
-# have no shell logic to protect and are exempt.
+# have no shell logic to protect and are exempt; keep this list in step with
+# the one in omz/README.md.
+local -a passthroughs=(gdu gdus gciaf gcif gundo)
 for fn in "${targets[@]}"; do
   name="${fn:t}"
-  [[ " ${never_invoke[*]} " == *" $name "* ]] && continue
+  [[ " ${passthroughs[*]} " == *" $name "* ]] && continue
   grep -q 'emulate -L zsh' -- "$fn" || fail "${name} has no 'emulate -L zsh'"
 done
 
@@ -226,6 +228,17 @@ expect "get_k8s_images splits image and tag" \
   'nginx|(none) nginx|1.2 registry.io:5000/team/app|(none) registry.io:5000/team/app|v3 ' \
   "$images"
 rm -rf "$stub_bin" "$fixture"
+
+# Minimal mode does not install gh or cz, so the functions that need them must
+# say so rather than fail with a bare command-not-found. An empty path leaves
+# every external program absent.
+local missing
+missing="$(_isolated 'path=(); git_pr_check; print -r -- "rc=$?"' 2>&1)"
+expect "git_pr_check reports a missing gh" \
+  $'🔴 gh is required, but not found.\nrc=1' "$missing"
+missing="$(_isolated 'path=(); czbnt; print -r -- "rc=$?"' 2>&1)"
+expect "czbnt reports a missing cz" \
+  $'🔴 cz is required, but not found.\nrc=1' "$missing"
 
 # git_find_branch_base: origin/HEAD wins, and the remote-tracking ref is
 # preferred over a stale local trunk

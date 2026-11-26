@@ -14,6 +14,11 @@ EOF
   return 0
 fi
 
+if ! command -v gh >/dev/null 2>&1; then
+  pprint "🔴 gh is required, but not found." "$fgRed" >&2
+  return 1
+fi
+
 local dir
 for dir in "${1:-.}"/*(/N); do
   # Ask git rather than looking for a .git directory: worktrees and submodules

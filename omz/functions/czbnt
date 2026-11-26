@@ -4,5 +4,14 @@
 #   Any arguments accepted by `cz bump` (e.g. --increment PATCH)
 # Outputs:
 #   Runs `cz bump`, then deletes the semver tag it left on HEAD
+# Returns:
+#   1 if cz is not installed, otherwise the status of `cz bump` or the tag removal
 #######################################
+
+emulate -L zsh
+if ! command -v cz >/dev/null 2>&1; then
+  pprint "🔴 cz is required, but not found." "$fgRed" >&2
+  return 1
+fi
+
 cz bump "$@" && git_delete_head_semver_tags

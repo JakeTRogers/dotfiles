@@ -1,6 +1,6 @@
 # dotfiles
 
-This repo manages my dotfiles and works nicely with the vscode dev container extension. It handles the installation and, where applicable, configuration of:
+This repo manages my dotfiles and works nicely with the VS Code Dev Containers extension. It handles the installation and, where applicable, configuration of:
 
 - [Curl](https://github.com/curl/curl)
 - [Git](https://git-scm.com/)
@@ -10,7 +10,7 @@ This repo manages my dotfiles and works nicely with the vscode dev container ext
 - [GnuPG](https://gnupg.org/)
   - [gpg-agent.conf](https://gnupg.org/documentation/manuals/gnupg/Invoking-GPG_002dAGENT.html)
 - [Less](https://github.com/gwsw/less)
-- [Vim](https://www.vim.org/) - configured in full install mode only; minimal mode installs the package without configuration
+- [Vim](https://www.vim.org/) - configured in Full mode only; Minimal mode installs the package without configuration
   - [.vimrc](https://github.com/vim/vim/blob/master/runtime/vimrc_example.vim)
   - [Pathogen Plugin Manager](https://github.com/tpope/vim-pathogen) - pathogen and all plugins are pinned to specific commits to reduce supply chain risk; plugins no longer listed in [vim/configure.sh](vim/configure.sh) are automatically removed
     - [ctrlp.vim](https://github.com/ctrlpvim/ctrlp.vim)
@@ -43,7 +43,7 @@ This repo manages my dotfiles and works nicely with the vscode dev container ext
 
 This repo also includes a [PowerShell profile for Linux](powershell/profile_linux.ps1), which is not installed by `install.sh`.
 
-## Full Installation Only
+## Full mode only
 
 The following are only installed when using `./install.sh full`:
 
@@ -60,7 +60,7 @@ The following are only installed when using `./install.sh full`:
     - [tmux-resurrect](https://github.com/tmux-plugins/tmux-resurrect)
     - [tmux-sensible](https://github.com/tmux-plugins/tmux-sensible)
     - [tmux-yank](https://github.com/tmux-plugins/tmux-yank)
-- Vim configuration - `.vimrc` symlink, pathogen, and plugins (minimal mode installs the vim package only)
+- Vim configuration - `.vimrc` symlink, pathogen, and plugins (Minimal mode installs the vim package only)
 
 ## Installation
 

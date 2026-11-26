@@ -2,7 +2,16 @@
 
 set -euo pipefail
 
-readonly install_path='/usr/local/bin/getRelease'
+source "${BASH_SOURCE[0]%/*}/switch_rule.sh"
+
+# a machine that switches gets getRelease in ~/.local/bin, installed without sudo
+# shellcheck disable=SC2154  # home_bin_dir is set by switch_rule.sh
+if machine_switches; then
+  readonly switches=true install_dir="${home_bin_dir}"
+else
+  readonly switches=false install_dir='/usr/local/bin'
+fi
+readonly install_path="${install_dir}/getRelease"
 readonly release_url_base='https://github.com/JakeTRogers/getRelease/releases/latest/download'
 
 cleanup() {
@@ -71,8 +80,13 @@ else
     exit 1
   fi
 
-  # shellcheck disable=SC2086,SC2154  # $elevate is exported by install.sh and must word-split
-  $elevate "${install_cmd}" -m 0755 -o root -g root "${binary_path}" "${install_path}"
+  if [[ "${switches}" == true ]]; then
+    mkdir -p "${install_dir}"
+    "${install_cmd}" -m 0755 "${binary_path}" "${install_path}"
+  else
+    # shellcheck disable=SC2086,SC2154  # $elevate is exported by install.sh and must word-split
+    $elevate "${install_cmd}" -m 0755 -o root -g root "${binary_path}" "${install_path}"
+  fi
 
   if [[ ! -x "${install_path}" ]]; then
     echo '🔴 getRelease install failed'

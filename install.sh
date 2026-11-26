@@ -22,6 +22,10 @@ else
 fi
 export elevate
 
+# getRelease and the Tools it installs live in ~/.local/bin, which may not be
+# on PATH until zsh runs, so add it for this run's post-install checks
+export PATH="${HOME}/.local/bin:${PATH}"
+
 ###
 # Install dependencies
 ###

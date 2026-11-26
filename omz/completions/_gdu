@@ -11,7 +11,7 @@ function _gdu() {
   files=(${(f)"$(git diff --name-only 2>/dev/null)"})
 
   if [[ ${#files[@]} -eq 0 ]]; then
-    _message 'no unstaged changes'
+    _message -r 'no unstaged changes'
     return 1
   fi
 

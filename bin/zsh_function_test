@@ -446,6 +446,28 @@ expect "git_tag_semver completes HEAD and newest-first hashes on the first call"
   $'HEAD\n'"$c3"$'\n'"$c2"$'\n'"$c1" "$completion_out"
 rm -rf "$sandbox" "$setup_log"
 
+# gdu, gdus and gcfuh say so when there is nothing to complete. As in the fixup
+# probe, the stub prints only raw (-r) messages: without a message format
+# style, those are the only ones zsh shows.
+local changes_probe='
+  fpath=("${fdir:h}/completions" $fpath)
+  autoload -Uz _gdu _gdus _gcfuh
+  _arguments() { _gcfuh_changed_files }
+  _message() { [[ "$1" == -r ]] && print -r -- "message: $2" }'
+sandbox="$(mktemp -d)" setup_log="$(mktemp)"
+_fixture_git init -q -b main "$sandbox/w"
+_fixture_git -C "$sandbox/w" -c user.name=t -c user.email=t@t commit -q --allow-empty -m C1
+local changes_completion changes_message
+for changes_completion changes_message in \
+    _gdu 'no unstaged changes' \
+    _gdus 'no staged changes' \
+    _gcfuh 'no staged or unstaged changes'; do
+  expect "${changes_completion#_} says so when there are no changes" \
+    "message: $changes_message" \
+    "$(TESTCWD="$sandbox/w" _isolated "$changes_probe; $changes_completion")"
+done
+rm -rf "$sandbox" "$setup_log"
+
 local history_styles history_context style_out
 history_styles="$(grep -E "^zstyle ':(completion|fzf-tab):" "$repo/omz/zshrc")"
 for history_context in gciaf:argument-1 gcif:argument-1 ghist:argument-1 git_tag_semver:argument-3; do

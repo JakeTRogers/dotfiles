@@ -1,3 +1,27 @@
+## v4.1.0 (2026-11-26)
+
+### Feature
+
+- **getRelease**: move existing installs into ~/.local/bin with relocate
+- **omz**: remind at shell start when the Checkout is stale
+- **getRelease**: install getRelease and its Tools into ~/.local/bin
+- **omz**: explain an empty fixup scope in gciaf and gcif completion
+
+### Fix
+
+- **omz**: show the empty-completion message for gdu, gdus and gcfuh
+- **omz**: fall back to vim, then vi, when nvim isn't installed
+- **omz**: report a missing gh or cz in git_pr_check and czbnt
+- **tmux**: install and configure tmux only in Full mode
+- **omz**: give ssh-agent identities their 12-hour lifetime
+- **omz**: load the ssh-agent plugin only when it has something to manage
+- **git**: let commits through the shared hooks without pre-commit
+- **omz**: put ~/bin on PATH in every zsh session
+
+### Refactor
+
+- **omz**: check required programs with a shared _require helper
+
 ## v4.0.0 (2026-11-25)
 
 ### BREAKING CHANGE

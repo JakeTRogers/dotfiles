@@ -131,7 +131,7 @@ Generated/vendored completions: `_bat`, `_fd`, `_rg` (shipped by the upstream to
 
 #### `scripts/`
 
-Standalone scripts for specific tasks:
+Standalone scripts for specific tasks, symlinked into `~/bin`, which `zshrc` puts on `PATH`:
 
 - **`merge_kube_configs.zsh`** - Merge multiple kubeconfig files
 

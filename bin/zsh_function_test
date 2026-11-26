@@ -27,6 +27,12 @@ setopt no_nomatch pipe_fail
 local repo
 repo="$(git rev-parse --show-toplevel 2>/dev/null)" || repo="$PWD"
 
+# A hook run in a linked worktree inherits GIT_DIR and GIT_INDEX_FILE, which
+# `git -C` does not override, so every fixture below would write its commits,
+# tags, branch renames and config into the repo being committed to. Only $repo
+# is needed from it, so drop git's repository-local variables now.
+unset ${(f)"$(git rev-parse --local-env-vars)"}
+
 local functions_dir="$repo/omz/functions"
 if [[ ! -d "$functions_dir" ]]; then
   print -u2 -- "🔴 zsh_function_test: not a dotfiles checkout: missing $functions_dir"
@@ -231,7 +237,7 @@ local sandbox="$(mktemp -d)" setup_log="$(mktemp)"
   set -e
   git init -q --bare -b main "$sandbox/up.git"
   git clone -q "$sandbox/up.git" "$sandbox/w"
-  cd "$sandbox/w"
+  cd "$sandbox/w" || exit 1
   git config user.email t@t; git config user.name t; git config commit.gpgsign false
   git checkout -q -b main
   print 1 > f; git add -A; git commit -qm C1
@@ -314,7 +320,7 @@ sandbox="$(mktemp -d)" setup_log="$(mktemp)"
   export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null
   set -e
   git init -q -b main "$sandbox/w"
-  cd "$sandbox/w"
+  cd "$sandbox/w" || exit 1
   git config user.email t@t; git config user.name t; git config commit.gpgsign false
   printf 'a1\na2\na3\n' > a.txt; git add -A; git commit -qm "feat: add a"
   printf 'b1\nb2\n' > b.txt;     git add -A; git commit -qm "feat: add b"

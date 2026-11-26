@@ -22,7 +22,9 @@ if [ -L "${HOME}/.gitconfig" ] &&
     rm "${HOME}/.gitconfig"
 fi
 
-# Containers get ~/.gitconfig from the host, so only warn on full installs.
+# A missing identity matters only on Workstations, the only machines that run
+# Full mode: Dev containers get the Host's ~/.gitconfig, and nothing is
+# committed from Lab servers. So warn only in Full mode.
 if [ "${INSTALL_MODE}" = 'full' ] && [ ! -f "${HOME}/.gitconfig" ]; then
     cat <<'EOF'
 🟡 ~/.gitconfig is missing. Commits are GPG signed, so create it with this machine's identity:

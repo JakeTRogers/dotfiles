@@ -17,11 +17,15 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - image: ubuntu:24.04        # dev container baseline — required
+          # Dev container; also covers apt for Debian-based Lab servers. Required.
+          - image: ubuntu:24.04
             experimental: false
-          - image: rockylinux:9        # Red Hat fleet proxy — advisory (getRelease API rate limits can flake)
+          # Lab server (RHEL 9). Advisory, because getRelease API rate limits can flake.
+          - image: rockylinux:9
             experimental: true
-          - image: opensuse/leap:15.6  # SUSE fleet proxy — advisory
+          # zypper coverage. No machine runs SUSE in Minimal mode; the Leap
+          # Workstation runs Full mode. Advisory.
+          - image: opensuse/leap:15.6
             experimental: true
     continue-on-error: ${{ matrix.experimental }}
     container: ${{ matrix.image }}

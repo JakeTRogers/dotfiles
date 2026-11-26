@@ -10,7 +10,8 @@ set -e
 DOTFILES_LOCATION="$(pwd)"
 export DOTFILES_LOCATION
 
-# INSTALL_MODE == 'full' for workstation, else minimal for devcontainers
+# INSTALL_MODE == 'full' for Full mode on Workstations, else Minimal mode on
+# Dev containers and Lab servers
 export INSTALL_MODE="${1}"
 
 # create elevate variable to use sudo if needed

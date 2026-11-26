@@ -65,9 +65,9 @@ The following are only installed when using `./install.sh full`:
 
 The installation process is handled by the `install.sh` script. It has 2 install modes:
 
-- `./install.sh` - without any arguments, it performs a minimal installation intended for devcontainers, including:
+- `./install.sh` - without any arguments, it performs a minimal installation intended for Dev containers and Lab servers, including:
   - curl, less, tmux, git, gpg, vim, zsh, oh-my-zsh, getRelease, bat, fd, fzf, ripgrep
-- `./install.sh full` - with the `full` argument, it will perform a full installation intended for a jump server/workstation, adding:
+- `./install.sh full` - with the `full` argument, it will perform a full installation intended for Workstations (laptops, desktops and jump servers), adding:
   - neovim, vim configuration (vimrc, pathogen, plugins)
 
 > [!NOTE]

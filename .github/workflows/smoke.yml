@@ -21,7 +21,7 @@ jobs:
       matrix:
         include:
           # Dev container; also covers apt for Debian-based Lab servers. Required.
-          - image: ubuntu:24.04
+          - image: ubuntu:26.04
             experimental: false
           # Lab server (RHEL 9). Advisory, because getRelease API rate limits can flake.
           - image: rockylinux:9

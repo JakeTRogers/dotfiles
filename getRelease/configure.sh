@@ -82,7 +82,7 @@ print_entry() {
       echo "🔴 getRelease moved ${package}: ${from} -> ${to}, but could not remove the old copy; remove it yourself: ${fields[hint]:-}"
       ;;
     missing)
-      echo "🟡 getRelease skipped ${package}: ${from:-the recorded path} is missing; 'getRelease history prune' removes its record"
+      echo "⚠️ getRelease skipped ${package}: ${from:-the recorded path} is missing; 'getRelease history prune' removes its record"
       ;;
     conflict)
       echo "🔴 getRelease skipped ${package}: conflict, ${to} already exists"

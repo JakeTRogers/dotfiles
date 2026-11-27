@@ -10,7 +10,7 @@ set -e
 git_xdg_dir="${XDG_CONFIG_HOME:-${HOME}/.config}/git"
 mkdir -p "${git_xdg_dir}"
 if [ -e "${git_xdg_dir}/config" ] && [ ! -L "${git_xdg_dir}/config" ]; then
-    echo "🟡 ${git_xdg_dir}/config exists and is not a symlink; leaving it alone"
+    echo "⚠️ ${git_xdg_dir}/config exists and is not a symlink; leaving it alone"
 else
     ln -sf "${DOTFILES_LOCATION}/git/gitconfig" "${git_xdg_dir}/config"
 fi
@@ -27,7 +27,7 @@ fi
 # committed from Lab servers. So warn only in Full mode.
 if [ "${INSTALL_MODE}" = 'full' ] && [ ! -f "${HOME}/.gitconfig" ]; then
     cat <<'EOF'
-🟡 ~/.gitconfig is missing. Commits are GPG signed, so create it with this machine's identity:
+⚠️ ~/.gitconfig is missing. Commits are GPG signed, so create it with this machine's identity:
    [user]
      name = Your Name
      email = you@example.com

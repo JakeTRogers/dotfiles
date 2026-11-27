@@ -23,7 +23,10 @@ function install_package() {
 }
 
 function install () {
-  if cmd_exists "${cmd}"; then
+  # a Tool with no Install step has only a Configure step
+  if [ -z "${cmd}" ]; then
+    return
+  elif cmd_exists "${cmd}"; then
     echo "🟢 ${package} is already installed"
   else
     echo "⚪ Installing ${package}"
@@ -52,6 +55,11 @@ if [[ "${1}" == "neovim" ]]; then
 elif [[ "${1}" == "ripgrep" ]]; then
   package="ripgrep"
   cmd="rg"
+# agents has no Install step: Claude Code and Copilot are installed outside
+# this repo
+elif [[ "${1}" == "agents" ]]; then
+  package="agents"
+  cmd=""
 else
   package="${1}"
   cmd="${1}"

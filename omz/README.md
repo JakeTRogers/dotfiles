@@ -85,6 +85,7 @@ Individual function files that are autoloaded on-demand. Each file contains a si
 - **`git_pr_check`** - Check subdirectories for GitHub pull requests
 - **`git_tag_semver`** - Semantically tag a git repository with major/minor/patch versions
 - **`gitrebaseall`** - ⚠ Rebase every local branch onto the default branch and force-push each (`--dry-run` supported)
+- **`gresign`** - Re-sign every commit after the branch base, as `grias` scopes it, or after a given ref, folding `fixup!`/`squash!`/`amend!` commits into their targets in the same pass (`--no-squash` signs only); refuses a range with merge commits
 - **`grias`** - `git rebase --interactive --autosquash` from the branch base (on the default branch: the newest tag, or the root commit)
 - **`gswt`** - Fuzzy-select a linked worktree and `cd` into it
 - **`gundo`** - Undo the last commit (soft reset, keeps changes staged)
@@ -108,7 +109,7 @@ Functions that take no arguments (`cdr`, `ff`, `gaf`, `gcof`, `gswt`, `gundo`) s
 `countdown` (an integer) and `rgf` (a free-form regex) have nothing worth completing and
 deliberately have no file.
 
-Hand-written completions for the custom functions above: `_ccm`, `_cheat`, `_copipe`, `_czbnt`, `_decode_cert`, `_decode_jwt`, `_fp` (dispatcher), `_fpe` (also covers `fpse`), `_fpl`, `_fp_simple` (covers `fpa`, `fpsa`, `fps`, `fprm`, `fprmi`, `fpst`, `fprestart`), `_gcfuh`, `_gciaf`, `_gcif`, `_gdu`, `_gdus`, `_get_k8s_images`, `_ghist`, `_git_delete_head_semver_tags`, `_git_find_branch_base`, `_git_pr_check`, `_git_tag_semver`, `_gitrebaseall`, `_grias`, `_install_it`, `_install_kubectl`, `_joincsv`, `_k8` (completes namespaces and contexts from the live cluster), `_log_cmd` (also covers `log_cmd_d`), `_pprint`, `_update_git_mirrors_in_subdirs`, `_update_omz_all`, plus the shared helpers `_commits_since_merge` and `_no_args`.
+Hand-written completions for the custom functions above: `_ccm`, `_cheat`, `_copipe`, `_czbnt`, `_decode_cert`, `_decode_jwt`, `_fp` (dispatcher), `_fpe` (also covers `fpse`), `_fpl`, `_fp_simple` (covers `fpa`, `fpsa`, `fps`, `fprm`, `fprmi`, `fpst`, `fprestart`), `_gcfuh`, `_gciaf`, `_gcif`, `_gdu`, `_gdus`, `_get_k8s_images`, `_ghist`, `_git_delete_head_semver_tags`, `_git_find_branch_base`, `_git_pr_check`, `_git_tag_semver`, `_gitrebaseall`, `_gresign`, `_grias`, `_install_it`, `_install_kubectl`, `_joincsv`, `_k8` (completes namespaces and contexts from the live cluster), `_log_cmd` (also covers `log_cmd_d`), `_pprint`, `_update_git_mirrors_in_subdirs`, `_update_omz_all`, plus the shared helpers `_commits_since_merge` and `_no_args`.
 
 Dedicated commit completions for `gciaf`, `gcif`, `ghist`, and the third argument of
 `git_tag_semver` preserve `git log` order (newest first). This applies to native Zsh

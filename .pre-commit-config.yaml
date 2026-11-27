@@ -26,6 +26,14 @@ repos:
         # hooks are pre-commit-generated shims
         exclude_types: [ zsh ]
         exclude: ^(omz/(install|configure)\.sh|fzf/fzf-git\.sh|git/git-template/hooks/.*)$
+  - repo: https://github.com/rhysd/actionlint
+    rev: 914e7df21a07ef503a81201c76d2b11c789d3fca  # frozen: v1.7.12
+    hooks:
+      - id: actionlint
+        # Checks expressions, contexts, permissions and action inputs. `run:`
+        # scripts get shellcheck only if it is on PATH (the hook above keeps
+        # its copy private): in CI, ubuntu-latest ships it; locally, only if
+        # you installed it. Otherwise they are skipped silently.
   - repo: local
     hooks:
       - id: zsh-syntax

@@ -15,6 +15,36 @@ else
   "${zsh_custom}/themes/powerlevel10k/gitstatus/install"
 fi
 
+# patched gitstatusd: powerlevel10k's own gitstatusd cannot read repos with
+# relative worktrees. zshrc points powerlevel10k at this copy when its
+# version matches the gitstatus powerlevel10k bundles. See omz/gitstatusd/README.md.
+source "${DOTFILES_LOCATION}/omz/gitstatusd/gitstatusd.env"
+# empty when powerlevel10k has no build.info, which the version check below reports
+p10k_gitstatus_version="$( (. "${zsh_custom}/themes/powerlevel10k/gitstatus/build.info" && print -r -- "${gitstatus_version:-}") 2> /dev/null || true)"
+gitstatusd_version="${${release_tag#gitstatusd-}%-*}"
+gitstatusd_path="${HOME}/.local/share/gitstatusd/${gitstatusd_version}/gitstatusd"
+if [[ -z "${release_tag}" ]]; then
+  echo "⚠️ no patched gitstatusd release is pinned, so the prompt uses powerlevel10k's own gitstatusd"
+elif [[ "$(uname -m)" != x86_64 ]]; then
+  echo "⚠️ patched gitstatusd is built for x86_64 only, so the prompt uses powerlevel10k's own gitstatusd"
+elif [[ "${gitstatusd_version}" != "${p10k_gitstatus_version}" ]]; then
+  echo "⚠️ patched gitstatusd ${release_tag} does not match powerlevel10k's gitstatus ${p10k_gitstatus_version:-(unknown)}, so the prompt uses powerlevel10k's own gitstatusd"
+elif [[ -x "${gitstatusd_path}" ]] && echo "${release_sha256}  ${gitstatusd_path}" | sha256sum --check --status 2> /dev/null; then
+  echo "🟢 patched gitstatusd ${release_tag} is already installed"
+else
+  echo "Installing patched gitstatusd ${release_tag}"
+  gitstatusd_download="$(mktemp)"
+  if curl -fsSL -o "${gitstatusd_download}" \
+      "https://github.com/${release_repo}/releases/download/${release_tag}/gitstatusd-linux-x86_64" &&
+    echo "${release_sha256}  ${gitstatusd_download}" | sha256sum --check --status 2> /dev/null; then
+    mkdir -p "${gitstatusd_path:h}"
+    install -m 755 "${gitstatusd_download}" "${gitstatusd_path}"
+  else
+    echo "⚠️ patched gitstatusd ${release_tag} failed to download or verify, so the prompt uses powerlevel10k's own gitstatusd"
+  fi
+  rm -f "${gitstatusd_download}"
+fi
+
 # zsh syntax highlighting
 if [ -d "${zsh_custom}/plugins/zsh-syntax-highlighting" ]; then
   echo "Updating zsh syntax highlighting"

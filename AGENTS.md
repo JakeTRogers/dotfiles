@@ -9,7 +9,7 @@
 ## Checks
 
 - `pre-commit run --all-files` runs every check, the same as the Lint workflow. It needs `zsh` installed.
-- Run the Installer only in a throwaway container or VM, e.g. `podman run --rm -it -v "$PWD:/dotfiles:Z" -w /dotfiles ubuntu:24.04`, prepared with the bootstrap step in `.github/workflows/smoke.yml`. On a Workstation it runs sudo and rewrites config in the home directory.
+- Run the Installer only in a throwaway container or VM, e.g. `podman run --rm -it -v "$PWD:/dotfiles:Z" -w /dotfiles ubuntu:24.04`, prepared with the bootstrap step in `.github/workflows/smoke.yml`. On a Workstation it runs sudo and rewrites config in the home directory. After `./install.sh`, verify the install with `sh bin/smoke_verify`, the same checks CI runs.
 
 ## Commits
 

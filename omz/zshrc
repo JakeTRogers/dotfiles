@@ -123,6 +123,24 @@ if [[ -z "$SSH_AUTH_SOCK" && ! -d "$HOME/.ssh" ]]; then
   plugins=("${(@)plugins:#ssh-agent}")
 fi
 
+# Use the patched gitstatusd, which reads repos with relative worktrees, when
+# omz/configure.sh installed one for the gitstatus version powerlevel10k
+# bundles: powerlevel10k refuses a gitstatusd of any other version. The read
+# loop keeps this free of subprocesses. See omz/gitstatusd/README.md.
+() {
+  local build_info="${ZSH_CUSTOM:-$ZSH/custom}/themes/powerlevel10k/gitstatus/build.info"
+  [[ -z "$GITSTATUS_DAEMON" && -r "$build_info" ]] || return 0
+  local line version=
+  while IFS= read -r line; do
+    if [[ "$line" == gitstatus_version=* ]]; then
+      version="${(Q)${line#gitstatus_version=}}"
+      break
+    fi
+  done < "$build_info"
+  local daemon="$HOME/.local/share/gitstatusd/$version/gitstatusd"
+  [[ -n "$version" && -x "$daemon" ]] && export GITSTATUS_DAEMON="$daemon"
+  return 0
+}
 
 source "$ZSH/oh-my-zsh.sh"
 

@@ -1,3 +1,9 @@
+## v4.2.0 (2026-11-27)
+
+### Feature
+
+- **omz**: use a patched gitstatusd that reads repos with relative worktrees
+
 ## v4.1.0 (2026-11-26)
 
 ### Feature

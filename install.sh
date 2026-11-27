@@ -41,6 +41,8 @@ export PATH="${HOME}/.local/bin:${PATH}"
 ./bin/dotfiles fd
 ./bin/dotfiles fzf
 ./bin/dotfiles ripgrep
+./bin/dotfiles jq
+./bin/dotfiles agents
 
 
 if [ "${INSTALL_MODE}" = 'full' ]; then

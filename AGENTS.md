@@ -9,7 +9,9 @@
 ## Checks
 
 - `pre-commit run --all-files` runs every check, the same as the Lint workflow. It needs `zsh` installed.
-- Run the Installer only in a throwaway container or VM, e.g. `podman run --rm -it -v "$PWD:/dotfiles:Z" -w /dotfiles ubuntu:24.04`, prepared with the bootstrap step in `.github/workflows/smoke.yml`. On a Workstation it runs sudo and rewrites config in the home directory. After `./install.sh`, verify the install with `sh bin/smoke_verify`, the same checks CI runs.
+- Run the Installer only in a throwaway container or VM, e.g. `podman run --rm -it -v "$PWD:/dotfiles:Z" -w /dotfiles ubuntu:26.04`, prepared with the bootstrap step in `.github/workflows/smoke.yml`. On a Workstation it runs sudo and rewrites config in the home directory. After `./install.sh`, verify the install with `sh bin/smoke_verify`, the same checks CI runs. To check one Tool's Configure step, run it with `HOME` set to a temp directory instead.
+- The Workstation enforces SELinux: give every podman bind mount `:Z`, and when a script runs the container itself, wrap podman with `--security-opt label=disable`. Mount a fresh `git clone` instead of the Checkout when the image's git is older than 2.48, which rejects the Checkout's `extensions.relativeWorktrees`.
+- Git hooks inherit `GIT_DIR`, `GIT_INDEX_FILE` and similar variables, so a test that a hook runs must `unset $(git rev-parse --local-env-vars)` before running git in a temp repo, or it acts on this repo instead.
 
 ## Commits
 

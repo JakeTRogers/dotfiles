@@ -1,0 +1,94 @@
+#######################################
+# gresign - re-sign every commit since the branch base, folding fixups into their targets
+# Arguments:
+#   --no-squash  Sign only: keep fixup!, squash! and amend! commits as they are,
+#                for when unfolded fixups are pushed on purpose for reviewers
+#   Commit ref to sign after (optional, defaults to the gcfuh scope boundary,
+#   the same one grias uses: the branch base on a feature branch, the newest
+#   tag on the default branch, or the root commit before the first tag)
+# Outputs:
+#   Rewrites each commit after the boundary with your signature, keeping its
+#   tree and message (uncommitted changes are autostashed around it). Unless
+#   --no-squash is given, it first folds each fixup! commit into its target as
+#   an autosquash rebase does: fixup! keeps the target's message, amend!
+#   replaces it, and squash! combines the two, which opens your editor even
+#   though the rebase is not interactive. A fixup that conflicts with its
+#   target stops the rebase for you to resolve. Refuses a range that contains
+#   merge commits, which the rebase would flatten.
+#######################################
+
+emulate -L zsh
+local target base range old_head remote push branch
+local -a rebase_args
+integer squash=1 merges commits signed folded unpushed
+
+if [[ $1 == --no-squash ]]; then
+  squash=0
+  shift
+fi
+target=$1
+
+# Rebase onto the boundary commit, not the ref that names it: on a feature
+# branch that ref is the default branch, and once it has moved on, a rebase
+# onto it would replay the commits onto its new tip and change their trees.
+# The ref name is kept for the messages.
+if [[ -n $target ]]; then
+  # Validates the ref: a commit HEAD descends from
+  base=$(_gcfuh_base "$target") || return 1
+else
+  base=$(_gcfuh_base) || return 1
+  target=$(_gcfuh_base -n) || return 1
+fi
+range=${base:+$base..}HEAD
+
+merges=$(git rev-list --merges --count "$range") || return 1
+if (( merges )); then
+  pprint "🔴 gresign: $merges merge commit(s) after ${target:-the root}; a rebase would flatten them" "$fgRed" >&2
+  return 1
+fi
+
+commits=$(git rev-list --count "$range") || return 1
+if (( commits == 0 )); then
+  pprint "🔵 gresign: no commits after ${target:-the root} to sign" "$fgBlue"
+  return 0
+fi
+
+old_head=$(git rev-parse HEAD)
+# --force-rebase rewrites the commits even when the base has not moved, and
+# --gpg-sign signs them whatever commit.gpgsign says. --autosquash is passed
+# explicitly: rebase.autoSquash only applies to interactive rebases.
+rebase_args=(--force-rebase --gpg-sign --autostash)
+(( squash )) && rebase_args+=(--autosquash)
+if [[ -n $base ]]; then
+  rebase_args+=("$base")
+else
+  rebase_args+=(--root)
+fi
+if ! git rebase "${rebase_args[@]}"; then
+  if [[ -d $(git rev-parse --git-path rebase-merge) ]]; then
+    pprint "🔴 gresign: the rebase stopped, perhaps on a fixup that conflicts with its target; resolve it and run git rebase --continue, or git rebase --abort" "$fgRed" >&2
+  fi
+  return 1
+fi
+
+# Folded fixups leave fewer commits than the rebase started with
+signed=$(git rev-list --count "$range") || return 1
+folded=$(( commits - signed ))
+pprint "✅ Signed $signed commit$( (( signed == 1 )) || print -n s) after ${target:-the root}$( (( folded )) && print -n " ($folded fixup$( (( folded == 1 )) || print -n s) folded)")" "$fgGreen"
+
+# Any of the old commits on the remote branch means the remote still has them.
+# That is the upstream, or the same-named branch on origin when none is set.
+push='git push --force-with-lease'
+if ! remote=$(git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null); then
+  remote=''
+  if branch=$(git symbolic-ref --quiet --short HEAD) &&
+    git rev-parse --verify --quiet "refs/remotes/origin/$branch" >/dev/null; then
+    remote=origin/$branch push+=" origin $branch"
+  fi
+fi
+if [[ -n $remote ]]; then
+  unpushed=$(git rev-list --count "$remote..$old_head")
+  if (( unpushed < commits )); then
+    pprint "⚠️ $remote has the unsigned commits: force-push with $push" "$fgYellow"
+  fi
+fi

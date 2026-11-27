@@ -1,3 +1,16 @@
+## v4.3.0 (2026-11-27)
+
+### Feature
+
+- **agents**: turn off Claude Code's commit and PR attribution
+- **agents**: create Claude Code worktrees under .worktrees/ from the current HEAD
+- **agents**: give Claude Code and Copilot the same global instructions
+- **omz**: add gresign to re-sign a branch's unsigned commits
+
+### Fix
+
+- **git**: ignore Claude Code's default .claude/worktrees/ folder globally
+
 ## v4.2.0 (2026-11-27)
 
 ### Feature

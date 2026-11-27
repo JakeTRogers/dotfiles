@@ -60,17 +60,6 @@ jobs:
         GETRELEASE_TOKEN: ${{ github.token }}
       run: ./install.sh
     - name: Verify install results
-      run: |
-        test -L "$HOME/.zshrc"
-        test -d "$HOME/.oh-my-zsh"
-        command -v zsh || { echo "missing: zsh"; exit 1; }
-        # getRelease and the Tools it installs belong in ~/.local/bin
-        for c in getRelease bat fd fzf rg; do
-          test -x "$HOME/.local/bin/$c" || { echo "missing from ~/.local/bin: $c"; exit 1; }
-        done
-        TERM=xterm-256color zsh -ic 'echo SMOKE_OK' | grep -q SMOKE_OK
-        if command -v tmux; then echo "Minimal mode installed tmux"; exit 1; fi
-        zsh_stderr="$(TERM=xterm-256color zsh -ic exit 2>&1 > /dev/null)"
-        if printf '%s\n' "$zsh_stderr" | grep -i tmux; then echo "zsh startup warned about tmux"; exit 1; fi
-        # Minimal mode has no nvim, so Git must open vim rather than a missing editor
-        TERM=xterm-256color zsh -ic 'echo "GIT_EDITOR=$(git var GIT_EDITOR)"' | grep -x 'GIT_EDITOR=vim'
+      # The checks live in a #!/bin/sh script so the shellcheck hook catches
+      # bashisms; the container runs steps under sh, which is dash on Ubuntu
+      run: sh bin/smoke_verify

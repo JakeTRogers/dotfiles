@@ -2,8 +2,8 @@
 
 ## Worktrees
 
-- Create each worktree at `<repo root>/.worktrees/<name>`, on a new branch from the current branch. Create it yourself with `git worktree add`, and pass its absolute path to any subagent that works in it.
-- A worktree branch is local. It lands on the branch the work started from, and is then gone: once the work has landed, remove the worktree and delete its branch.
+- Create each worktree at `<repo root>/.worktrees/<name>`, on a new branch from the current branch. Claude Code's worktree hooks do this for `EnterWorktree` and `isolation: "worktree"`; otherwise create it with `git worktree add`. Pass its absolute path to any subagent that works in it.
+- A worktree branch is local: it is never pushed and never gets a pull request. It lands on the branch the work started from, and is then gone: once the work has landed, remove the worktree and delete its branch.
 
 ## Commits and history
 

@@ -41,8 +41,10 @@ This repo manages my dotfiles and works nicely with the VS Code Dev Containers e
 - [getRelease](https://github.com/JakeTRogers/getRelease) - A tool to download the latest release of a binary from GitHub
   - getRelease, bat, fd, fzf and ripgrep install into `~/.local/bin` without sudo, so a Dev container whose home directory is a Home volume keeps them after a Rebuild. On a machine where getRelease installed binaries elsewhere, such as `/usr/local/bin`, each run moves them into `~/.local/bin` and removes the old copies with sudo, so `sudo <tool>` no longer finds them (see [ADR 0001](docs/adr/0001-getrelease-tools-install-in-home.md))
 - [ripgrep](https://github.com/BurntSushi/ripgrep) - A line-oriented search tool
+- [jq](https://jqlang.org/) - A command-line JSON processor, which the agents Tool needs
 - agents - one set of global instructions for coding agents, in [agents/instructions.md](agents/instructions.md)
-  - Linked to [Claude Code](https://code.claude.com/docs/en/memory)'s `~/.claude/CLAUDE.md` and to [Copilot](https://docs.github.com/en/copilot/how-tos/copilot-cli/add-custom-instructions)'s `~/.copilot/copilot-instructions.md`, which the Copilot CLI and VS Code both read. An existing file at either path that is not a symlink is left alone, with a warning
+  - Linked to [Claude Code](https://code.claude.com/docs/en/memory)'s `~/.claude/CLAUDE.md` and to [Copilot](https://docs.github.com/en/copilot/how-tos/copilot-cli/add-custom-instructions)'s `~/.copilot/copilot-instructions.md`, which the Copilot CLI and VS Code both read. A link left by an earlier run, even from a Checkout that has since moved, is re-pointed; anything else already at either path, another symlink included, is left alone, with a warning
+  - [Claude Code worktree hooks](agents/hooks/), merged into `~/.claude/settings.json` with every other key kept, so each worktree Claude Code creates (`claude --worktree`, the `EnterWorktree` tool, subagents with `isolation: worktree`) lands at `<repo root>/.worktrees/<name>` on a new branch `<name>` from the current HEAD, tracking the branch it started from. Removing one keeps it, with its branch, while it has uncommitted or untracked changes, and deletes its branch only once that branch is merged into the branch it started from; otherwise the branch is kept and named
 
 This repo also includes a [PowerShell profile for Linux](powershell/profile_linux.ps1), which is not installed by `install.sh`.
 
@@ -70,7 +72,7 @@ The following are only installed when using `./install.sh full`:
 The installation process is handled by the `install.sh` script. It has 2 Install modes:
 
 - `./install.sh` - without any arguments, it runs Minimal mode, intended for Dev containers and Lab servers, including:
-  - curl, less, git, gpg, vim, zsh, oh-my-zsh, getRelease, bat, fd, fzf, ripgrep, agents
+  - curl, less, git, gpg, vim, zsh, oh-my-zsh, getRelease, bat, fd, fzf, ripgrep, jq, agents
 - `./install.sh full` - with the `full` argument, it runs Full mode, intended for Workstations (laptops, desktops and jump servers), adding:
   - neovim, tmux (tmux.conf, TPM, plugins), vim configuration (vimrc, pathogen, plugins)
 

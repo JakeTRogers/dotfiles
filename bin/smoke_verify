@@ -16,3 +16,7 @@ zsh_stderr="$(TERM=xterm-256color zsh -ic exit 2>&1 > /dev/null)"
 if printf '%s\n' "$zsh_stderr" | grep -i tmux; then echo "zsh startup warned about tmux"; exit 1; fi
 # Minimal mode has no nvim, so Git must open vim rather than a missing editor
 TERM=xterm-256color zsh -ic 'echo "GIT_EDITOR=$(git var GIT_EDITOR)"' | grep -x 'GIT_EDITOR=vim'
+# agents links one instruction file to each agent's user-level instruction file
+for f in "$HOME/.claude/CLAUDE.md" "$HOME/.copilot/copilot-instructions.md"; do
+  if [ ! -L "$f" ] || [ ! -f "$f" ]; then echo "missing agents instructions link: $f"; exit 1; fi
+done

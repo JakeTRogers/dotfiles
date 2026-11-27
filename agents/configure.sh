@@ -46,11 +46,14 @@ done
 # git logic; with a create hook, worktree.baseRef has no effect:
 #   https://code.claude.com/docs/en/worktrees
 #   https://code.claude.com/docs/en/hooks#worktreecreate
+# Also turn off the attribution Claude Code adds to commit messages and PR
+# descriptions:
+#   https://code.claude.com/docs/en/settings
 # Claude Code writes to its user settings too, so merge into the file and keep
 # every other key, rather than link it.
 settings="${HOME}/.claude/settings.json"
 if ! command -v jq > /dev/null; then
-  echo "⚠️ jq is missing; not adding the worktree hooks to ${settings}"
+  echo "⚠️ jq is missing; not adding the worktree hooks or attribution settings to ${settings}"
   exit 0
 fi
 if [ ! -s "${settings}" ]; then
@@ -77,6 +80,7 @@ merged="$(jq \
   ] + [{hooks: [{type: "command", command: ($script | @sh)}]}];
   ours("WorktreeCreate"; $create)
   | ours("WorktreeRemove"; $remove)
+  | .attribution = {commit: "", pr: ""}
   ' <<< "${current}")"
 if [ "${merged}" != "${current}" ]; then
   # Write in place so a settings file that is itself a link stays one

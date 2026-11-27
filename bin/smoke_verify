@@ -20,7 +20,7 @@ TERM=xterm-256color zsh -ic 'echo "GIT_EDITOR=$(git var GIT_EDITOR)"' | grep -x 
 for f in "$HOME/.claude/CLAUDE.md" "$HOME/.copilot/copilot-instructions.md"; do
   if [ ! -L "$f" ] || [ ! -f "$f" ]; then echo "missing agents instructions link: $f"; exit 1; fi
 done
-# agents merges Claude Code's worktree hooks into its user settings
+# agents merges Claude Code's worktree hooks and attribution into its user settings
 command -v jq || { echo "missing: jq"; exit 1; }
-jq -e '(.hooks.WorktreeCreate | length) == 1 and (.hooks.WorktreeRemove | length) == 1' \
-  "$HOME/.claude/settings.json" || { echo "worktree hooks missing from ~/.claude/settings.json"; exit 1; }
+jq -e '(.hooks.WorktreeCreate | length) == 1 and (.hooks.WorktreeRemove | length) == 1 and .attribution == {commit: "", pr: ""}' \
+  "$HOME/.claude/settings.json" || { echo "worktree hooks or attribution missing from ~/.claude/settings.json"; exit 1; }

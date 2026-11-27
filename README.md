@@ -45,6 +45,7 @@ This repo manages my dotfiles and works nicely with the VS Code Dev Containers e
 - agents - one set of global instructions for coding agents, in [agents/instructions.md](agents/instructions.md)
   - Linked to [Claude Code](https://code.claude.com/docs/en/memory)'s `~/.claude/CLAUDE.md` and to [Copilot](https://docs.github.com/en/copilot/how-tos/copilot-cli/add-custom-instructions)'s `~/.copilot/copilot-instructions.md`, which the Copilot CLI and VS Code both read. A link left by an earlier run, even from a Checkout that has since moved, is re-pointed; anything else already at either path, another symlink included, is left alone, with a warning
   - [Claude Code worktree hooks](agents/hooks/), merged into `~/.claude/settings.json` with every other key kept, so each worktree Claude Code creates (`claude --worktree`, the `EnterWorktree` tool, subagents with `isolation: worktree`) lands at `<repo root>/.worktrees/<name>` on a new branch `<name>` from the current HEAD, tracking the branch it started from. Removing one keeps it, with its branch, while it has uncommitted or untracked changes, and deletes its branch only once that branch is merged into the branch it started from; otherwise the branch is kept and named
+  - Commit and pull request attribution turned off in the same `~/.claude/settings.json` (`attribution.commit` and `attribution.pr` set to empty strings), so Claude Code adds no trailer or footer
 
 This repo also includes a [PowerShell profile for Linux](powershell/profile_linux.ps1), which is not installed by `install.sh`.
 

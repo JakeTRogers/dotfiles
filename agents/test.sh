@@ -269,11 +269,13 @@ cat >"${work}/home/.claude/settings.json" <<'EOF'
       {"hooks": [{"type": "command", "command": "'/older/checkout/agents/hooks/worktree_remove.sh'"}, {"type": "command", "command": "echo cleanup"}]}
     ]
   },
+  "attribution": {"commit": "Co-Authored-By: Claude"},
   "worktree": {"baseRef": "fresh", "symlinkDirectories": ["node_modules"]}
 }
 EOF
 # The expected result, written out by hand: other keys kept, including
-# worktree.baseRef, and a stale entry from an old Checkout path replaced
+# worktree.baseRef, a stale entry from an old Checkout path replaced, and
+# commit and PR attribution turned off
 create_cmd="'${here}/hooks/worktree_create.sh'"
 remove_cmd="'${here}/hooks/worktree_remove.sh'"
 expected="$(jq -S . <<EOF
@@ -288,6 +290,7 @@ expected="$(jq -S . <<EOF
       {"hooks": [{"type": "command", "command": "${remove_cmd}"}]}
     ]
   },
+  "attribution": {"commit": "", "pr": ""},
   "worktree": {"baseRef": "fresh", "symlinkDirectories": ["node_modules"]}
 }
 EOF
@@ -326,7 +329,7 @@ fi
 # No settings file yet: the Configure step creates one
 rm "${work}/home/.claude/settings.json"
 if configure >"${work}/out" 2>&1 &&
-  [ "$(jq -c '[.worktree, (.hooks | keys)]' "${work}/home/.claude/settings.json")" = '[null,["WorktreeCreate","WorktreeRemove"]]' ]; then
+  [ "$(jq -c '[.worktree, (.hooks | keys), .attribution]' "${work}/home/.claude/settings.json")" = '[null,["WorktreeCreate","WorktreeRemove"],{"commit":"","pr":""}]' ]; then
   pass "Configure step creates a missing settings file"
 else
   fail "Configure step did not create the settings file: $(cat "${work}/out")"

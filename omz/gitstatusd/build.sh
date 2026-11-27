@@ -74,6 +74,14 @@ tarball="${work}/gitstatus/deps/libgit2-${libgit2_version}.tar.gz"
 tar -czf "${tarball}" --exclude=.git -C "${work}" "libgit2-${libgit2_version}"
 sed -i "s/^libgit2_sha256=.*/libgit2_sha256=\"$(sha256sum "${tarball}" | cut -d' ' -f1)\"/" "${build_info}"
 
+# the Makefile links objects in `find` order, which is the filesystem's
+# directory order, so the same pins gave different binaries on different
+# machines; sort the sources so the build is reproducible
+# shellcheck disable=SC2016  # $(...) here is Make syntax, not shell
+sed -i 's|^SRCS := $(shell find src -name "\*.cc")$|SRCS := $(sort $(shell find src -name "*.cc"))|' "${work}/gitstatus/Makefile"
+# shellcheck disable=SC2016  # Make syntax, as above
+grep -q '^SRCS := $(sort ' "${work}/gitstatus/Makefile" || die 'could not sort SRCS in the gitstatus Makefile'
+
 echo "Building gitstatusd ${gitstatus_version} with ${engine##*/}"
 # :Z relabels the mount for SELinux hosts such as Fedora; elsewhere it is a no-op
 "${engine}" run --rm -v "${work}/gitstatus:/out:Z" -w /out "${build_image}" ./build -s

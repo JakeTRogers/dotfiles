@@ -1,0 +1,10 @@
+diff --git a/src/repository.c b/src/repository.c
+index 4487e56..713d9c2 100644
+--- a/src/repository.c
++++ b/src/repository.c
+@@ -1397,3 +1397,4 @@ static int check_valid_extension(const git_config_entry *entry, void *payload)
+ 	if (!strcmp(entry->name, "extensions.noop") ||
+-	    !strcmp(entry->name, "extensions.preciousobjects"))
++	    !strcmp(entry->name, "extensions.preciousobjects") ||
++	    !strcmp(entry->name, "extensions.relativeworktrees"))
+ 		return 0;

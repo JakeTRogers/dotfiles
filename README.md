@@ -27,6 +27,7 @@ This repo manages my dotfiles and works nicely with the VS Code Dev Containers e
   - [zshrc](https://github.com/ohmyzsh/ohmyzsh/blob/master/templates/zshrc.zsh-template)
   - [Oh My Zsh](https://ohmyz.sh/)
     - [powerlevel10k](https://github.com/romkatv/powerlevel10k)
+      - Patched gitstatusd that reads repos with relative worktrees, on x86_64 (see [omz/gitstatusd/](omz/gitstatusd/))
     - [zsh-autosuggestions](https://github.com/zsh-users/zsh-autosuggestions)
     - [zsh-syntax-highlighting](https://github.com/zsh-users/zsh-syntax-highlighting)
     - Built-in plugins: colored-man-pages, colorize, gh, git, gpg-agent, kubectl, ssh-agent (loaded only when there is a forwarded agent or a `~/.ssh` directory), tmux (loaded only when tmux is installed), wd

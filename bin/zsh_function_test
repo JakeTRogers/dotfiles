@@ -488,13 +488,13 @@ _ghist_out() {  # plain ghist output, each commit reduced to graph, subject and 
 local ghist_c1
 ghist_c1="$(git -C "$ghw" rev-parse --short HEAD)"
 
-# a feature branch with commits ahead: the existing ahead view, in which the
-# base commit's line follows the last branch commit on the same line
+# a feature branch with commits ahead: the ahead view, ending with the base
+# commit on its own line
 _ghw checkout -q -b feat
 _ghw_commit F1
 _ghw_commit F2
 expect "ghist lists a feature branch's commits ahead of the base" \
-  "F2  (HEAD -> feat)"$'\n'"F1 $ghist_c1 C1"$'\n\n'"✅ 2 commits ahead of origin/main" \
+  "F2  (HEAD -> feat)"$'\n'"F1"$'\n'"$ghist_c1 C1"$'\n\n'"✅ 2 commits ahead of origin/main" \
   "$(_ghist_out)"
 
 # up to date on main: the recent history, exactly as ghist -10 shows it
@@ -568,7 +568,7 @@ _ghub push -q origin main
 _ghw_commit P3
 ghist_out="$(_ghist_out)"
 expect "ghist lists only the commits not yet upstream, and counts the rest" \
-  "P3  (HEAD -> part)"$'\n'"P2  (origin/part)$(git -C "$ghw" rev-parse --short origin/main) P1"$'\n\n'"✅ 2 commits ahead of origin/main (1 already upstream)" \
+  "P3  (HEAD -> part)"$'\n'"P2  (origin/part)"$'\n'"$(git -C "$ghw" rev-parse --short origin/main) P1"$'\n\n'"✅ 2 commits ahead of origin/main (1 already upstream)" \
   "$ghist_out"
 expect "ghist leaves no globals behind" '' "$(TESTCWD="$ghw" _leak_diff 'ghist')"
 

@@ -145,7 +145,7 @@ case $state in
   pending)
     notice="✅ $pending commits ahead of $base_branch"
     (( already_upstream > 0 )) && notice+=" ($already_upstream already upstream)"
-    git log --decorate --pretty=format:"$log_format" --date-order --cherry-pick --right-only "${base_branch}...HEAD"
+    git log --decorate --pretty=tformat:"$log_format" --date-order --cherry-pick --right-only "${base_branch}...HEAD"
     git log -1 --format='%C(yellow)%h%C(reset) %s' "$base_branch"
     echo ""
     pprint "$notice$stale_note" "$fgGreen"

@@ -13,9 +13,19 @@ _ghist() {
     '-25:last 25 commits'
   )
 
-  # Add HEAD~N for commits on branch
+  # Add HEAD~N for commits on branch. With none pending, ghist shows the recent
+  # history instead, so offer HEAD through HEAD~9. Completion never fetches: it
+  # uses the cached refs.
   local base_branch
   base_branch=$(git_find_branch_base -n)
+
+  local -a history_cmd
+  if [[ -n $base_branch ]] &&
+     (( $(git rev-list --count --cherry-pick --right-only "${base_branch}...HEAD" 2>/dev/null) == 0 )); then
+    history_cmd=(git log --oneline --no-decorate --first-parent -n 10 HEAD)
+  else
+    history_cmd=(git log --oneline --no-decorate "${base_branch:-HEAD~25}..HEAD")
+  fi
 
   local i=0
   while IFS= read -r line; do
@@ -23,7 +33,7 @@ _ghist() {
     local msg=${line#* }
     [[ $i -eq 0 ]] && opts+=("HEAD:${msg:0:50} ($hash)") || opts+=("HEAD~${i}:${msg:0:50} ($hash)")
     ((i++))
-  done < <(git log --oneline --no-decorate "${base_branch:-HEAD~25}..HEAD" 2>/dev/null)
+  done < <("${history_cmd[@]}" 2>/dev/null)
 
   _describe -V -t commits 'commits' opts
 }

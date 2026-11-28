@@ -1,5 +1,11 @@
 #######################################
-# ghist - git history with pretty formatting
+# ghist - Git history since the freshly fetched branch base, or recent history and merge status once nothing is pending
+#
+# With no argument, fetches the base branch from origin (no prompts, 5s limit)
+# and lists only the commits that have not landed on it. When none are left,
+# graphs the last 10 commits across HEAD and the base, then says whether HEAD
+# is up to date, behind, merged, or squash- or rebase-merged. -N and COMMIT
+# never fetch.
 #######################################
 
 emulate -L zsh
@@ -10,16 +16,27 @@ local MATCH MBEGIN MEND
 if [[ $1 == "--help" || $1 == "-h" ]]; then
   fold -w "$(tput cols)" -s <<'EOF'
 Usage: ghist [-N | COMMIT]
-Show git history with pretty formatting.
+Show git history since the freshly fetched branch base, or recent history and
+merge status once nothing is pending.
 
 Arguments:
   -N        Number of commits to show (e.g., -5, -10)
   COMMIT    Commit hash or ref to start from (e.g., HEAD~3, abc1234)
 
-When no argument is provided, shows commits ahead of main/master/develop.
+With no argument, fetches the base branch (main/master/develop/development/
+production) from origin, then shows the commits on HEAD that have not landed on
+it. Commits already upstream under another hash, as after a rebase merge, are
+left out and counted. The fetch never prompts and gives up after 5 seconds;
+when it fails, the cached refs are used and the notice says how old they are.
+
+When nothing is left to land, shows a graph of the last 10 commits across HEAD
+and the base, followed by a notice: up to date, behind by N, merged, or
+squash- or rebase-merged.
+
+-N and COMMIT never fetch.
 
 Examples:
-  ghist          # Commits ahead of main/master/develop/development/production
+  ghist          # Commits not yet on the base, or recent history if none
   ghist -5       # Last 5 commits
   ghist HEAD~3   # Commits from HEAD~3 to HEAD
 EOF
@@ -43,19 +60,106 @@ if [[ -n $1 ]]; then
   return 0
 fi
 
-# No argument - show commits ahead of base branch
+# No argument - show the commits that have not landed on the base branch
 local base_branch
 base_branch=$(git_find_branch_base -n)
 
 [[ -z "$base_branch" ]] && { pprint "🔴 ghist: could not find main/master/develop/development/production" "$fgRed" >&2; return 1; }
 
-local commit_count=$(git rev-list --count "${base_branch}..HEAD" 2>/dev/null)
-if [[ $commit_count -eq 0 ]]; then
-  pprint "🔵 No commits ahead of $base_branch" "$fgBlue"
-  return 0
+# Refresh the base branch alone, so a merge that just landed on the remote is
+# counted. Nothing may prompt: no terminal credential prompts, an askpass
+# that fails at once in place of any GUI one (such as an editor's), SSH in
+# batch mode, and the whole fetch bounded by a hard timeout: TERM at 4s, then
+# KILL a second later for a fetch or helper that ignores it. On failure, carry on
+# with the cached refs and say how old the last fetch record is. Its time is
+# read first, because even a fetch that fails rewrites the record; a failure
+# then puts that time back, or removes a record it created, so the next run
+# still sees the age of the last fetch that worked.
+local stale_note="" ssh_command fetch_record fetch_time age_unit
+local -i fetch_age age_secs
+if [[ $base_branch == origin/* ]]; then
+  fetch_record=$(git rev-parse --git-path FETCH_HEAD 2>/dev/null)
+  [[ -f $fetch_record ]] && fetch_time=$(stat -c %Y -- "$fetch_record" 2>/dev/null)
+  ssh_command=${GIT_SSH_COMMAND:-$(git config core.sshCommand 2>/dev/null)}
+  if ! GIT_TERMINAL_PROMPT=0 GIT_ASKPASS=false \
+       GIT_SSH_COMMAND="${ssh_command:-ssh} -o BatchMode=yes -o ConnectTimeout=3" \
+       timeout -k 1 4 git fetch --quiet origin "${base_branch#origin/}" >/dev/null 2>&1; then
+    stale_note=" (couldn't reach origin"
+    if [[ -n $fetch_time ]]; then
+      touch -m -d "@$fetch_time" -- "$fetch_record" 2>/dev/null
+      # The largest unit the age reaches, falling through to seconds
+      fetch_age=$(( $(date +%s) - fetch_time ))
+      for age_secs age_unit in 86400 day 3600 hour 60 minute 1 second; do
+        (( fetch_age >= age_secs )) && break
+      done
+      (( fetch_age /= age_secs ))
+      (( fetch_age == 1 )) || age_unit+=s
+      stale_note+="; as of fetch $fetch_age $age_unit ago"
+    else
+      rm -f -- "$fetch_record"
+    fi
+    stale_note+=")"
+  fi
 fi
 
-git log --decorate --pretty=format:"$log_format" --date-order "${base_branch}..HEAD"
-git log -1 --format='%C(yellow)%h%C(reset) %s' "$base_branch"
+# Pending commits are the ones whose patch is not already on the base side, as
+# git cherry sees it; the rest landed under another hash (a rebase merge).
+local -i ahead pending already_upstream behind
+ahead=$(git rev-list --count "${base_branch}..HEAD" 2>/dev/null)
+pending=$(git rev-list --count --cherry-pick --right-only "${base_branch}...HEAD" 2>/dev/null)
+already_upstream=$(( ahead - pending ))
+
+local branch_name
+branch_name=$(git symbolic-ref --short -q HEAD)
+: ${branch_name:=HEAD}
+
+# Settle the branch's state: pending, squash-merged, rebase-merged, merged,
+# behind or up to date. A squash merge leaves one commit on the base whose
+# patch is the whole branch diff since the merge base.
+local state merge_base branch_patch squash_commit
+if (( pending > 0 )); then
+  merge_base=$(git merge-base HEAD "$base_branch" 2>/dev/null)
+  branch_patch=$(git diff --no-color --no-ext-diff "$merge_base" HEAD 2>/dev/null | git patch-id --stable)
+  branch_patch=${branch_patch%% *}
+  if [[ -n $branch_patch ]]; then
+    squash_commit=$(git log -p --no-color --no-ext-diff --no-merges --format='commit %H' \
+        "${merge_base}..${base_branch}" 2>/dev/null |
+      git patch-id --stable | awk -v id="$branch_patch" '$1 == id { print $2; exit }')
+  fi
+  [[ -n $squash_commit ]] && state=squash-merged || state=pending
+elif (( ahead > 0 )); then
+  state=rebase-merged
+else
+  behind=$(git rev-list --count "HEAD..${base_branch}" 2>/dev/null)
+  if (( behind == 0 )); then
+    state=up-to-date
+  elif [[ $branch_name == "${base_branch#origin/}" ]]; then
+    state=behind
+  else
+    state=merged
+  fi
+fi
+
+local notice
+case $state in
+  pending)
+    notice="✅ $pending commits ahead of $base_branch"
+    (( already_upstream > 0 )) && notice+=" ($already_upstream already upstream)"
+    git log --decorate --pretty=tformat:"$log_format" --date-order --cherry-pick --right-only "${base_branch}...HEAD"
+    git log -1 --format='%C(yellow)%h%C(reset) %s' "$base_branch"
+    echo ""
+    pprint "$notice$stale_note" "$fgGreen"
+    return 0
+    ;;
+  squash-merged) notice="$branch_name was squash-merged into $base_branch as $(git rev-parse --short "$squash_commit")" ;;
+  rebase-merged) notice="$branch_name was rebase-merged into $base_branch" ;;
+  merged)        notice="$branch_name is merged into $base_branch" ;;
+  behind)        notice="No commits ahead of $base_branch ($behind behind — pull?)" ;;
+  up-to-date)    notice="No commits ahead of $base_branch" ;;
+esac
+
+# Nothing left to land: show where HEAD sits among the recent history, then why.
+git log --decorate --pretty=format:"$log_format" --graph --date-order -n 10 HEAD "$base_branch"
 echo ""
-pprint "✅ $commit_count commits ahead of $base_branch" "$fgGreen"
+echo ""
+pprint "🔵 $notice$stale_note" "$fgBlue"

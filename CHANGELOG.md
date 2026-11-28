@@ -1,3 +1,15 @@
+## v4.4.0 (2026-11-28)
+
+### Feature
+
+- **omz**: start gresign at the oldest commit that needs rewriting
+- **omz**: show recent history in ghist once a branch has landed
+
+### Fix
+
+- **agents**: say gresign re-signs only the commits it rewrites
+- **omz**: put the base commit on its own line in the ghist ahead view
+
 ## v4.3.0 (2026-11-27)
 
 ### Feature

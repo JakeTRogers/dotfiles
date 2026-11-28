@@ -79,7 +79,7 @@ Individual function files that are autoloaded on-demand. Each file contains a si
 - **`gdu`** - `git diff` with 0 lines of context
 - **`gdus`** - `git diff --cached` with 0 lines of context
 - **`get_k8s_images`** - Extract container images from Kubernetes pods with filtering and parsing options
-- **`ghist`** - Show commit history since the branch base
+- **`ghist`** - Show commit history since the branch base, fetching the base from origin first (never prompts, gives up after 5 seconds); commits already upstream are left out. When nothing is pending, shows the last 10 commits across `HEAD` and the base and says whether the branch is up to date, behind, merged, or squash- or rebase-merged
 - **`git_delete_head_semver_tags`** - Delete local semver tags pointing at HEAD (e.g. the one `cz bump` creates)
 - **`git_find_branch_base`** - Find the base branch name or merge-base commit (main/master/develop/...)
 - **`git_pr_check`** - Check subdirectories for GitHub pull requests

@@ -1,0 +1,60 @@
+#######################################
+# _gresign_fixup_target - find the oldest commit a fixup folds into, as autosquash pairs them
+#
+# Asks git's own autosquash for the pairing rather than matching subjects:
+# an interactive rebase whose sequence editor copies the todo list and fails,
+# which ends the rebase before it starts. In that todo list each fixup!,
+# squash! or amend! commit comes straight after its target, oldest first, so
+# the first pick followed by a fixup or squash line is the oldest target.
+# --autostash lets the probe run on a dirty tree and puts the changes back.
+#
+# Usage:
+#   target=$(_gresign_fixup_target "$boundary") || return 1
+#
+# Arguments:
+#   $1  Boundary commit (output of _gcfuh_base); empty means the whole
+#       history is in scope, root commit included
+# Returns:
+#   The full hash of the oldest commit after the boundary that a fixup folds
+#   into, or nothing when there is no fixup. Returns 1 with a message when git
+#   refuses to start the rebase, so no todo list is captured: it errors rather
+#   than guess. Either way HEAD, the working tree and the stash are left as
+#   they were. Call it only when no rebase is in progress, as gresign checks.
+#######################################
+
+emulate -L zsh
+local boundary=$1 probe pick line target
+local -a lines words
+
+probe=$(mktemp -d) || return 1
+{
+  GIT_SEQUENCE_EDITOR="cp -- \"\$1\" ${(qq)probe}/todo && false" \
+    git rebase --interactive --autosquash --autostash ${boundary:-"--root"} >/dev/null 2>&1
+  # The failed editor ends the rebase; make sure of it
+  if [[ -d $(git rev-parse --git-path rebase-merge) ]]; then
+    git rebase --abort >/dev/null 2>&1
+  fi
+  if [[ ! -r $probe/todo ]]; then
+    pprint "🔴 gresign: could not list the fixups; git rebase --interactive refused to start" "$fgRed" >&2
+    return 1
+  fi
+  lines=("${(@f)$(<$probe/todo)}")
+  lines=("${(@)lines:#}")
+  for line in "${lines[@]}"; do
+    words=(${=line})
+    case ${words[1]} in
+      pick|p) pick=${words[2]} ;;
+      fixup|f|squash|s)
+        if [[ -n $pick ]]; then
+          target=$(git rev-parse --verify --quiet "$pick^{commit}") || return 1
+          print -r -- "$target"
+          return 0
+        fi
+        ;;
+      '#'*) ;;
+      *) pick='' ;;
+    esac
+  done
+} always {
+  rm -rf -- "$probe"
+}

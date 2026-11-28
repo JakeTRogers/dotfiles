@@ -1,6 +1,6 @@
 #compdef gresign
 
-# Completion for "gresign" - re-sign the commits after a ref.
+# Completion for "gresign" - sign the commits after a ref that need it.
 function _gresign() {
   local -a refs
 

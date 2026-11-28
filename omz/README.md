@@ -85,7 +85,7 @@ Individual function files that are autoloaded on-demand. Each file contains a si
 - **`git_pr_check`** - Check subdirectories for GitHub pull requests
 - **`git_tag_semver`** - Semantically tag a git repository with major/minor/patch versions
 - **`gitrebaseall`** - ⚠ Rebase every local branch onto the default branch and force-push each (`--dry-run` supported)
-- **`gresign`** - Re-sign every commit after the branch base, as `grias` scopes it, or after a given ref, folding `fixup!`/`squash!`/`amend!` commits into their targets in the same pass (`--no-squash` signs only); refuses a range with merge commits
+- **`gresign`** - Sign the commits after the branch base, as `grias` scopes it, or after a given ref, folding `fixup!`/`squash!`/`amend!` commits into their targets in the same pass (`--no-squash` signs only); the rewrite starts at the oldest unsigned commit or fixup target, so signed commits before it keep their SHAs, and a fully signed branch is left alone; refuses a range with merge commits
 - **`grias`** - `git rebase --interactive --autosquash` from the branch base (on the default branch: the newest tag, or the root commit)
 - **`gswt`** - Fuzzy-select a linked worktree and `cd` into it
 - **`gundo`** - Undo the last commit (soft reset, keeps changes staged)

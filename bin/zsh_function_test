@@ -58,8 +58,9 @@ elif (( ${#targets} == 0 )); then
 fi
 
 # These ignore their arguments and act immediately, so "$fn --help" RUNS them.
-# gundo is `git reset --soft HEAD~1`; grias and gresign start a rebase. Never invoke them.
-local -a never_invoke=(gundo czbnt gciaf gcif gdu gdus grias gresign)
+# gundo is `git reset --soft HEAD~1`; grias, gresign and _gresign_fixup_target
+# start a rebase. Never invoke them.
+local -a never_invoke=(gundo czbnt gciaf gcif gdu gdus grias gresign _gresign_fixup_target)
 
 integer failures=0
 fail() { print -r -- "  🔴 $*"; (( failures++ )) }
@@ -604,7 +605,7 @@ expect "ghist says the counts are as of the last fetch when origin cannot be rea
   "${ghist_out##*$'\n'}"
 rm -rf "$sandbox" "$setup_log"
 
-# gresign: re-sign every commit after the branch base for real, with a throwaway
+# gresign: sign the commits after the branch base for real, with a throwaway
 # SSH key, so no key of the user's is ever touched. The fixture is a feature
 # branch of two unsigned commits on a pushed main, with one of them pushed too.
 sandbox="$(mktemp -d)" setup_log="$(mktemp)"
@@ -635,6 +636,12 @@ sandbox="$(mktemp -d)" setup_log="$(mktemp)"
 _gresign_view() {  # signature, tree and message of each commit, oldest first
   git -C "$sandbox/w" log --reverse --format='%G? %T %s|%b' "$@" | tr '\n' ' '
 }
+_gresign_subjects() {  # subjects after the branch base, oldest first
+  git -C "$sandbox/w" log --reverse --format=%s "$resign_base..HEAD" | tr '\n' '|'
+}
+_gresign_sigs() {  # $@ = git log arguments; each commit's %G?, oldest first
+  git -C "$sandbox/w" log --reverse --format=%G? "$@" | tr '\n' ' ' | sed 's/ $//'
+}
 local before resign_out resign_rc head_before
 before="$(_gresign_view --format='%T %s|%b' origin/main..HEAD)"
 print dirty >> "$sandbox/w/f"
@@ -642,14 +649,14 @@ resign_out="$(TESTCWD="$sandbox/w" _isolated 'gresign' 2>&1)"
 resign_rc=$?
 expect "gresign succeeds on a feature branch" 0 "$resign_rc"
 expect "gresign signs every commit after the branch base" 'G G' \
-  "$(git -C "$sandbox/w" log --reverse --format=%G? origin/main..HEAD | tr '\n' ' ' | sed 's/ $//')"
+  "$(_gresign_sigs origin/main..HEAD)"
 expect "gresign keeps each commit's tree and message" "$before" \
   "$(_gresign_view --format='%T %s|%b' origin/main..HEAD)"
 expect "gresign leaves the branch base unsigned and in place" \
   "$(git -C "$sandbox/w" rev-parse origin/main)" "$(git -C "$sandbox/w" rev-parse HEAD~2)"
 expect "gresign keeps uncommitted changes" $'1\n2\n3\ndirty' "$(<"$sandbox/w/f")"
 expect "gresign reports how many commits it signed" 1 \
-  "$(print -r -- "$resign_out" | grep -c 'Signed 2 commits')"
+  "$(print -r -- "$resign_out" | grep -c 'Signed 2 commits after origin/main$')"
 expect "gresign says a pushed branch needs a force-push" 1 \
   "$(print -r -- "$resign_out" | grep -c 'force-push')"
 
@@ -661,11 +668,11 @@ _fixture_git -C "$sandbox/w" rebase -q --force-rebase --no-gpg-sign origin/main
 head_before="$(git -C "$sandbox/w" rev-parse HEAD~1)"
 resign_out="$(TESTCWD="$sandbox/w" _isolated 'gresign HEAD~1' 2>&1)"
 expect "gresign <ref> signs only the commits after ref" 'N N G' \
-  "$(git -C "$sandbox/w" log --reverse --format=%G? origin/main..HEAD | tr '\n' ' ' | sed 's/ $//')"
+  "$(_gresign_sigs origin/main..HEAD)"
 expect "gresign <ref> leaves ref itself in place" "$head_before" \
   "$(git -C "$sandbox/w" rev-parse HEAD~1)"
 expect "gresign <ref> reports a count of one" 1 \
-  "$(print -r -- "$resign_out" | grep -c 'Signed 1 commit\b')"
+  "$(print -r -- "$resign_out" | grep -c 'Signed 1 commit after HEAD~1$')"
 
 # a merge commit in the range: refuse, and leave the branch alone
 _fixture_git -C "$sandbox/w" checkout -q -b side HEAD~1
@@ -686,7 +693,7 @@ _fixture_git -C "$sandbox/w" push -q --force origin feat
 _fixture_git -C "$sandbox/w" branch -q --unset-upstream
 resign_out="$(TESTCWD="$sandbox/w" _isolated 'gresign' 2>&1)"
 expect "gresign says a branch on origin with no upstream needs a force-push" 1 \
-  "$(print -r -- "$resign_out" | grep -c 'origin/feat has the unsigned commits: force-push with git push --force-with-lease origin feat')"
+  "$(print -r -- "$resign_out" | grep -c 'origin/feat has the old commits: force-push with git push --force-with-lease origin feat')"
 
 # A branch that is on no remote needs no force-push
 _fixture_git -C "$sandbox/w" checkout -q -b local-only
@@ -711,7 +718,7 @@ _fixture_git -C "$sandbox/w" checkout -q feat
 before="$(_gresign_view --format='%T %s|%b' "$resign_base..HEAD")"
 resign_out="$(TESTCWD="$sandbox/w" _isolated 'gresign' 2>&1)"
 expect "gresign signs a branch whose base branch has moved on" 'G G G' \
-  "$(git -C "$sandbox/w" log --reverse --format=%G? "$resign_base..HEAD" | tr '\n' ' ' | sed 's/ $//')"
+  "$(_gresign_sigs "$resign_base..HEAD")"
 expect "gresign keeps the branch on its base when the base branch has moved on" \
   "$resign_base" "$(git -C "$sandbox/w" merge-base HEAD origin/main)"
 expect "gresign keeps each tree when the base branch has moved on" "$before" \
@@ -723,9 +730,6 @@ expect "gresign keeps each tree when the base branch has moved on" "$before" \
 _gresign_bare() {  # $1 = snippet; gresign's combined output
   GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null GIT_EDITOR=false \
     TESTCWD="$sandbox/w" _isolated "$1" 2>&1
-}
-_gresign_subjects() {  # subjects after the branch base, oldest first
-  git -C "$sandbox/w" log --reverse --format=%s "$resign_base..HEAD" | tr '\n' '|'
 }
 local resign_c2 resign_c3 resign_tree
 resign_c2="$(git -C "$sandbox/w" rev-parse HEAD~2)"
@@ -744,9 +748,11 @@ expect "gresign puts a fixup!'s change in its target" fix \
 expect "gresign keeps the branch's final tree when folding" "$resign_tree" \
   "$(git -C "$sandbox/w" rev-parse 'HEAD^{tree}')"
 expect "gresign signs the commits it folds into" 'G G G' \
-  "$(git -C "$sandbox/w" log --reverse --format=%G? "$resign_base..HEAD" | tr '\n' ' ' | sed 's/ $//')"
+  "$(_gresign_sigs "$resign_base..HEAD")"
 expect "gresign counts the commits after folding, and the fixups folded" 1 \
-  "$(print -r -- "$resign_out" | grep -c 'Signed 3 commits after .* (1 fixup folded)')"
+  "$(print -r -- "$resign_out" | grep -c 'Signed 2 of the 3 commits after origin/main (1 fixup folded)')"
+expect "gresign keeps the signed commit before a fixup's target" "$resign_c2" \
+  "$(git -C "$sandbox/w" rev-parse HEAD~2)"
 
 # amend!: replaces its target's message with its own body
 _fixture_git -C "$sandbox/w" -c commit.gpgsign=false commit -q --allow-empty \
@@ -755,19 +761,22 @@ resign_out="$(_gresign_bare 'gresign')"
 expect "gresign folds an amend! commit" 0 "$?"
 expect "gresign rewords the target of an amend!" 'C2 reworded|C3|C4|' "$(_gresign_subjects)"
 
-# --no-squash: the fixup stays a commit of its own, signed, and a ref after
-# the flag still sets the boundary
+# --no-squash: the fixup stays a commit of its own, signed, and the start
+# comes from the signatures alone, so the signed target is not rewritten
 print more >> "$sandbox/w/h"
 _fixture_git -C "$sandbox/w" add h
 _fixture_git -C "$sandbox/w" -c commit.gpgsign=false commit -q --fixup HEAD~1
+head_before="$(git -C "$sandbox/w" rev-parse HEAD~1)"
 resign_out="$(_gresign_bare 'gresign --no-squash HEAD~2')"
 expect "gresign --no-squash <ref> succeeds" 0 "$?"
 expect "gresign --no-squash keeps the fixup! commit" 'C2 reworded|C3|C4|fixup! C3|' \
   "$(_gresign_subjects)"
-expect "gresign --no-squash <ref> signs only the commits after ref" 1 \
-  "$(print -r -- "$resign_out" | grep -c 'Signed 2 commits after HEAD~2$')"
+expect "gresign --no-squash starts at the oldest unsigned commit, the fixup!" 1 \
+  "$(print -r -- "$resign_out" | grep -c 'Signed 1 of the 2 commits after HEAD~2$')"
+expect "gresign --no-squash keeps the signed commit before the fixup!" "$head_before" \
+  "$(git -C "$sandbox/w" rev-parse HEAD~1)"
 expect "gresign --no-squash signs the fixup! commit" G \
-  "$(git -C "$sandbox/w" log -1 --format=%G?)"
+  "$(_gresign_sigs -1)"
 _fixture_git -C "$sandbox/w" reset -q --hard HEAD~1
 
 # A fixup that conflicts with its target stops the rebase and says how to go on
@@ -785,8 +794,116 @@ expect "aborting gresign's stopped rebase restores the branch" "$head_before" \
   "$(git -C "$sandbox/w" rev-parse HEAD)"
 _fixture_git -C "$sandbox/w" reset -q --hard HEAD~1
 
+# The rebase starts at the oldest commit that must change: commits signed
+# before it keep their SHAs. The branch is the signed C2 reworded, C3 and C4
+# here, and two unsigned commits that are not fixups follow them.
+local resign_signed
+resign_signed="$(git -C "$sandbox/w" rev-parse HEAD~2 HEAD~1 HEAD)"
+_fixture_git -C "$sandbox/w" -c commit.gpgsign=false commit -q --allow-empty -m C5
+_fixture_git -C "$sandbox/w" -c commit.gpgsign=false commit -q --allow-empty -m C6
+resign_out="$(_gresign_bare 'gresign')"
+expect "gresign signs unsigned commits after signed ones" 0 "$?"
+expect "gresign keeps the SHAs of the signed commits before the first unsigned one" \
+  "$resign_signed" "$(git -C "$sandbox/w" rev-parse HEAD~4 HEAD~3 HEAD~2)"
+expect "gresign signs the commits from the first unsigned one on" 'G G G G G' \
+  "$(_gresign_sigs "$resign_base..HEAD")"
+expect "gresign counts only the commits it rewrote" 1 \
+  "$(print -r -- "$resign_out" | grep -c 'Signed 2 of the 5 commits after origin/main$')"
+
+# A fully signed branch with no fixups: nothing to do, and no rebase runs
+local resign_reflog
+head_before="$(git -C "$sandbox/w" rev-parse HEAD)"
+resign_reflog="$(git -C "$sandbox/w" reflog | wc -l)"
+resign_out="$(_gresign_bare 'gresign')"
+expect "gresign succeeds on a fully signed branch" 0 "$?"
+expect "gresign says a fully signed branch has nothing to sign" 1 \
+  "$(print -r -- "$resign_out" | grep -c 'gresign: nothing to sign after origin/main')"
+expect "gresign leaves a fully signed branch unchanged" "$head_before" \
+  "$(git -C "$sandbox/w" rev-parse HEAD)"
+expect "gresign runs no rebase on a fully signed branch" "$resign_reflog" \
+  "$(git -C "$sandbox/w" reflog | wc -l)"
+
+# The same on the default branch, where the boundary is the newest tag
+_fixture_git -C "$sandbox/w" checkout -q main
+_fixture_git -C "$sandbox/w" tag v1.0.0
+_fixture_git -C "$sandbox/w" commit -q -S --allow-empty -m M1
+head_before="$(git -C "$sandbox/w" rev-parse HEAD)"
+resign_out="$(_gresign_bare 'gresign')"
+expect "gresign succeeds on a fully signed default branch" 0 "$?"
+expect "gresign says a fully signed default branch has nothing to sign after its tag" 1 \
+  "$(print -r -- "$resign_out" | grep -c 'gresign: nothing to sign after v1.0.0')"
+expect "gresign leaves a fully signed default branch unchanged" "$head_before" \
+  "$(git -C "$sandbox/w" rev-parse HEAD)"
+_fixture_git -C "$sandbox/w" checkout -q feat
+
+# A fixup whose target is older than the first unsigned commit: the rebase
+# starts at the target, and a dirty tree survives both the probe and the
+# rebase. The branch is the signed C2 reworded, C3, C4, C5 and C6 here.
+resign_c2="$(git -C "$sandbox/w" rev-parse HEAD~4)"
+_fixture_git -C "$sandbox/w" -c commit.gpgsign=false commit -q --allow-empty -m C7
+print late >> "$sandbox/w/h"
+_fixture_git -C "$sandbox/w" add h
+_fixture_git -C "$sandbox/w" -c commit.gpgsign=false commit -q --fixup HEAD~4
+resign_tree="$(git -C "$sandbox/w" rev-parse 'HEAD^{tree}')"
+print dirty >> "$sandbox/w/f"
+resign_out="$(_gresign_bare 'gresign')"
+expect "gresign folds a fixup into a target older than the first unsigned commit" 0 "$?"
+expect "gresign keeps the signed commit before an older fixup target" "$resign_c2" \
+  "$(git -C "$sandbox/w" rev-parse HEAD~5)"
+expect "gresign folds the fixup into its older target" 'C2 reworded|C3|C4|C5|C6|C7|' \
+  "$(_gresign_subjects)"
+expect "gresign puts the fixup's change in its older target" $'fix\nlate' \
+  "$(git -C "$sandbox/w" show HEAD~4:h 2>/dev/null)"
+expect "gresign keeps the final tree when folding into an older target" "$resign_tree" \
+  "$(git -C "$sandbox/w" rev-parse 'HEAD^{tree}')"
+expect "gresign signs from the older fixup target on" 'G G G G G G' \
+  "$(_gresign_sigs "$resign_base..HEAD")"
+expect "gresign counts from the older fixup target" 1 \
+  "$(print -r -- "$resign_out" | grep -c 'Signed 5 of the 6 commits after origin/main (1 fixup folded)')"
+expect "gresign keeps uncommitted changes through the fixup probe" $'1\n2\n3\ndirty' \
+  "$(<"$sandbox/w/f")"
+expect "gresign's fixup probe leaves no stash behind" '' \
+  "$(git -C "$sandbox/w" stash list)"
+_fixture_git -C "$sandbox/w" checkout -q -- f
+
+# A rewritten commit that was pushed signed still needs a force-push: signed
+# C7 is on origin, and the fixup of it rewrites it along with the signed C8
+_fixture_git -C "$sandbox/w" push -q --force origin feat
+_fixture_git -C "$sandbox/w" commit -q -S --allow-empty -m C8
+print pushed >> "$sandbox/w/h"
+_fixture_git -C "$sandbox/w" add h
+_fixture_git -C "$sandbox/w" -c commit.gpgsign=false commit -q --fixup HEAD~1
+resign_out="$(_gresign_bare 'gresign')"
+expect "gresign folds a fixup into a pushed, signed commit" 0 "$?"
+expect "gresign folds the fixup into the pushed, signed commit" 'C2 reworded|C3|C4|C5|C6|C7|C8|' \
+  "$(_gresign_subjects)"
+expect "gresign says the remote has the old commits when they were signed" 1 \
+  "$(print -r -- "$resign_out" | grep -c 'origin/feat has the old commits: force-push with git push --force-with-lease origin feat')"
+expect "gresign says nothing of unsigned commits on the remote" 0 \
+  "$(print -r -- "$resign_out" | grep -c 'unsigned')"
+
+# An unsigned commit at or before an explicit ref stays unsigned and in place:
+# C9 is the ref and C8 before it, with the signed C10 and the unsigned C11 after
+_fixture_git -C "$sandbox/w" rebase -q --force-rebase --no-gpg-sign HEAD~1
+_fixture_git -C "$sandbox/w" -c commit.gpgsign=false commit -q --allow-empty -m C9
+_fixture_git -C "$sandbox/w" commit -q -S --allow-empty -m C10
+_fixture_git -C "$sandbox/w" -c commit.gpgsign=false commit -q --allow-empty -m C11
+head_before="$(git -C "$sandbox/w" rev-parse HEAD~3 HEAD~2 HEAD~1)"
+resign_out="$(_gresign_bare 'gresign HEAD~2')"
+expect "gresign <ref> succeeds with unsigned commits at and before ref" 0 "$?"
+expect "gresign <ref> keeps unsigned commits at and before ref, and the signed one after" \
+  "$head_before" "$(git -C "$sandbox/w" rev-parse HEAD~3 HEAD~2 HEAD~1)"
+expect "gresign <ref> leaves the commits at and before ref unsigned" 'N N G G' \
+  "$(_gresign_sigs HEAD~4..HEAD)"
+expect "gresign <ref> counts the signed commit it kept after ref" 1 \
+  "$(print -r -- "$resign_out" | grep -c 'Signed 1 of the 2 commits after HEAD~2$')"
+
 expect "gresign leaves no globals behind" '' \
   "$(TESTCWD="$sandbox/w" _leak_diff 'gresign')"
+expect "_gresign_fixup_target leaves no globals behind" '' \
+  "$(TESTCWD="$sandbox/w" _leak_diff '_gresign_fixup_target HEAD~2')"
+expect "_gresign_fixup_target finds nothing when there is no fixup" '' \
+  "$(_gresign_bare '_gresign_fixup_target HEAD~2')"
 rm -rf "$sandbox" "$setup_log"
 
 # gdu, gdus and gcfuh say so when there is nothing to complete. As in the fixup

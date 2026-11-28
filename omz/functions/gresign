@@ -1,5 +1,5 @@
 #######################################
-# gresign - re-sign every commit since the branch base, folding fixups into their targets
+# gresign - sign the commits after the branch base that need it, folding fixups into their targets
 # Arguments:
 #   --no-squash  Sign only: keep fixup!, squash! and amend! commits as they are,
 #                for when unfolded fixups are pushed on purpose for reviewers
@@ -7,20 +7,23 @@
 #   the same one grias uses: the branch base on a feature branch, the newest
 #   tag on the default branch, or the root commit before the first tag)
 # Outputs:
-#   Rewrites each commit after the boundary with your signature, keeping its
-#   tree and message (uncommitted changes are autostashed around it). Unless
-#   --no-squash is given, it first folds each fixup! commit into its target as
-#   an autosquash rebase does: fixup! keeps the target's message, amend!
-#   replaces it, and squash! combines the two, which opens your editor even
-#   though the rebase is not interactive. A fixup that conflicts with its
-#   target stops the rebase for you to resolve. Refuses a range that contains
-#   merge commits, which the rebase would flatten.
+#   Rewrites the commits after the boundary with your signature, keeping each
+#   tree and message (uncommitted changes are autostashed around it). The
+#   rewrite starts at the oldest commit without a good signature or, unless
+#   --no-squash is given, the oldest fixup target if that is older: signed
+#   commits before it keep their SHAs, and a fully signed branch with no
+#   fixups is left alone. Without --no-squash, it folds each fixup! commit
+#   into its target as an autosquash rebase does: fixup! keeps the target's
+#   message, amend! replaces it, and squash! combines the two, which opens
+#   your editor even though the rebase is not interactive. A fixup that
+#   conflicts with its target stops the rebase for you to resolve. Refuses a
+#   range that contains merge commits, which the rebase would flatten.
 #######################################
 
 emulate -L zsh
-local target base range old_head remote push branch
+local target base range oldest_rewrite fixup_target onto old_head rebase_merge remote push branch
 local -a rebase_args
-integer squash=1 merges commits signed folded unpushed
+integer squash=1 merges total rewritten signed kept folded unpushed
 
 if [[ $1 == --no-squash ]]; then
   squash=0
@@ -41,17 +44,49 @@ else
 fi
 range=${base:+$base..}HEAD
 
+rebase_merge=$(git rev-parse --git-path rebase-merge) || return 1
+if [[ -d $rebase_merge || -d $(git rev-parse --git-path rebase-apply) ]]; then
+  pprint "🔴 gresign: a rebase is already in progress; finish it with git rebase --continue, or git rebase --abort" "$fgRed" >&2
+  return 1
+fi
+
 merges=$(git rev-list --merges --count "$range") || return 1
 if (( merges )); then
   pprint "🔴 gresign: $merges merge commit(s) after ${target:-the root}; a rebase would flatten them" "$fgRed" >&2
   return 1
 fi
 
-commits=$(git rev-list --count "$range") || return 1
-if (( commits == 0 )); then
+total=$(git rev-list --count "$range") || return 1
+if (( total == 0 )); then
   pprint "🔵 gresign: no commits after ${target:-the root} to sign" "$fgBlue"
   return 0
 fi
+
+# Start at the oldest commit that must change, so the signed commits before
+# it keep their SHAs: the oldest without a good signature (G, or U for a key
+# of unknown trust), or the oldest fixup target, which the fixup itself, being
+# unsigned, would otherwise come after.
+oldest_rewrite=$(git log --reverse --format='%G? %H' "$range" | awk '$1 != "G" && $1 != "U" { print $2; exit }') || return 1
+# The probe for that target is an autostashing rebase, which would unstage
+# staged edits, so it runs only when a message in the range has an autosquash
+# prefix: a branch with no fixups is left alone.
+if (( squash )) &&
+  [[ -n $(git rev-list -n 1 -E --grep='^(fixup|squash|amend)! ' "$range") ]]; then
+  fixup_target=$(_gresign_fixup_target "$base") || return 1
+  if [[ -n $fixup_target ]] &&
+    { [[ -z $oldest_rewrite ]] || git merge-base --is-ancestor "$fixup_target" "$oldest_rewrite"; }; then
+    oldest_rewrite=$fixup_target
+  fi
+fi
+if [[ -z $oldest_rewrite ]]; then
+  pprint "🔵 gresign: nothing to sign after ${target:-the root}: every commit is signed" "$fgBlue"
+  return 0
+fi
+# The commit to rebase onto, or none when the root commit must change
+onto=$(git rev-parse --verify --quiet "$oldest_rewrite^") || onto=''
+range=${onto:+$onto..}HEAD
+rewritten=$(git rev-list --count "$range") || return 1
+kept=$(( total - rewritten ))
 
 old_head=$(git rev-parse HEAD)
 # --force-rebase rewrites the commits even when the base has not moved, and
@@ -59,25 +94,23 @@ old_head=$(git rev-parse HEAD)
 # explicitly: rebase.autoSquash only applies to interactive rebases.
 rebase_args=(--force-rebase --gpg-sign --autostash)
 (( squash )) && rebase_args+=(--autosquash)
-if [[ -n $base ]]; then
-  rebase_args+=("$base")
-else
-  rebase_args+=(--root)
-fi
+rebase_args+=(${onto:-"--root"})
 if ! git rebase "${rebase_args[@]}"; then
-  if [[ -d $(git rev-parse --git-path rebase-merge) ]]; then
+  if [[ -d $rebase_merge ]]; then
     pprint "🔴 gresign: the rebase stopped, perhaps on a fixup that conflicts with its target; resolve it and run git rebase --continue, or git rebase --abort" "$fgRed" >&2
   fi
   return 1
 fi
 
-# Folded fixups leave fewer commits than the rebase started with
+# Folded fixups leave fewer commits than the rebase started with. The signed
+# commits kept before the rewrite count toward the commits after the target.
 signed=$(git rev-list --count "$range") || return 1
-folded=$(( commits - signed ))
-pprint "✅ Signed $signed commit$( (( signed == 1 )) || print -n s) after ${target:-the root}$( (( folded )) && print -n " ($folded fixup$( (( folded == 1 )) || print -n s) folded)")" "$fgGreen"
+folded=$(( rewritten - signed ))
+pprint "✅ Signed $signed$( (( kept )) && print -n " of the $(( kept + signed ))") commit$( (( kept + signed == 1 )) || print -n s) after ${target:-the root}$( (( folded )) && print -n " ($folded fixup$( (( folded == 1 )) || print -n s) folded)")" "$fgGreen"
 
-# Any of the old commits on the remote branch means the remote still has them.
-# That is the upstream, or the same-named branch on origin when none is set.
+# Any of the rewritten commits on the remote branch means it still has their
+# old versions, signed or not. That is the upstream, or the same-named branch
+# on origin when none is set.
 push='git push --force-with-lease'
 if ! remote=$(git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null); then
   remote=''
@@ -88,7 +121,7 @@ if ! remote=$(git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/d
 fi
 if [[ -n $remote ]]; then
   unpushed=$(git rev-list --count "$remote..$old_head")
-  if (( unpushed < commits )); then
-    pprint "⚠️ $remote has the unsigned commits: force-push with $push" "$fgYellow"
+  if (( unpushed < rewritten )); then
+    pprint "⚠️ $remote has the old commits: force-push with $push" "$fgYellow"
   fi
 fi
